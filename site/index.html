@@ -36,6 +36,7 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 .mute{color:var(--mute)}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}
 .sum{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.chip.click{cursor:pointer}.chip.click:hover{border-color:var(--mute)}
 .chip{padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line-t)}
 .chip b{font-size:18px;margin-left:6px}
 .tw{overflow-x:auto}
@@ -188,7 +189,7 @@ function renderIdx(){
 /* ───────── 首頁：族群統計 ───────── */
 function home(){
   const tot = D.total, all = STATES.reduce((a,s)=>a+tot[s],0);
-  let h = `<div class="sum">` + STATES.map(s=>`<div class="chip">${s}<b class="c-${CLS[s]}">${tot[s]}</b><span class="mute"> ${pct(tot[s],all)}</span></div>`).join("") + `<div class="chip">共<b>${all}</b>檔</div></div>`;
+  let h = `<div class="sum">` + STATES.map(s=>`<div class="chip click" data-st="${s}" title="點擊列出全部${s}的股票">${s}<b class="c-${CLS[s]}">${tot[s]}</b><span class="mute"> ${pct(tot[s],all)}</span></div>`).join("") + `<div class="chip">共<b>${all}</b>檔</div></div>`;
   h += `<div class="tw"><table><thead><tr><th>族群</th><th>檔數</th>` + STATES.map(s=>`<th class="c-${CLS[s]}">${s}</th>`).join("") + `<th class="hide-s">分布</th><th>突破第1根</th><th>止跌反彈</th></tr></thead><tbody>`;
   for(const g of D.groups){
     const small = g.n < 5;
@@ -201,6 +202,7 @@ function home(){
   }
   h += `</tbody></table></div><p class="note">族群樣本少於 5 檔時，百分比參考價值低，不顯示。顏色採台股習慣：紅＝強、綠＝弱。</p>`;
   $("#app").innerHTML = h;
+  document.querySelectorAll(".chip[data-st]").forEach(c=>c.onclick=()=>{location.hash="st-"+encodeURIComponent(c.dataset.st)});
   document.querySelectorAll("tr.row").forEach(r=>r.onclick=()=>{location.hash="g-"+D.groups.findIndex(x=>x.name===r.dataset.g)});
 }
 
@@ -219,6 +221,14 @@ function stockTable(list){
     h += `<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td><td>${badge(s.state,s.sub)}</td><td style="text-align:left;white-space:normal;min-width:180px">${tags(s.tags)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
+}
+function stateList(st){
+  if(!STATES.includes(st)){location.hash="";return}
+  const list=Object.values(D.stocks).filter(x=>x.state===st).sort((a,b)=>b.close*b.vol-a.close*a.vol);
+  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">依成交值由大到小排列，點股票看 K 線圖。</p>`;
+  h+=`<div class="tw"><table><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>型態</th><th style="text-align:left">標記</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>`+
+    list.map(s=>`<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td><td style="text-align:left">${s.group}</td><td>${badge(s.state,s.sub)}</td><td style="text-align:left;white-space:normal;min-width:180px">${tags(s.tags)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("")+`</tbody></table></div>`;
+  $("#app").innerHTML=h; bindRows();
 }
 function bindRows(){document.querySelectorAll("tr.row[data-c]").forEach(r=>r.onclick=()=>{location.hash="s-"+r.dataset.c})}
 
@@ -808,13 +818,14 @@ function renderBase(h){
   $("#n-scr").classList.toggle("on", h.startsWith("scr"));
   if(h.startsWith("g-")) group((D.groups[+h.slice(2)]||{}).name);
   else if(h.startsWith("find-")) finder(h.slice(5));
+  else if(h.startsWith("st-")) stateList(h.slice(3));
   else if(h.startsWith("scr")) screener(h.slice(4));
   else home();
 }
 function goBack(){
   const h = decodeURIComponent(location.hash.slice(1));
   if(h.startsWith("s-")||h.startsWith("i-")) location.hash = baseRaw || "";
-  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-")) location.hash = "";
+  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-")) location.hash = "";
 }
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") goBack(); });
 function route(){
