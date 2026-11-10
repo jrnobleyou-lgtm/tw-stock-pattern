@@ -9,8 +9,6 @@ on:
     paths: ['site/index.html', 'site/*.png', 'site/*.jpg', 'scripts/**', 'data/groups_tw_all.csv', '.github/workflows/update.yml']
 permissions:
   contents: write
-  pages: write
-  id-token: write
 concurrency:
   group: update
   cancel-in-progress: false
@@ -18,8 +16,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    environment:
-      name: github-pages
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -43,11 +39,15 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add data/hist data/adjust.csv data/pending_ex.csv data/index_TWII.json data/index_OTC.json
           git diff --cached --quiet || (git commit -m "data $(date -u +%F)" && git push)
-      - uses: actions/configure-pages@v5
+      - name: 發布到 deploy 分支（Cloudflare Pages 會自動從這個分支發布）
         if: steps.chg.outputs.changed == 'true'
-      - uses: actions/upload-pages-artifact@v3
-        if: steps.chg.outputs.changed == 'true'
-        with:
-          path: site
-      - uses: actions/deploy-pages@v4
-        if: steps.chg.outputs.changed == 'true'
+        run: |
+          rm -rf /tmp/pub && mkdir /tmp/pub && cp -r site/. /tmp/pub/
+          rm -f /tmp/pub/preview.html /tmp/pub/index_v1.html
+          cd /tmp/pub
+          git init -q -b deploy
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "build $(date -u +%FT%TZ)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" deploy
