@@ -120,7 +120,7 @@ svg text{fill:var(--fg);font-size:11px}
   .cr .stats>div:first-child{grid-column:1/-1;margin:0!important}
   .cr .legendv{order:4;flex:none;margin:0;font-size:11px}
   .cr .notes{order:5;flex:none;max-height:9vh;overflow:auto;font-size:11px;margin:0}
-  .cr .notes p:last-child{display:none}
+  .cr .notes p:last-child,.cr .notes .supn{display:none}
   .cr .notes p{margin:2px 0}
   .cr .cgrid{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .cr .cgrid::-webkit-scrollbar{display:none}
@@ -433,6 +433,31 @@ function calcDMI(bars,n=14){
   return{pdi,mdi,adx};
 }
 function adjustBars(raw){ return raw.map(b=>b.f===1?b:{...b,o:b.o*b.f,h:b.h*b.f,l:b.l*b.f,c:b.c*b.f}) }
+/* 支撐：先看畫面內最近 60 根，沒有已確認支撐才看到畫面最左邊。
+   前低＝最低價比前後各 5 根都低；回測＝之後最低價落在前低以上 3% 內、或刺破前低但收盤仍在前低之上（且距上次觸及至少 5 根）；
+   收盤價低於前低＝跌破（作廢）。已確認＝至少回測 1 次且到最新一根都沒破。有多條只取股價下方最近的一條。 */
+function findSupport(B,vs,e){
+  if(e<10) return null;
+  const lastC=B[e].c;
+  const scan=a=>{
+    let best=null;
+    for(let j=Math.max(a,5);j<=e-5;j++){
+      const L=B[j].l; let ok=true;
+      for(let k=j-5;k<=j+5;k++){ if(k!==j&&B[k].l<L){ok=false;break} }
+      if(!ok) continue;
+      let broken=false,touches=1,last=j;
+      for(let i=j+1;i<=e;i++){
+        if(B[i].c<L){broken=true;break}
+        const hit=B[i].l<L||B[i].l<=L*1.03;
+        if(hit&&i-last>=5){touches++;last=i}
+      }
+      if(broken||touches<2||!(L<lastC)) continue;
+      if(!best||L>best.L) best={L,j,touches,e};
+    }
+    return best;
+  };
+  return scan(Math.max(vs,e-59))||scan(vs);
+}
 function calcStats(B,i0,i1){
   i0=Math.max(0,i0);i1=Math.min(B.length-1,i1);if(i1<=i0) return null;
   let hi=-1e18,hiI=i0,lo=1e18,loI=i0;
@@ -461,7 +486,7 @@ const textW=(t,fs)=>{let w=0;for(const ch of String(t))w+=/[⺀-鿿＀-￯]/.tes
 class Chart{
   constructor(el, s, opts){
     this.el=el; this.s=s; this.opts=opts||{}; this.raw=stockBars(s);
-    this.tf="D"; this.geo=true; this.adjOn=false;
+    this.tf="D"; this.geo=true; this.sup=true; this.adjOn=false;
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=false;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     this.sel=null; this.scissor=false; this.range=null; this.active=null; this.listOpen=false;
@@ -485,7 +510,7 @@ class Chart{
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
       this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"');
     const row2=this.btn("maopen","均線",this.maOpen)+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
-    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",this.scissor)+this.btn("geo","形態",this.geo);
+    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",this.scissor)+this.btn("geo","形態",this.geo)+this.btn("sup","支撐",this.sup);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
     const allOn=MA_ALL.every(n=>this.maOn[n]);
     const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"全不選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${n}日</button>`).join("")}</div>`:"";
@@ -498,7 +523,7 @@ class Chart{
         <div class="cgrid small">${row4}</div>
         <div class="stats" id="stats"></div>
         <div class="legendv" id="legendv"></div>
-        <div class="note notes">${this.opts.notes||""}<p class="howto">電腦：滾輪縮放、拖曳平移、點 K 棒看資料，點圖旁邊取消。手機：滑動平移、雙指縮放、按住看每根 K 棒。點視窗外或按 ESC 關閉。</p></div>
+        <div class="note notes">${this.opts.notes||""}<p class="supn">${this.sup?"支撐先看最近 60 根 K 棒，沒有已確認支撐才往左看到畫面最左邊；週 K、月 K 用同一套、各算各的 K 棒，縮放或拖曳會重算。前低＝某根最低價比前後各 5 根都低；之後另有一根最低價在前低以上 3% 內（或刺破前低但收盤仍在前低之上）、且距上次觸及至少 5 根，算回測；收盤價低於前低才算破。至少回測 1 次、到最新一根都沒破才是已確認支撐；有多條只顯示股價下方最近的一條，真的沒有就寫「尚無已確認支撐」。":""}</p><p class="howto">電腦：滾輪縮放、拖曳平移、點 K 棒看資料，點圖旁邊取消。手機：滑動平移、雙指縮放、按住看每根 K 棒。點視窗外或按 ESC 關閉。</p></div>
       </div></div>`;
     this.el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>this.act(b.dataset.a));
     const cv=this.cv=this.el.querySelector("#cv");
@@ -522,6 +547,7 @@ class Chart{
     if(a==="maopen"){this.maOpen=!this.maOpen;return this.build()}
     if(["boll","dmi","kd","macd"].includes(a)){this.ind[a]^=1;return this.build()}
     if(a==="geo"){this.geo=!this.geo;return this.build()}
+    if(a==="sup"){this.sup=!this.sup;return this.build()}
     if(a==="list"){this.listOpen=!this.listOpen;return this.build()}
     if(a==="scissor"){this.scissor=!this.scissor;this.range=null;return this.build()}
     if(a.startsWith("use-")){const r=this.custom[+a.slice(4)];if(r)this.useRange(r);return}
@@ -736,6 +762,23 @@ class Chart{
         labels.push([gm.kind,x(li),y(lp),{color:col,weight:700}]);
       }
     }
+    // 畫面內最高、最低 K 棒
+    if(vis.length>1){
+      let hk=0,lk=0;vis.forEach((b,k)=>{if(b.h>vis[hk].h)hk=k;if(b.l<vis[lk].l)lk=k});
+      labels.unshift([`最低 ${fmt(vis[lk].l)}`,x(vs+lk),y(vis[lk].l),{color:"#cfe8ff",weight:600,prefer:["down","right","left","up"]}]);
+      labels.unshift([`最高 ${fmt(vis[hk].h)}`,x(vs+hk),y(vis[hk].h),{color:"#ffe9a8",weight:600,prefer:["up","right","left","down"]}]);
+    }
+    // 支撐線：第一次觸及畫到最新一根，不受選取的 K 棒影響
+    this.supRes=null;
+    if(this.sup&&ve-1>=10){
+      const sr=findSupport(B,vs,ve-1); this.supRes=sr||false;
+      if(sr&&sr.j>=0){
+        const xa=Math.max(x(sr.j),pl),yy2=y(sr.L);
+        o+=`<line x1="${xa}" x2="${x(ve-1)+cw/2}" y1="${yy2}" y2="${yy2}" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="5 4"/>`;
+        if(sr.j>=vs)o+=`<circle cx="${x(sr.j)}" cy="${yy2}" r="3" fill="none" stroke="#38bdf8"/>`;
+        labels.push([`預期支撐 ${fmt(sr.L)}（觸及 ${sr.touches} 次）`,Math.max(xa+10,x(ve-1)-110),yy2,{color:"#38bdf8",weight:600,prefer:["down","up","left","right"]}]);
+      }
+    }
     for(const [t,ax,ay,op] of labels) put(t,ax,ay,op);
     // 日期軸（獨立一條，不與 K 棒、成交量重疊）
     const step=Math.max(1,Math.ceil(vis.length/Math.max(3,Math.floor((W-pl-pr)/90))));
@@ -816,7 +859,7 @@ class Chart{
       <div>最高 <b>${fmt(st.hi)}</b> ${MD(B[st.hiI].d)}　最低 <b>${fmt(st.lo)}</b> ${MD(B[st.loI].d)}</div>
       <div>最大回調 <b style="color:var(--down)">${(st.dd*100).toFixed(2)}%</b> ${MD(B[st.ddA].d)}→${MD(B[st.ddB].d)}</div>
       <div>距高 <b style="color:var(--down)">${(st.fromHi*100).toFixed(2)}%</b>　距低 <b style="color:var(--up)">+${(st.fromLo*100).toFixed(2)}%</b></div>
-      ${st.swing!=null?`<div>前波低 <b>${fmt(B[st.swing].l)}</b>（${MD(B[st.swing].d)}）</div>`:""}`:"";
+      ${st.swing!=null?`<div>前波低 <b>${fmt(B[st.swing].l)}</b>（${MD(B[st.swing].d)}）</div>`:""}${this.supRes?`<div style="color:#38bdf8">預期支撐 <b>${fmt(this.supRes.L)}</b>（觸及 ${this.supRes.touches} 次）</div>`:this.sup?`<div class="mute">尚無已確認支撐</div>`:""}`:"";
     // 右側：均線數值（隨選取的 K 棒）
     const lv=MA_ALL.filter(n=>this.maOn[n]).map(n=>`<span style="color:${MA_COL[n]}">${n}日 <b>${f2(this.ma[n][cur])}</b></span>`);
     if(this.ind.boll){const bb=this.get("boll")[cur];if(bb)lv.push(`<span style="color:#a78bfa">布林 上 <b>${f2(bb.u)}</b> 中 <b>${f2(bb.m)}</b> 下 <b>${f2(bb.l)}</b></span>`)}
