@@ -1,0 +1,7 @@
+每日更新排程（台灣時間 → GitHub Actions 用的 UTC cron）
+- 上櫃：台灣時間 週一～週五 15:10、15:40、16:10、16:40、17:10、17:40
+        UTC cron：10,40 7-9 * * 1-5        指令：python3 scripts/daily.py 3 tpex
+- 上市：台灣時間 週二～週六 06:00、06:30、07:00、07:30（抓前一個交易日）
+        UTC cron：*/30 22-23 * * 1-5        指令：python3 scripts/daily.py 3 twse
+每次抓完：python3 scripts/build_all.py && python3 scripts/analyze.py all
+已抓到的日子不會重抓（缺什麼補什麼），所以多個時段重複觸發不會多打請求。
