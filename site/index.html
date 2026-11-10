@@ -100,12 +100,25 @@ svg text{fill:var(--fg);font-size:11px}
   .modal{align-items:flex-start;overflow:auto}
   .mpanel{height:auto;max-height:none;overflow:visible}
   #chart{flex:none}
-  .cmod{display:block;height:auto}
-  .cl .chart{flex:none;height:64vh;min-height:340px}
-  .cr{overflow:visible;margin-top:8px}
+  .cmod{display:flex;flex-direction:column;height:auto;gap:6px}
+  .cr{display:contents}
+  .cr .cgrid,.cr .chips,.cr #rangebar{order:0}
+  .cl{order:1}
+  .cr .cgrid.small{order:2}
+  .cr .stats{order:3}.cr .legendv{order:4}.cr .notes{order:5}
+  .cl .chart{flex:none;height:58vh;min-height:320px}
+  .cr .cgrid{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .cr .cgrid::-webkit-scrollbar{display:none}
+  .cr .cgrid .btn{flex:none;white-space:nowrap;padding:7px 12px;font-size:13px}
+  .cr .cgrid.small .btn{flex:1}
+  .cr .chips{overflow-x:auto;flex-wrap:nowrap}.cr .chips .btn,.cr .chips .chip2{flex:none;white-space:nowrap}
   .info{grid-template-columns:repeat(4,1fr);gap:2px 6px;padding:4px 6px}
   .info b{font-size:12px}.info span{font-size:10px}
-  .mhead .mtitle{font-size:14px}
+  .mhead{flex-wrap:wrap;gap:6px}
+  .mhead .mtitle{font-size:14px;flex:1;min-width:0}
+  .mhead #mclose{padding:4px 10px;font-size:12px}
+  .mhead .mtags{flex:0 0 100%;order:3;display:flex;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  .mhead .mtags::-webkit-scrollbar{display:none}.mhead .mtags .tag{flex:none}
 }
 .chart,.chart *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 .chart{cursor:crosshair}
@@ -229,13 +242,14 @@ function finder(q){
     for(const s of found){
       seen.add(s.code);
       const g=D.groups.find(x=>x.name===s.group), mates=(g?g.stocks:[]).filter(c=>c!==s.code).map(c=>D.stocks[c]);
-      mates.sort((a,b)=>stRank(a)-stRank(b)||b.chg-a.chg);
+      mates.sort((a,b)=>b.close*b.vol-a.close*a.vol);   // 依成交值（收盤×成交張數）由大到小
       const list=[s,...mates.slice(0,FIND_MAX-1)];
-      h+=`<div class="sect">${s.code} ${s.name}　${badge(s.state,s.sub)}　<span class="mute">${s.group}（同族群共 ${mates.length+1} 檔，列出前 ${list.length} 檔；依型態強弱排序，搜尋的那檔排第一）</span></div>`;
+      h+=`<div class="sect">${s.code} ${s.name}　${badge(s.state,s.sub)}　<span class="mute">${s.group}（同族群共 ${mates.length+1} 檔，列出前 ${list.length} 檔；搜尋的那檔排第一，其餘依成交值由大到小）</span></div>`;
       h+=stockTable(list).replace(`<tr class="row" data-c="${s.code}">`,`<tr class="row" data-c="${s.code}" style="background:rgba(240,211,74,.12)">`);
     }
   }
   $("#app").innerHTML=h; bindRows();
+  const first=document.querySelector("#app .sect"); if(first) requestAnimationFrame(()=>first.scrollIntoView({block:"start",behavior:"smooth"}));
 }
 /* ───────── 篩選頁 ───────── */
 const has = (s,re)=>s.tags.some(t=>re.test(t));
@@ -803,7 +817,7 @@ function route(){
   if(baseRaw!==h){ renderBase(h); window.scrollTo(0,0); }
 }
 renderIdx();
-$("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();if(q){location.hash="find-"+encodeURIComponent(q)}});
+$("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
 window.onhashchange = route; route();
 </script>
 </body>
