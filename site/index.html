@@ -25,13 +25,14 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Noto Sans TC","PingFang TC",sans-serif;text-shadow:0 1px 3px rgba(8,4,24,.85)}
+html.stuck header>p{display:none}
 html.work body::before{background:linear-gradient(rgba(5,3,14,.35),rgba(5,3,14,.35)),url(bg-work.jpg) center/cover no-repeat,#07060d}
 #work.on{background:var(--accent,#f0d34a);color:#241c00}
 .fz{flex-basis:100%;display:flex;justify-content:flex-end;gap:6px;align-items:center;font-size:12px}
 .fz .btn{padding:2px 10px}
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,4,24,.5),rgba(8,4,24,.5)),url(bg.jpg) center/cover no-repeat,var(--bg)}
 svg text{text-shadow:none}
-header{padding:16px;border-bottom:1px solid var(--line-t);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
+header{position:sticky;top:0;z-index:30;background:rgba(9,5,26,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:16px;border-bottom:1px solid var(--line-t);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
 h1{font-size:18px;margin:0}
 header p{min-width:0;max-width:100%}
 nav{display:flex;gap:8px}
@@ -47,6 +48,9 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 table{width:100%;border-collapse:collapse;background:transparent;border:1px solid var(--line-t);border-radius:10px;overflow:hidden}
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line-t);white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
+.stt th,.stt td{text-align:left}.stt th.cc,.stt td.cc{text-align:center}
+.stt td.ty{width:96px;min-width:96px}.stt td.ty .badge{display:inline-block;min-width:58px;text-align:center;box-sizing:border-box}
+.stt td.tg{white-space:normal;min-width:180px;padding-left:20px}.stt th.tg{padding-left:20px}.stt td.tg .tag{margin:2px 6px 2px 0}
 th{color:var(--mute);font-weight:500;font-size:12px}
 tr.row{cursor:pointer}
 tr.row:hover{background:rgba(255,255,255,.08)}
@@ -147,7 +151,11 @@ svg text{fill:var(--fg);font-size:11px}
 .rangebar span{flex:1;min-width:160px;color:var(--mute)}
 
 
-@media(max-width:640px){th,td{padding:7px 6px}.hide-s{display:none}nav{margin-left:0}}
+@media(max-width:640px){th,td{padding:7px 6px}.hide-s{display:none}nav{margin-left:0}
+  header{padding:8px 10px;gap:4px 8px}header h1{font-size:16px}header>p{display:none}
+  html.stuck header h1,html.stuck #asof,html.stuck #idx{display:none}
+  .stt td.tg{min-width:170px;padding-left:10px}.stt th.tg{padding-left:10px}.stt .tag{white-space:nowrap}
+  .hr{width:100%;margin-left:0;gap:6px}.sf{flex:1 1 100%}.sf input{width:auto;flex:1;max-width:none}.fz{flex-basis:auto;margin-left:auto}}
 </style>
 </head>
 <body>
@@ -219,10 +227,11 @@ function group(name){
   h += stockTable(list);
   $("#app").innerHTML = h; bindRows();
 }
-function stockTable(list){
-  let h = `<div class="tw"><table><thead><tr><th>股票</th><th>型態</th><th style="text-align:left">標記</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>`;
+function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
+function stockTable(list,withGroup){
+  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th><th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td><td>${badge(s.state,s.sub)}</td><td style="text-align:left;white-space:normal;min-width:180px">${tags(s.tags)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td>${withGroup?`<td>${s.group}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -230,8 +239,7 @@ function stateList(st){
   if(!STATES.includes(st)){location.hash="";return}
   const list=Object.values(D.stocks).filter(x=>x.state===st).sort((a,b)=>b.close*b.vol-a.close*a.vol);
   let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">依成交值由大到小排列，點股票看 K 線圖。</p>`;
-  h+=`<div class="tw"><table><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>型態</th><th style="text-align:left">標記</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>`+
-    list.map(s=>`<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td><td style="text-align:left">${s.group}</td><td>${badge(s.state,s.sub)}</td><td style="text-align:left;white-space:normal;min-width:180px">${tags(s.tags)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("")+`</tbody></table></div>`;
+  h+=stockTable(list,true);
   $("#app").innerHTML=h; bindRows();
 }
 function bindRows(){document.querySelectorAll("tr.row[data-c]").forEach(r=>r.onclick=()=>{location.hash="s-"+r.dataset.c})}
@@ -868,6 +876,8 @@ function route(){
   $("#work").onclick=()=>{work=!work;set("work",work?"1":"0");apply()};
   apply();
 })();
+
+(function(){let st=false;const f=()=>{const y=window.scrollY;if(!st&&y>60){st=true;document.documentElement.classList.add("stuck")}else if(st&&y<20){st=false;document.documentElement.classList.remove("stuck")}};addEventListener("scroll",f,{passive:true});f()})();
 renderIdx();
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
 window.onhashchange = route; route();
