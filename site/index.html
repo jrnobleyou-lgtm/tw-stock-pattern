@@ -327,7 +327,9 @@ function evText(e){
     false_breakdown:"假跌破",breakdown_pending:"跌破待確認",breakdown_confirmed:"跌破失效"};
   return (e.dir==="up"?"向上":"向下")+" "+(m[e.state]||e.state)+(e.signal?"（量能達標）":"")+`，第${e.day}日`+(e.expired?"，區間已失效":"");
 }
+let liveTimer=null;
 function closeModal(){
+  clearTimeout(liveTimer);liveTimer=null;
   if(modalEl){modalEl.remove();modalEl=null;chart=null}
   document.body.style.overflow="";
 }
@@ -350,6 +352,30 @@ function mountModal(s, headHTML, opts){
   document.body.appendChild(el); modalEl=el;
   chart=new Chart(el.querySelector("#chart"), s, opts||{});
 }
+/* ───────── 盤中即時 K 棒（向 /api/quote 取 Yahoo 當日 1 分 K 合成今天的 開高低收量） ───────── */
+function twMarketOpen(){
+  const p=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Taipei",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});
+  const m=(+p.hour%24)*60+ +p.minute; return !/Sat|Sun/.test(p.weekday)&&m>=540&&m<=815;
+}
+function startLive(c,sym,isIndex){
+  clearTimeout(liveTimer);
+  const tag=()=>modalEl&&modalEl.querySelector("#livetag");
+  const run=async()=>{
+    if(chart!==c) return;
+    try{
+      const r=await fetch("/api/quote?s="+encodeURIComponent(sym),{cache:"no-store"}); if(!r.ok) throw 0;
+      const q=await r.json(); if(chart!==c||!q||!q.date) return;
+      const last=c.raw[c.raw.length-1];
+      const open=twMarketOpen();
+      if(last&&q.date<last.d) return;
+      if(last&&q.date===last.d&&!open) return;           // 收盤後正式資料已經有今天，不覆蓋
+      c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?0:Math.round(q.v/1000),f:1});
+      const t=tag(); if(t){const hm=new Date((q.t+28800)*1000).toISOString().slice(11,16);t.style.display="";t.textContent=(open?"盤中 ":"即時 ")+hm}
+    }catch(_){}
+    if(chart===c&&twMarketOpen()) liveTimer=setTimeout(run,30000);
+  };
+  run();
+}
 function openStock(code){
   const s = D.stocks[code]; if(!s) return;
   if(!s.bars){   // 全市場版：K 線資料點開才載入
@@ -359,13 +385,15 @@ function openStock(code){
     el.addEventListener("click",e=>{ if(e.target===el) goBack(); }); document.body.appendChild(el); modalEl=el;
     return;
   }
-  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${s.group}・${s.industry}</span></div><div class="mtags">${tags(s.tags)}</div>`;
+  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${s.group}・${s.industry}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
   mountModal(s, head, {notes:notesHTML(s)});
+  startLive(chart, code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
 function openIndex(key){
   const ix=(D.index||{})[key]; if(!ix) return;
   const s={code:key,name:ix.name,group:"台股大盤",industry:"",bars:ix.bars,geo:[],tags:[],defInd:ix.defInd||{}};
-  mountModal(s, `<div class="mtitle"><b>${ix.name}</b> <span class="mute"> 台股大盤</span></div><div class="mtags"></div>`, {notes:`<p>${ix.name}日 K（無成交量資料）。</p>`});
+  mountModal(s, `<div class="mtitle"><b>${ix.name}</b> <span class="mute"> 台股大盤</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span></div>`, {notes:`<p>${ix.name}日 K（無成交量資料）。</p>`});
+  startLive(chart, key==="TWII"?"^TWII":"^TWOII", true);
 }
 
 /* ───────── 指標 ───────── */
@@ -502,6 +530,14 @@ class Chart{
     this.n=Math.min(TF_N[tf],this.bars.length); this.end=this.bars.length;
     this.sel=null; this.range=null; this.active=null;
     this.build();
+  }
+  setLive(bar){
+    const last=this.raw[this.raw.length-1], atEnd=this.end===this.bars.length;
+    if(last&&last.d===bar.d) this.raw[this.raw.length-1]=bar; else if(!last||bar.d>last.d) this.raw.push(bar); else return;
+    this.bars=aggregate(this.adjOn?adjustBars(this.raw):this.raw,this.tf);
+    const cl=this.bars.map(b=>b.c); for(const n of MA_ALL) this.ma[n]=sma(cl,n);
+    this.cache={}; if(atEnd) this.end=this.bars.length;
+    this.draw();
   }
   get(k){ if(!this.cache[k]) this.cache[k]=({boll:calcBoll,dmi:calcDMI,kd:calcKD,macd:calcMACD})[k](this.bars); return this.cache[k] }
   btn(a,t,on,extra=""){return `<button class="btn ${on?"on":""}" data-a="${a}" ${extra}>${t}</button>`}
