@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>每日股票型態確認</title>
 <meta name="description" content="每日收盤後自動更新，依族群統計台股有多少檔轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。">
 <meta property="og:type" content="website">
@@ -97,26 +97,34 @@ svg text{fill:var(--fg);font-size:11px}
 .ichip:hover{border-color:var(--mute)}
 .ichip b{font-variant-numeric:tabular-nums;font-size:14px}
 @media(max-width:900px){
-  .modal{align-items:flex-start;overflow:auto}
-  .mpanel{height:auto;max-height:none;overflow:visible}
-  #chart{flex:none}
-  .cmod{display:flex;flex-direction:column;height:auto;gap:6px}
+  .modal{align-items:stretch;overflow:hidden;padding:6px;touch-action:pan-x pan-y}
+  .mpanel{height:100%;max-height:none;overflow:hidden;padding:8px 8px 6px}
+  #chart{flex:1;min-height:0}
+  .cmod{display:flex;flex-direction:column;flex:1;min-height:0;height:100%;gap:5px}
   .cr{display:contents}
-  .cr .cgrid,.cr .chips,.cr #rangebar{order:0}
-  .cl{order:1}
-  .cr .cgrid.small{order:2}
-  .cr .stats{order:3}.cr .legendv{order:4}.cr .notes{order:5}
-  .cl .chart{flex:none;height:58vh;min-height:320px}
-  .cr .cgrid{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .cr .cgrid,.cr .chips,.cr #rangebar{order:0;flex:none}
+  .cl{order:1;flex:1 1 0;min-height:0}
+  .cl .chart{flex:1 1 0;height:auto;min-height:120px;touch-action:none}
+  .cr .cgrid.small{order:2;flex:none}
+  .cr .stats{order:3;flex:none;display:grid;grid-template-columns:1fr 1fr;gap:1px 8px;font-size:11px;line-height:1.4;padding:4px 6px;margin:0}
+  .cr .stats>div:first-child{grid-column:1/-1;margin:0!important}
+  .cr .legendv{order:4;flex:none;margin:0;font-size:11px}
+  .cr .notes{order:5;flex:none;max-height:9vh;overflow:auto;font-size:11px;margin:0}
+  .cr .notes p:last-child{display:none}
+  .cr .notes p{margin:2px 0}
+  .cr .cgrid{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;margin:0;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .cr .cgrid::-webkit-scrollbar{display:none}
-  .cr .cgrid .btn{flex:none;white-space:nowrap;padding:7px 12px;font-size:13px}
-  .cr .cgrid.small .btn{flex:1}
-  .cr .chips{overflow-x:auto;flex-wrap:nowrap}.cr .chips .btn,.cr .chips .chip2{flex:none;white-space:nowrap}
-  .info{grid-template-columns:repeat(4,1fr);gap:2px 6px;padding:4px 6px}
-  .info b{font-size:12px}.info span{font-size:10px}
-  .mhead{flex-wrap:wrap;gap:6px}
+  .cr .cgrid .btn{flex:none;white-space:nowrap;padding:6px 11px;font-size:13px}
+  .cr .cgrid.small .btn{flex:1;padding:5px 4px;font-size:12px}
+  .cr .chips{overflow-x:auto;flex-wrap:nowrap;margin:0}.cr .chips .btn,.cr .chips .chip2{flex:none;white-space:nowrap}
+  .cl .info{margin-bottom:0}
+  .info{grid-template-columns:repeat(4,1fr);gap:0 6px;padding:3px 6px}
+  .info b{font-size:11px}.info span{font-size:10px;display:inline;margin-right:3px}
+  .info>div{display:flex;align-items:baseline;gap:2px;white-space:nowrap;overflow:hidden}
+  .mhead .mtitle .mute{display:none}
+  .mhead{flex-wrap:wrap;gap:4px;margin-bottom:4px}
   .mhead .mtitle{font-size:14px;flex:1;min-width:0}
-  .mhead #mclose{padding:4px 10px;font-size:12px}
+  .mhead #mclose{padding:3px 9px;font-size:12px}
   .mhead .mtags{flex:0 0 100%;order:3;display:flex;gap:4px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
   .mhead .mtags::-webkit-scrollbar{display:none}.mhead .mtags .tag{flex:none}
 }
@@ -405,8 +413,11 @@ function calcStats(B,i0,i1){
   i0=Math.max(0,i0);i1=Math.min(B.length-1,i1);if(i1<=i0) return null;
   let hi=-1e18,hiI=i0,lo=1e18,loI=i0;
   for(let i=i0;i<=i1;i++){if(B[i].h>hi){hi=B[i].h;hiI=i}if(B[i].l<lo){lo=B[i].l;loI=i}}
-  let swing=null;
-  for(let j=hiI-2;j>=i0+2;j--){let ok=true;for(let k=j-2;k<=j+2;k++)if(B[k].l<B[j].l){ok=false;break}if(ok){swing=j;break}}
+  // 前波低：從最高點往前找最近的波段低點，且必須比高點之後的最低價還低（還沒被跌破的前低）
+  let postLo=1e18;for(let i=hiI;i<=i1;i++)if(B[i].l<postLo)postLo=B[i].l;
+  let swing=null,fb=null;
+  for(let j=hiI-2;j>=i0+2;j--){let ok=true;for(let k=j-2;k<=j+2;k++)if(B[k].l<B[j].l){ok=false;break}if(!ok)continue;if(fb==null)fb=j;if(B[j].l<postLo){swing=j;break}}
+  if(swing==null)swing=fb;
   const s0=swing!=null?swing:i0;
   let peak=B[s0].h,peakI=s0,dd=0,ddA=s0,ddB=s0;
   for(let i=s0;i<=i1;i++){
@@ -463,7 +474,7 @@ class Chart{
         <div class="cgrid small">${row4}</div>
         <div class="stats" id="stats"></div>
         <div class="legendv" id="legendv"></div>
-        <div class="note notes">${this.opts.notes||""}<p>電腦：滾輪縮放、拖曳平移、點 K 棒看資料，點圖旁邊取消。手機：滑動平移、雙指縮放、按住看每根 K 棒。點視窗外或按 ESC 關閉。</p></div>
+        <div class="note notes">${this.opts.notes||""}<p class="howto">電腦：滾輪縮放、拖曳平移、點 K 棒看資料，點圖旁邊取消。手機：滑動平移、雙指縮放、按住看每根 K 棒。點視窗外或按 ESC 關閉。</p></div>
       </div></div>`;
     this.el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>this.act(b.dataset.a));
     const cv=this.cv=this.el.querySelector("#cv");
@@ -590,7 +601,7 @@ class Chart{
 
   draw(){
     const cv=this.cv; if(!cv) return;
-    const W=Math.max(320,cv.clientWidth), H=Math.max(260,cv.clientHeight);
+    const W=Math.max(320,cv.clientWidth), H=Math.max(cv.clientWidth<600?140:260,cv.clientHeight);
     this.W=W; this.H=H;
     const {pl,pr,vs,cw}=this.geom(), B=this.bars, ve=this.end, s=this.s;
     const subs=["dmi","kd","macd"].filter(k=>this.ind[k]);
