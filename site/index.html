@@ -831,7 +831,12 @@ function goBack(){
   if(h.startsWith("s-")||h.startsWith("i-")) location.hash = baseRaw || "";
   else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-")) location.hash = "";
 }
-document.addEventListener("keydown",e=>{ if(e.key==="Escape") goBack(); });
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape") return;
+  const h=decodeURIComponent(location.hash.slice(1));
+  if(!h){ const q=$("#sq"); q.focus(); q.select(); window.scrollTo(0,0); return }   // 已經在最上層：回到自訂搜尋框
+  goBack();
+});
 function route(){
   const h = decodeURIComponent(location.hash.slice(1));
   if(h.startsWith("s-")||h.startsWith("i-")){
@@ -852,6 +857,11 @@ function route(){
     document.querySelector("header").style.zoom=z; $("#app").style.zoom=z;
     $("#fzm").disabled=fz<=-3; $("#fzp").disabled=fz>=3;
     document.documentElement.classList.toggle("work",work); $("#work").classList.toggle("on",work);
+    const ic=work?{"favicon.ico":"icon-work-32.png","icon-32.png":"icon-work-32.png","icon-192.png":"icon-work-192.png","apple-touch-icon.png":"apple-touch-icon-work.png"}:{};
+    document.querySelectorAll('link[rel="icon"],link[rel="apple-touch-icon"]').forEach(l=>{
+      if(!l.dataset.o) l.dataset.o=l.getAttribute("href");
+      const h=ic[l.dataset.o]||l.dataset.o; if(l.getAttribute("href")!==h){ if(h.endsWith(".png")) l.type="image/png"; l.setAttribute("href",h) }
+    });
   };
   $("#fzm").onclick=()=>{fz=Math.max(-3,fz-1);set("fz",fz);apply()};
   $("#fzp").onclick=()=>{fz=Math.min(3,fz+1);set("fz",fz);apply()};
