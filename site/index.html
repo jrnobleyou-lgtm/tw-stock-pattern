@@ -48,6 +48,7 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 table{width:100%;border-collapse:collapse;background:transparent;border:1px solid var(--line-t);border-radius:10px;overflow:hidden}
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line-t);white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
+.ctr th,.ctr td{text-align:center}.ctr th:first-child,.ctr td:first-child{text-align:left}.ctr td .tag{margin:1px 2px}
 .stt th,.stt td{text-align:left}.stt th.cc,.stt td.cc{text-align:center}
 .stt td.ty{width:96px;min-width:96px}.stt td.ty .badge{display:inline-block;min-width:58px;text-align:center;box-sizing:border-box}
 .stt td.tg{white-space:normal;min-width:180px;padding-left:20px}.stt th.tg{padding-left:20px}.stt td.tg .tag{margin:2px 6px 2px 0}
@@ -202,7 +203,7 @@ function renderIdx(){
 function home(){
   const tot = D.total, all = STATES.reduce((a,s)=>a+tot[s],0);
   let h = `<div class="sum">` + STATES.map(s=>`<div class="chip click" data-st="${s}" title="點擊列出全部${s}的股票">${s}<b class="c-${CLS[s]}">${tot[s]}</b><span class="mute"> ${pct(tot[s],all)}</span></div>`).join("") + `<div class="chip">共<b>${all}</b>檔</div></div>`;
-  h += `<div class="tw"><table><thead><tr><th>族群</th><th>檔數</th>` + STATES.map(s=>`<th class="c-${CLS[s]}">${s}</th>`).join("") + `<th class="hide-s">分布</th><th>突破第1根</th><th>止跌反彈</th></tr></thead><tbody>`;
+  h += `<div class="tw"><table class="ctr"><thead><tr><th>族群</th><th>檔數</th>` + STATES.map(s=>`<th class="c-${CLS[s]}">${s}</th>`).join("") + `<th class="hide-s">分布</th><th>突破第1根</th><th>止跌反彈</th></tr></thead><tbody>`;
   for(const g of D.groups){
     const small = g.n < 5;
     const rb = g.stocks.filter(c=>D.stocks[c].rebound).length;
@@ -310,7 +311,7 @@ function screener(key){
   else list.sort((a,b)=>b.chg-a.chg);
   if(cur.k==="rb3"||cur.k==="rb"){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
-    h += `<div class="tw"><table><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
+    h += `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td><td style="text-align:left">${s.group}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else h += stockTable(list);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
