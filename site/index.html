@@ -280,7 +280,8 @@ function finder(q){
     }
   }
   $("#app").innerHTML=h; bindRows();
-  const first=document.querySelector("#app .sect"); if(first) requestAnimationFrame(()=>first.scrollIntoView({block:"start",behavior:"smooth"}));
+  $("#app").insertAdjacentHTML("beforeend",`<div style="height:75vh"></div>`);   // 讓最後面的結果也能捲到最上方
+  scrollToFirstRow();
 }
 /* ───────── 篩選頁 ───────── */
 const has = (s,re)=>s.tags.some(t=>re.test(t));
@@ -878,7 +879,19 @@ function route(){
   apply();
 })();
 
-(function(){let st=false;const f=()=>{const y=window.scrollY;if(!st&&y>60){st=true;document.documentElement.classList.add("stuck")}else if(st&&y<20){st=false;document.documentElement.classList.remove("stuck")}};addEventListener("scroll",f,{passive:true});f()})();
+let stuckNow=false;
+function setStuck(v){stuckNow=v;document.documentElement.classList.toggle("stuck",v)}
+(function(){const f=()=>{const y=window.scrollY;if(!stuckNow&&y>60)setStuck(true);else if(stuckNow&&y<20)setStuck(false)};addEventListener("scroll",f,{passive:true});f()})();
+/* 捲到結果：讓第一列剛好貼在固定標題列下方（先收合標題列再量高度，避免多捲） */
+function scrollToFirstRow(){
+  const row=document.querySelector("#app tr.row"); if(!row) return;
+  requestAnimationFrame(()=>{
+    setStuck(true);
+    const H=document.querySelector("header").getBoundingClientRect().height;
+    const y=Math.max(0,row.getBoundingClientRect().top+window.scrollY-H-4);
+    window.scrollTo(0,y); if(y<=20) setStuck(false);
+  });
+}
 renderIdx();
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
 window.onhashchange = route; route();
