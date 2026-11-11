@@ -564,11 +564,11 @@ class Chart{
     const hasAdj=this.raw.some(b=>Math.abs(b.f-1)>1e-6);
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
       this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"');
-    const row2=this.btn("maopen","均線",this.maOpen)+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
+    const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
     const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",this.scissor)+this.btn("geo","形態",this.geo)+this.btn("sup","支撐",this.sup);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
     const allOn=MA_ALL.every(n=>this.maOn[n]);
-    const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"全不選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${n}日</button>`).join("")}</div>`:"";
+    const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"✓ 全選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${this.maOn[n]?"✓ ":""}${n}日</button>`).join("")}</div>`:"";
     const list=this.listOpen?`<div class="chips">${this.custom.length?this.custom.map((r,i)=>`<span class="chip2"><button class="btn" data-a="use-${i}">${MD(r.from)}～${MD(r.to)}</button><button class="btn" data-a="del-${i}" title="刪除">×</button></span>`).join(""):'<span class="mute" style="font-size:12px">還沒有自訂區間。開啟「✂️ 剪刀」，在圖上按住拖出區間後存起來。</span>'}</div>`:"";
     this.el.innerHTML=`<div class="cmod">
       <div class="cl"><div class="info" id="info"></div><div class="chart" id="cv"></div></div>
