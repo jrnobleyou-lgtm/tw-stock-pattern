@@ -44,12 +44,13 @@ function parseMis(j) {
   return { date, o: o != null ? o : c, h: Math.max(h, c), l: Math.min(l, c), c, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, src: "mis", delay: 0 };
 }
 async function misQuote(sym) {
-  const ch = misChannel(sym); if (!ch) return null;
+  const ch = misChannel(sym); if (!ch) { misErr = "nochannel"; return null; }
   const now = Date.now();
   if (!misCookie || now - misCookieAt > 600000) {
     const r0 = await fetch(MIS_URL + "index.jsp", { headers: { "user-agent": "Mozilla/5.0" } });
     const sc = r0.headers.getSetCookie ? r0.headers.getSetCookie() : [r0.headers.get("set-cookie") || ""];
     misCookie = sc.map(x => x.split(";")[0]).filter(Boolean).join("; "); misCookieAt = now;
+    misErr = "idx " + r0.status;
   }
   const r = await fetch(`${MIS_URL}api/getStockInfo.jsp?ex_ch=${ch}&json=1&delay=0&_=${now}`, {
     headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": misCookie, "accept": "application/json" },
@@ -93,7 +94,7 @@ export default {
     const sym = u.searchParams.get("s") || "";
     if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d&includePrePost=false`;
-    let out = { error: "unavailable", dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }, status = 502;
+    let out = { error: "unavailable" }, status = 502;
     let q = null;
     for (let k = 0; k < 3 && !q; k++) { if (k) await new Promise(r => setTimeout(r, 300)); try { q = await misQuote(sym); } catch (e) { misCookie = ""; misErr = "exc " + String(e).slice(0, 80); } }
     if (q) lastGood[sym] = { q, at: Date.now() };
@@ -103,6 +104,7 @@ export default {
       const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 20, cacheEverything: true } });
       if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, src: "yahoo", delay: 20, dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }; status = 200; } }
     } catch (e) { /* 回傳 502 */ }
+    if (status !== 200) out.dbg = { colo: (req.cf && req.cf.colo) || "", misErr };   // 失敗原因（在失敗之後才取，才是這次的結果）
     return new Response(JSON.stringify(out), { status, headers: { "content-type": "application/json", "cache-control": "public, max-age=5" } });
   },
 };
