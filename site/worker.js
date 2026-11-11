@@ -59,9 +59,36 @@ async function misQuote(sym) {
   const pm = parseMis(j); if (!pm) misErr = "empty"; return pm;
 }
 
+// 批次：給排程程式一次取多檔（上限 100 檔），回傳證交所原始欄位
+const EX = /^(tse|otc)_[0-9a-z]{4,6}\.tw$/;
+async function misBatch(ex) {
+  const list = ex.split("|").filter(Boolean);
+  if (!list.length || list.length > 100 || !list.every(x => EX.test(x))) return null;
+  for (let k = 0; k < 3; k++) {
+    try {
+      const now = Date.now();
+      if (!misCookie || now - misCookieAt > 600000) {
+        const r0 = await fetch(MIS_URL + "index.jsp", { headers: { "user-agent": "Mozilla/5.0" } });
+        const sc = r0.headers.getSetCookie ? r0.headers.getSetCookie() : [r0.headers.get("set-cookie") || ""];
+        misCookie = sc.map(x => x.split(";")[0]).filter(Boolean).join("; "); misCookieAt = now;
+      }
+      const r = await fetch(`${MIS_URL}api/getStockInfo.jsp?ex_ch=${list.join("%7C")}&json=1&delay=0&_=${now}`, {
+        headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": misCookie, "accept": "application/json" },
+      });
+      if (r.ok) { const j = JSON.parse(await r.text()); if (j && j.msgArray) return j.msgArray.map(m => ({ c: m.c, ex: m.ex, z: m.z, o: m.o, h: m.h, l: m.l, y: m.y, v: m.v, d: m.d, t: m.t, b: m.b })); }
+    } catch (e) { /* 重試 */ }
+    misCookie = ""; await new Promise(r => setTimeout(r, 300));
+  }
+  return null;
+}
+
 export default {
   async fetch(req) {
     const u = new URL(req.url);
+    if (u.pathname === "/api/mis") {
+      const arr = await misBatch(u.searchParams.get("ex_ch") || "");
+      return new Response(JSON.stringify(arr ? { msgArray: arr } : { error: "unavailable" }), { status: arr ? 200 : 502, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+    }
     if (u.pathname !== "/api/quote") return new Response("Not found", { status: 404 });
     const sym = u.searchParams.get("s") || "";
     if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });

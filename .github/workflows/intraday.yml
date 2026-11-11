@@ -1,0 +1,42 @@
+name: intraday
+on:
+  schedule:
+    - cron: '*/10 1-5 * * 1-5'      # 台灣時間 週一～週五 09:00–13:50，每 10 分鐘用盤中價重算型態
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: update
+  cancel-in-progress: false
+env:
+  SITE_URL: https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 抓盤中現價
+        id: q
+        run: |
+          if python3 scripts/intraday.py; then echo "ok=true" >> "$GITHUB_OUTPUT"; else echo "ok=false" >> "$GITHUB_OUTPUT"; fi
+      - name: 組價格並分析
+        if: steps.q.outputs.ok == 'true'
+        run: |
+          python3 scripts/build_prices.py
+          python3 scripts/analyze.py all
+      - name: 發布到 deploy 分支
+        if: steps.q.outputs.ok == 'true'
+        run: |
+          rm -rf /tmp/pub && mkdir /tmp/pub && cp -r site/. /tmp/pub/
+          rm -f /tmp/pub/preview.html /tmp/pub/index_v1.html
+          cd /tmp/pub
+          git init -q -b deploy
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "intraday $(date -u +%FT%TZ)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" deploy

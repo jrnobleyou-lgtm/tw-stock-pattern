@@ -26,3 +26,6 @@ review/
 __pycache__/
 *.pyc
 scripts/chart2.txt
+
+data/intraday*.csv
+data/intraday_meta.json

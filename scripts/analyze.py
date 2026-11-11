@@ -146,7 +146,11 @@ def main():
         fp = os.path.join(ROOT, "data", f"index_{key}.json")
         if os.path.exists(fp):
             index[key] = {"name": name, "bars": json.load(open(fp)), "defInd": defind}
-    out = {"asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
+    live = None
+    mp = os.path.join(ROOT, "data", "intraday_meta.json")
+    if full and os.path.exists(mp):
+        live = json.load(open(mp))
+    out = {"live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
     with open(os.path.join(ROOT, "site", "data.js"), "w", encoding="utf-8") as f:
         f.write("window.DATA=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";")
     print("asof", asof, "stocks", len(stocks), "missing", len(missing), missing[:20])

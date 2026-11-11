@@ -175,7 +175,7 @@ const STATES = ["轉強","型態好","盤整","走弱"];
 const CLS = {"轉強":"strong","型態好":"good","盤整":"range","走弱":"weak"};
 const $ = s => document.querySelector(s);
 const AM=D.asofM||{};
-$("#asof").textContent = (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 " + D.asof;
+$("#asof").textContent = D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 " + D.asof;
 
 /* ───────── 共用 ───────── */
 function badge(s,sub){return `<span class="badge b-${CLS[s]}">${s}</span>` + (sub?`<span class="tag ${sub==="破底走弱"?"bad":""}">${sub}</span>`:"")}
@@ -213,7 +213,7 @@ async function pollIdx(){
   }));
   renderIdx();
   const t=Object.values(liveIdx).map(q=>q.t).filter(Boolean).sort().pop(), q0=liveIdx.TWII||liveIdx.OTC;
-  const base=(AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 "+D.asof;
+  const base=D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 "+D.asof;
   $("#asof").innerHTML=base+(q0?`<span style="color:#f0d34a">　${twMarketOpen()?"盤中":"即時"} ${q0.date.slice(5)} ${q0.hms||""}</span>`:"");
   idxTimer=setTimeout(pollIdx,twMarketOpen()?10000:120000);
 }

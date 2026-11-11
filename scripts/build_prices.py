@@ -12,6 +12,13 @@ rows = []
 for f in sorted(glob.glob(os.path.join(ROOT, "data", "hist", "*.csv"))):
     for r in csv.DictReader(open(f, encoding="utf-8")):
         rows.append(r)
+ip = os.path.join(ROOT, "data", "intraday.csv")        # 盤中暫時日 K（只存在於盤中排程那次執行，不進版控）
+if os.path.exists(ip):
+    rows += list(csv.DictReader(open(ip, encoding="utf-8")))
+    iap = os.path.join(ROOT, "data", "intraday_adjust.csv")
+    if os.path.exists(iap):
+        for r in csv.DictReader(open(iap, encoding="utf-8")):
+            events[r["code"]].append((r["exdate"], float(r["k"])))
 rows.sort(key=lambda r: (r["code"], r["date"]))
 out = []
 cur = None; evs = []
