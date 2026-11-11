@@ -87,7 +87,7 @@ def main():
         if run_lo >= 3:
             tags.append("KD低檔鈍化")
         st = {
-            "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": g["主族群"],
+            "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": g["主族群"], "groups": [g["主族群"]] + ([g["副族群"]] if g.get("副族群") and g["副族群"] != g["主族群"] else []),
             "conf": g.get("把握度", "U"),
             "market": mk.get(code), "state": state, "sub": sub, "tags": tags,
             "close": raw[T]["c"],
@@ -126,21 +126,22 @@ def main():
 
     gl = collections.OrderedDict()
     for st in stocks.values():
-        g = gl.setdefault(st["group"], {"name": st["group"], "n": 0,
-                                        "counts": {s: 0 for s in STATES}, "stocks": [], "first": [],
-                                        "weak_pull": 0, "weak_break": 0})
-        g["n"] += 1
-        g["counts"][st["state"]] += 1
-        if st["sub"] == "回檔走弱":
-            g["weak_pull"] += 1
-        elif st["sub"] == "破底走弱":
-            g["weak_break"] += 1
-        g["stocks"].append(st["code"])
-        if "突破第1根" in st["tags"]:
-            g["first"].append(st["code"])
+        for gname in st["groups"]:                       # 雙族群的股票，兩個族群都會計入
+            g = gl.setdefault(gname, {"name": gname, "n": 0,
+                                      "counts": {s: 0 for s in STATES}, "stocks": [], "first": [],
+                                      "weak_pull": 0, "weak_break": 0})
+            g["n"] += 1
+            g["counts"][st["state"]] += 1
+            if st["sub"] == "回檔走弱":
+                g["weak_pull"] += 1
+            elif st["sub"] == "破底走弱":
+                g["weak_break"] += 1
+            g["stocks"].append(st["code"])
+            if "突破第1根" in st["tags"]:
+                g["first"].append(st["code"])
     glist = sorted(gl.values(), key=lambda g: (g["n"] < 5, -(g["counts"]["轉強"] + g["counts"]["型態好"]) / g["n"], -g["n"]))
 
-    total = {s: sum(g["counts"][s] for g in glist) for s in STATES}
+    total = {s: sum(1 for st in stocks.values() if st["state"] == s) for s in STATES}      # 雙族群不重複計算
     index = {}
     for key, name, defind in (("TWII", "加權指數", {}), ("OTC", "櫃買指數", {"macd": 1})):
         fp = os.path.join(ROOT, "data", f"index_{key}.json")

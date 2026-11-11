@@ -247,11 +247,12 @@ function group(name){
   h += stockTable(list);
   $("#app").innerHTML = h; bindRows();
 }
+const gtxt=s=>(s.groups||[s.group]).join("、");
 function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
 function stockTable(list,withGroup){
   let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th><th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td>${withGroup?`<td>${s.group}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -291,10 +292,10 @@ function finder(q){
     if(!found.length){h+=`<p class="note">找不到「${tk}」。（目前只收台股上市櫃；美股之後開放。）</p>`;continue}
     for(const s of found){
       seen.add(s.code);
-      const g=D.groups.find(x=>x.name===s.group), mates=(g?g.stocks:[]).filter(c=>c!==s.code).map(c=>D.stocks[c]);
+      const mset=[...new Set((s.groups||[s.group]).flatMap(n=>{const g=D.groups.find(x=>x.name===n);return g?g.stocks:[]}))], mates=mset.filter(c=>c!==s.code).map(c=>D.stocks[c]);
       mates.sort((a,b)=>b.close*b.vol-a.close*a.vol);   // 依成交值（收盤×成交張數）由大到小
       const list=[s,...mates.slice(0,FIND_MAX-1)];
-      h+=`<div class="sect">${s.code} ${s.name}　${badge(s.state,s.sub)}　<span class="mute">${s.group}（同族群共 ${mates.length+1} 檔，列出前 ${list.length} 檔；搜尋的那檔排第一，其餘依成交值由大到小）</span></div>`;
+      h+=`<div class="sect">${s.code} ${s.name}　${badge(s.state,s.sub)}　<span class="mute">${gtxt(s)}（同族群共 ${mates.length+1} 檔，列出前 ${list.length} 檔；搜尋的那檔排第一，其餘依成交值由大到小）</span></div>`;
       h+=stockTable(list).replace(`<tr class="row" data-c="${s.code}">`,`<tr class="row" data-c="${s.code}" style="background:rgba(240,211,74,.12)">`);
     }
   }
@@ -332,7 +333,7 @@ function screener(key){
   if(cur.k==="rb3"||cur.k==="rb"){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
     h += `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
-      list.map(s=>`<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td><td style="text-align:left">${s.group}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
+      list.map(s=>`<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else h += stockTable(list);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
@@ -404,7 +405,7 @@ function openStock(code){
     el.addEventListener("click",e=>{ if(e.target===el) goBack(); }); document.body.appendChild(el); modalEl=el;
     return;
   }
-  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${s.group}・${s.industry}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
+  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
   mountModal(s, head, {notes:notesHTML(s)});
   startLive(chart, code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
