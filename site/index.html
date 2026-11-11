@@ -370,9 +370,9 @@ function startLive(c,sym,isIndex){
       if(last&&q.date<last.d) return;
       if(last&&q.date===last.d&&!open) return;           // 收盤後正式資料已經有今天，不覆蓋
       c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?0:Math.round(q.v/1000),f:1});
-      const t=tag(); if(t){const hm=new Date((q.t+28800)*1000).toISOString().slice(11,16);t.style.display="";t.textContent=(open?"盤中 ":"即時 ")+hm}
+      const t=tag(); if(t){const hm=q.hms||new Date((q.t+28800)*1000).toISOString().slice(11,16);t.style.display="";t.textContent=(open?"盤中 ":"即時 ")+hm+(q.src==="yahoo"?"（延遲約20分）":"")}
     }catch(_){}
-    if(chart===c&&twMarketOpen()) liveTimer=setTimeout(run,30000);
+    if(chart===c&&twMarketOpen()) liveTimer=setTimeout(run,10000);
   };
   run();
 }
