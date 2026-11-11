@@ -23,7 +23,7 @@ function parseChart(j) {
 
 // ── 證交所即時行情（mis.twse.com.tw，幾秒延遲）：個股、加權、櫃買指數都有；失敗才退回 Yahoo（約延遲 20 分）
 const MIS_URL = "https://mis.twse.com.tw/stock/";
-let misCookie = "", misCookieAt = 0;
+let misCookie = "", misCookieAt = 0, misErr = "";
 function misChannel(sym) {
   if (sym === "^TWII") return "tse_t00.tw";
   if (sym === "^TWOII") return "otc_o00.tw";
@@ -53,9 +53,9 @@ async function misQuote(sym) {
   const r = await fetch(`${MIS_URL}api/getStockInfo.jsp?ex_ch=${ch}&json=1&delay=0&_=${now}`, {
     headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": misCookie, "accept": "application/json" },
   });
-  if (!r.ok) { misCookie = ""; return null; }
-  const txt = await r.text(); let j; try { j = JSON.parse(txt); } catch (e) { misCookie = ""; return null; }
-  return parseMis(j);
+  if (!r.ok) { misCookie = ""; misErr = "http " + r.status; return null; }
+  const txt = await r.text(); let j; try { j = JSON.parse(txt); } catch (e) { misCookie = ""; misErr = "notjson " + txt.slice(0, 60).replace(/\s+/g, " "); return null; }
+  const pm = parseMis(j); if (!pm) misErr = "empty"; return pm;
 }
 
 export default {
@@ -67,11 +67,11 @@ export default {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d&includePrePost=false`;
     let out = { error: "unavailable" }, status = 502;
     let q = null;
-    for (let k = 0; k < 2 && !q; k++) { try { q = await misQuote(sym); } catch (e) { misCookie = ""; } }   // 失敗就換新的連線 cookie 再試一次
+    for (let k = 0; k < 2 && !q; k++) { try { q = await misQuote(sym); } catch (e) { misCookie = ""; misErr = "exc " + String(e).slice(0, 80); } }   // 失敗就換新的連線 cookie 再試一次
     try { if (q) return new Response(JSON.stringify(q), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } }); } catch (e) { /* 改用 Yahoo */ }
     try {
       const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 20, cacheEverything: true } });
-      if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, src: "yahoo", delay: 20 }; status = 200; } }
+      if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, src: "yahoo", delay: 20, dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }; status = 200; } }
     } catch (e) { /* 回傳 502 */ }
     return new Response(JSON.stringify(out), { status, headers: { "content-type": "application/json", "cache-control": "public, max-age=5" } });
   },

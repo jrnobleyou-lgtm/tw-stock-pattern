@@ -192,12 +192,30 @@ function fmt(v){return v==null?"-":(v>=1000?v.toFixed(0):v>=100?v.toFixed(1):v.t
 function stockBars(s){return s.bars.map(r=>({d:typeof r[0]==="string"?r[0]:D.dates[r[0]],o:r[1],h:r[2],l:r[3],c:r[4],v:r[5],f:r[6]==null?1:r[6]}))}
 
 /* ───────── 右上角：台股大盤 ───────── */
+const liveIdx={};   // 即時行情（證交所）：{TWII:{...},OTC:{...}}
 function renderIdx(){
   const ix=D.index||{}, el=$("#idx"); if(!el) return;
   el.innerHTML=["TWII","OTC"].filter(k=>ix[k]&&ix[k].bars.length>1).map(k=>{
-    const b=ix[k].bars,l=b[b.length-1],p=b[b.length-2],ch=l[4]-p[4],pc=ch/p[4]*100;
-    return `<button class="ichip" data-i="${k}" title="${l[0]}"><span class="mute">${ix[k].name}</span> <b>${l[4].toLocaleString(undefined,{maximumFractionDigits:2})}</b><br><span style="color:${chgColor(ch)}">${ch>0?"▲":ch<0?"▼":""}${Math.abs(ch).toFixed(2)}（${pc>0?"+":""}${pc.toFixed(2)}%）</span></button>`}).join("");
+    const b=ix[k].bars,l=b[b.length-1],p=b[b.length-2],q=liveIdx[k];
+    let price=l[4],ch=l[4]-p[4],base=p[4],tip=l[0],lv="";
+    if(q&&q.date>=l[0]){ price=q.c; base=q.date>l[0]?l[4]:(q.prev||p[4]); ch=price-base; tip=q.date+" "+(q.hms||""); lv=` <small style="color:#f0d34a">${twMarketOpen()?"盤中":"即時"}</small>`}
+    const pc=ch/base*100;
+    return `<button class="ichip" data-i="${k}" title="${tip}"><span class="mute">${ix[k].name}</span> <b>${price.toLocaleString(undefined,{maximumFractionDigits:2})}</b>${lv}<br><span style="color:${chgColor(ch)}">${ch>0?"▲":ch<0?"▼":""}${Math.abs(ch).toFixed(2)}（${pc>0?"+":""}${pc.toFixed(2)}%）</span></button>`}).join("");
   el.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>{location.hash="i-"+b.dataset.i});
+}
+let idxTimer=null;
+async function pollIdx(){
+  clearTimeout(idxTimer);
+  const ix=D.index||{};
+  await Promise.all([["TWII","^TWII"],["OTC","^TWOII"]].filter(([k])=>ix[k]).map(async([k,sym])=>{
+    try{const r=await fetch("/api/quote?s="+encodeURIComponent(sym),{cache:"no-store"});if(!r.ok)return;const q=await r.json();
+      const b=ix[k].bars,l=b[b.length-1]; if(q&&q.date&&q.date>=l[0]&&(q.date>l[0]||twMarketOpen())) liveIdx[k]=q}catch(_){}
+  }));
+  renderIdx();
+  const t=Object.values(liveIdx).map(q=>q.t).filter(Boolean).sort().pop(), q0=liveIdx.TWII||liveIdx.OTC;
+  const base=(AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 "+D.asof;
+  $("#asof").innerHTML=base+(q0?`<span style="color:#f0d34a">　${twMarketOpen()?"盤中":"即時"} ${q0.date.slice(5)} ${q0.hms||""}</span>`:"");
+  idxTimer=setTimeout(pollIdx,twMarketOpen()?10000:120000);
 }
 /* ───────── 首頁：族群統計 ───────── */
 function home(){
@@ -971,7 +989,7 @@ function scrollToFirstRow(){
     window.scrollTo(0,y); if(y<=20) setStuck(false);
   });
 }
-renderIdx();
+renderIdx();pollIdx();
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
 window.onhashchange = route; route();
 </script>
