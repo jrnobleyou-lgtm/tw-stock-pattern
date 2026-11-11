@@ -24,6 +24,7 @@ function parseChart(j) {
 // ── 證交所即時行情（mis.twse.com.tw，幾秒延遲）：個股、加權、櫃買指數都有；失敗才退回 Yahoo（約延遲 20 分）
 const MIS_URL = "https://mis.twse.com.tw/stock/";
 let misCookie = "", misCookieAt = 0, misErr = "";
+const lastGood = {};   // 每個代號最近一次成功的證交所資料（失敗時暫用，最多 90 秒）
 function misChannel(sym) {
   if (sym === "^TWII") return "tse_t00.tw";
   if (sym === "^TWOII") return "otc_o00.tw";
@@ -65,9 +66,11 @@ export default {
     const sym = u.searchParams.get("s") || "";
     if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d&includePrePost=false`;
-    let out = { error: "unavailable" }, status = 502;
+    let out = { error: "unavailable", dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }, status = 502;
     let q = null;
-    for (let k = 0; k < 2 && !q; k++) { try { q = await misQuote(sym); } catch (e) { misCookie = ""; misErr = "exc " + String(e).slice(0, 80); } }   // 失敗就換新的連線 cookie 再試一次
+    for (let k = 0; k < 3 && !q; k++) { if (k) await new Promise(r => setTimeout(r, 300)); try { q = await misQuote(sym); } catch (e) { misCookie = ""; misErr = "exc " + String(e).slice(0, 80); } }
+    if (q) lastGood[sym] = { q, at: Date.now() };
+    else if (lastGood[sym] && Date.now() - lastGood[sym].at < 90000) q = { ...lastGood[sym].q, stale: true };   // 失敗就換新的連線 cookie 再試一次
     try { if (q) return new Response(JSON.stringify(q), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } }); } catch (e) { /* 改用 Yahoo */ }
     try {
       const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 20, cacheEverything: true } });
