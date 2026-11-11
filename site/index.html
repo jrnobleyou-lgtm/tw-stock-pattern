@@ -26,6 +26,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,"Noto Sans TC","PingFang TC",sans-serif;text-shadow:0 1px 3px rgba(8,4,24,.85)}
 html.stuck header>p{display:none}
+@media(min-width:901px){html.work .mpanel{width:min(78vw,1180px);height:min(72vh,720px)}html.work .cmod{grid-template-columns:minmax(0,1fr) 250px}}
 html.work body::before{background:linear-gradient(rgba(5,3,14,.35),rgba(5,3,14,.35)),url(bg-work.jpg) center/cover no-repeat,#07060d}
 #work.on{background:var(--accent,#f0d34a);color:#241c00}
 .fz{flex-basis:100%;display:flex;justify-content:flex-end;gap:6px;align-items:center;font-size:12px}
