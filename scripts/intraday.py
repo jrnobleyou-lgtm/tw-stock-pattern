@@ -52,14 +52,16 @@ def take(m):
     got.add(code)
     o, h, l, y = (num(m.get(k)) for k in ("o", "h", "l", "y"))
     z = num(m.get("z"))
-    c = z if z else (num(str(m.get("b", "")).split("_")[0]) or o)
-    if len(d) != 8 or None in (o, h, l, c) or code not in last:
+    bid = next((num(t) for t in str(m.get("b", "")).split("_") if num(t)), None)
+    c = z if z else (bid or o)
+    if len(d) != 8 or None in (o, c) or code not in last:
         return
+    h = max(h or 0, o, c); l = min(l or 1e18, o, c)        # 最高／最低缺值（0）時用開盤、現價補
     date = f"{d[:4]}-{d[4:6]}-{d[6:]}"
     if date <= last[code][0]:
         return                                         # 官方資料已經有這天
     v = int((num(m.get("v")) or 0) * 1000)
-    rows.append([date, code, "TWSE" if m.get("ex") == "tse" else "TPEX", o, max(h, c), min(l, c), c, v])
+    rows.append([date, code, "TWSE" if m.get("ex") == "tse" else "TPEX", o, h, l, c, v])
     if date > dmax: dmax, tmax = date, ""
     if date == dmax: tmax = max(tmax, m.get("t", ""))
     if y and abs(y / last[code][1] - 1) > 4e-4 and (code, date) not in adj_have:

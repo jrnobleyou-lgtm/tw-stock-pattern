@@ -210,7 +210,7 @@ async function pollIdx(){
   const ix=D.index||{};
   await Promise.all([["TWII","^TWII"],["OTC","^TWOII"]].filter(([k])=>ix[k]).map(async([k,sym])=>{
     try{const r=await fetch("/api/quote?s="+encodeURIComponent(sym),{cache:"no-store"});if(!r.ok)return;const q=await r.json();
-      const b=ix[k].bars,l=b[b.length-1]; if(q&&q.date&&q.date>=l[0]&&(q.date>l[0]||twMarketOpen())) liveIdx[k]=q}catch(_){}
+      const b=ix[k].bars,l=b[b.length-1]; if(q&&q.date&&q.c>0&&q.date>=l[0]&&(q.date>l[0]||twMarketOpen())) liveIdx[k]=q}catch(_){}
   }));
   renderIdx();
   const t=Object.values(liveIdx).map(q=>q.t).filter(Boolean).sort().pop(), q0=liveIdx.TWII||liveIdx.OTC;
@@ -383,7 +383,7 @@ function startLive(c,sym,isIndex){
     if(chart!==c) return;
     try{
       const r=await fetch("/api/quote?s="+encodeURIComponent(sym),{cache:"no-store"}); if(!r.ok) throw 0;
-      const q=await r.json(); if(chart!==c||!q||!q.date) return;
+      const q=await r.json(); if(chart!==c||!q||!q.date||!(q.o>0&&q.h>0&&q.l>0&&q.c>0&&q.h>=q.l)) return;   // 價格不合理（0、缺值）就不採用
       const last=c.raw[c.raw.length-1];
       const open=twMarketOpen();
       if(last&&q.date<last.d) return;

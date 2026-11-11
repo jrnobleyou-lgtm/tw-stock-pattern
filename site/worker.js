@@ -35,13 +35,19 @@ const num = x => { const v = parseFloat(x); return isFinite(v) ? v : null; };
 function parseMis(j) {
   const m = j && j.msgArray && j.msgArray[0];
   if (!m) return null;
-  const z = num(m.z), o = num(m.o), h = num(m.h), l = num(m.l), y = num(m.y);
-  const c = z != null ? z : (num((m.b || "").split("_")[0]) != null ? num((m.b || "").split("_")[0]) : o);
-  if (c == null || h == null || l == null) return null;
+  const pos = x => { const v = num(x); return v != null && v > 0 ? v : null; };      // 價格一定大於 0（"-"、0 都視為沒有）
+  const first = str => { for (const t of String(str || "").split("_")) { const v = pos(t); if (v != null) return v; } return null; };
+  const z = pos(m.z), o = pos(m.o), y = pos(m.y);
+  const c = z != null ? z : (first(m.b) != null ? first(m.b) : (first(m.a) != null ? first(m.a) : o));
+  let h = pos(m.h), l = pos(m.l);
+  if (c == null || o == null) return null;               // 還沒開盤／沒有可用價格
+  if (h == null) h = Math.max(o, c);
+  if (l == null) l = Math.min(o, c);
+  h = Math.max(h, o, c); l = Math.min(l, o, c);
   const d = String(m.d || ""); if (d.length !== 8) return null;
   const date = d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
   const tl = m.tlong ? Math.floor(Number(m.tlong) / 1000) : 0;
-  return { date, o: o != null ? o : c, h: Math.max(h, c), l: Math.min(l, c), c, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, src: "mis", delay: 0 };
+  return { date, o, h, l, c, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, src: "mis", delay: 0 };
 }
 async function misQuote(sym) {
   const ch = misChannel(sym); if (!ch) { misErr = "nochannel"; return null; }
