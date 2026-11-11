@@ -366,7 +366,7 @@ function mountModal(s, headHTML, opts){
   const el=document.createElement("div"); el.className="modal";
   el.innerHTML=`<div class="mpanel"><div class="mhead">${headHTML}<button class="btn" id="mclose">✕ 關閉（ESC）</button></div><div id="chart"></div></div>`;
   el.addEventListener("click",e=>{ if(e.target===el) goBack(); });                       // 點視窗外：關閉返回
-  el.querySelector(".mpanel").addEventListener("click",e=>{ if(!e.target.closest("#cv") && !e.target.closest("button") && !e.target.closest(".cr")) chart && chart.clear(); });
+  el.querySelector(".mpanel").addEventListener("click",e=>{ if(!e.target.closest("#cv") && !e.target.closest("button") && (!e.target.closest(".cr") || matchMedia("(max-width:900px)").matches)) chart && chart.clear(); });   // 手機版下方資訊欄也算空白處
   el.querySelector("#mclose").onclick=goBack;
   document.body.appendChild(el); modalEl=el;
   chart=new Chart(el.querySelector("#chart"), s, opts||{});
