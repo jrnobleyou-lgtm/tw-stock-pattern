@@ -534,7 +534,7 @@ class Chart{
   constructor(el, s, opts){
     this.el=el; this.s=s; this.opts=opts||{}; this.raw=stockBars(s);
     this.tf="D"; this.geo=true; this.sup=true; this.adjOn=false;
-    this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=false;
+    this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     this.sel=null; this.scissor=false; this.range=null; this.active=null; this.listOpen=false;
     this.custom=loadRanges(s.code); this.ptrs=new Map();
