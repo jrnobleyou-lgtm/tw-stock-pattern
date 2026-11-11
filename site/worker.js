@@ -66,7 +66,9 @@ export default {
     if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d&includePrePost=false`;
     let out = { error: "unavailable" }, status = 502;
-    try { const q = await misQuote(sym); if (q) return new Response(JSON.stringify(q), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } }); } catch (e) { /* 改用 Yahoo */ }
+    let q = null;
+    for (let k = 0; k < 2 && !q; k++) { try { q = await misQuote(sym); } catch (e) { misCookie = ""; } }   // 失敗就換新的連線 cookie 再試一次
+    try { if (q) return new Response(JSON.stringify(q), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } }); } catch (e) { /* 改用 Yahoo */ }
     try {
       const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 20, cacheEverything: true } });
       if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, src: "yahoo", delay: 20 }; status = 200; } }
