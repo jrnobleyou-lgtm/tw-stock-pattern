@@ -7,6 +7,8 @@ on:
   push:
     branches: [main]
     paths: ['site/index.html', 'site/worker.js', 'site/wrangler.jsonc', 'site/.assetsignore', 'site/*.png', 'site/*.jpg', 'scripts/**', 'data/groups_tw_all.csv', '.github/workflows/update.yml']
+env:
+  SITE_URL: https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev
 permissions:
   contents: write
 concurrency:
@@ -27,6 +29,10 @@ jobs:
         id: chg
         run: |
           if [ -n "$(git status --porcelain data)" ] || [ "${{ github.event_name }}" != "schedule" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+      - name: 盤中／官方資料還沒到的暫時價（不進版控；休市或沒資料時自動略過）
+        if: steps.chg.outputs.changed == 'true'
+        continue-on-error: true
+        run: python3 scripts/intraday.py
       - name: 組價格並分析
         if: steps.chg.outputs.changed == 'true'
         run: |
