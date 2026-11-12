@@ -162,7 +162,7 @@ svg text{fill:var(--fg);font-size:11px}
 </head>
 <body>
 <header>
-  <h1>每日股票型態確認</h1>
+  <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
   <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">篩選</a></nav><div class="fz"><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
@@ -764,9 +764,9 @@ class Chart{
     if(bx){
       const a=Math.max(vs,idxOf(B,bx.s)),b0=bx.live?ve-1:idxOf(B,bx.e),b=Math.min(ve-1,b0);
       if(idxOf(B,bx.s)<ve&&b0>=vs&&b>=a){
-        const xx=pl+(a-vs)*cw,ww=(b-a+1)*cw,old=!!(s.ev&&s.ev.expired),bc=old?"#c9a7f0":"#f0d34a";
+        const xx=pl+(a-vs)*cw,ww=(b-a+1)*cw,old=!!(s.ev&&(s.ev.expired||s.ev.state==="breakdown_confirmed")),bc=old?"#c9a7f0":"#f0d34a";
         o+=`<rect x="${xx}" y="${y(bx.hi)}" width="${ww}" height="${y(bx.lo)-y(bx.hi)}" fill="${bc}" fill-opacity=".10" stroke="${bc}" stroke-dasharray="4 3"/>`;
-        labels.push([`${old?"已失效區間 ":""}上緣 ${bx.hi}`,xx+ww/2,y(bx.hi),{color:bc,prefer:["up","right","left","down"]}]);
+        labels.push([`${old?(s.ev.state==="breakdown_confirmed"?"已失效區間（跌破）":"已失效區間 "):""}上緣 ${bx.hi}`,xx+ww/2,y(bx.hi),{color:bc,prefer:["up","right","left","down"]}]);
         labels.push([`下緣 ${bx.lo}`,xx+ww/2,y(bx.lo),{color:bc,prefer:["down","right","left","up"]}]);
       }
     }
@@ -797,7 +797,7 @@ class Chart{
       const i=idxOf(B,s.ev.date);
       if(i>=vs&&i<ve){const up=s.ev.dir==="up",yy=up?y(B[i].l)+3:y(B[i].h)-3;
         o+=`<path d="M${x(i)},${yy} l-5,${up?9:-9} h10 z" fill="#f0d34a"/>`;
-        labels.unshift([`${MD(s.ev.date).replace("-","/")}${s.ev.day===1&&up?" 突破第1根":" 突破日"}`,x(i),yy+(up?9:-9),{color:"#f0d34a",weight:700,prefer:up?["down","right","left","up"]:["up","right","left","down"]}]);
+        labels.unshift([`${MD(s.ev.date).replace("-","/")}${up?(s.ev.day===1?" 突破第1根":" 突破日"):" 跌破日"}`,x(i),yy+(up?9:-9),{color:"#f0d34a",weight:700,prefer:up?["down","right","left","up"]:["up","right","left","down"]}]);
       }
     }
     if(this.geo&&this.tf!=="M"){
@@ -943,7 +943,7 @@ function goBack(){
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
   const h=decodeURIComponent(location.hash.slice(1));
-  if(!h){ const q=$("#sq"); q.focus(); q.select(); window.scrollTo(0,0); return }   // 已經在最上層：回到自訂搜尋框
+  if(!h){ const q=$("#sq"); q.value=""; q.focus(); window.scrollTo(0,0); return }   // 已經在最上層：回到自訂搜尋框
   goBack();
 });
 function route(){
@@ -991,7 +991,9 @@ function scrollToFirstRow(){
     window.scrollTo(0,y); if(y<=20) setStuck(false);
   });
 }
+$("#home-link").onclick=()=>{if(location.hash)location.hash="";else{window.scrollTo(0,0);baseRaw=null;route()}};
 renderIdx();pollIdx();
+$("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
 window.onhashchange = route; route();
 </script>

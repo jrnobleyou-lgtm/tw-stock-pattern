@@ -24,6 +24,7 @@ VOL_MULT = 1.5
 CONFIRM_DAYS = 3
 SIGNAL_LIFE = 20     # 訊號日起算天數（訊號日為第 1 日）
 STRONG_WINDOW = 3    # 突破後幾個交易日內算「轉強」（使用者指定 3 日）
+RALLY_PCT = 0.20      # 3 日內由近期低點反彈幅度達 20% 算轉強
 WEAK_DAYS = 3        # 連續幾日收在 5、10 日線之下算「走弱」
 
 
@@ -65,6 +66,7 @@ def _edge(B, idxs, is_high):
     return None
 
 
+MAX_WICK = 0.12       # 區間內最高／最低價超出上下緣的容許幅度；超過就不是盤整
 OUT_TOL = 0.03       # 收盤越過邊界的容許幅度；超過就視為已脫離區間
 OUT_RUN = 3          # 連續幾根收在邊界外，視為已脫離區間
 
@@ -128,6 +130,8 @@ def _box_in_window(B, a, e):
         hi, lo = th[0], tl[0]
         if hi <= lo or (hi - lo) / lo > MAX_RANGE:
             continue
+        if max(B[i]["h"] for i in range(s, e + 1)) > hi * (1 + MAX_WICK) or min(B[i]["l"] for i in range(s, e + 1)) < lo * (1 - MAX_WICK):
+            continue                                    # 區間內曾大幅衝出上下緣（漲快跌快），不算盤整
         avg = _closes_ok(B, s, e, hi, lo)
         if avg is None:
             continue
@@ -181,9 +185,11 @@ def scan_after(B, box, b, T):
         if any(x >= lo for x in after):
             ev["state"] = "false_breakdown"
         elif run >= CONFIRM_DAYS:
-            ev["state"] = "breakdown_confirmed"
+            ev["state"] = "breakdown_confirmed"           # 連 3 日收在下緣之下＝區間失效
         else:
             ev["state"] = "breakdown_pending"
+        if ev["day"] > SIGNAL_LIFE:
+            ev["expired"] = True
     else:
         return None
     return ev
@@ -259,7 +265,8 @@ def classify(B, ma5, ma10, ma20, ma60, T, box, ev):
                 else:
                     break
             dipped = bool(ma5[r - 1] and B[r - 1]["c"] < ma5[r - 1]) and recent_bull(r - 1, 12)
-            if run >= WEAK_DAYS:
+            under10 = sum(1 for j in range(max(r - 10, 0), r) if ma10[j] and B[j]["c"] < ma10[j])
+            if run >= WEAK_DAYS or under10 >= 3:
                 recovered = True
                 tags.append("站回5/10日線")
             elif dipped:
@@ -278,9 +285,18 @@ def classify(B, ma5, ma10, ma20, ma60, T, box, ev):
     if ev and ev.get("state") == "false_breakout":
         tags.append("假突破")
 
-    breakdown = bool(ev and ev.get("state") == "breakdown_confirmed")
+    # 急漲：近 3 個交易日內由近期低點（含 3 天前）反彈 ≥ 20%
+    low3 = min(B[i]["l"] for i in range(max(T - 3, 0), T + 1))
+    rally = low3 > 0 and c / low3 - 1 >= RALLY_PCT
+    if rally:
+        tags.append(f"3日急漲{(c / low3 - 1) * 100:.0f}%")
+    # 跌破區間：連 3 日收在下緣之下才算（區間失效）；之後只要收盤站回下緣之上就不再算跌破
+    bd = bool(ev and ev.get("state") == "breakdown_confirmed" and not ev.get("expired"))
+    breakdown = bd and box is not None and c < box["lo"]
     if breakdown:
         tags.append("跌破區間")
+    elif bd:
+        tags.append("站回區間")
 
     bull = bull_at(T)
     in_box = box is not None and ev is None
@@ -306,13 +322,13 @@ def classify(B, ma5, ma10, ma20, ma60, T, box, ev):
         prior_bull = recent_bull(k, 20) or bool(ma60[k] and B[k]["c"] > ma60[k])
 
     sub = None
-    if breakdown:
+    if breakout or recovered or rally:
+        state = "轉強"                              # 突破、站回 5/10 日線、3 日急漲 ≥ 20%：優先於走弱
+    elif breakdown:
         state, sub = "走弱", "破底走弱"            # 區間下緣被跌破確認：最差
     elif weak and not in_box and prior_bull:
         state, sub = "走弱", "回檔走弱"            # 強勢多頭回檔後，5/10 日線都守不住
         tags.append(f"連{weak_run}日在5/10日線下")
-    elif breakout or recovered:
-        state = "轉強"
     elif bull:
         state = "型態好"
     elif pullback:
