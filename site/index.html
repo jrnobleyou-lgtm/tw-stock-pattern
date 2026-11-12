@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>每日股票型態確認</title>
-<meta name="description" content="每日收盤後自動更新，依族群統計台股有多少檔轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。">
+<meta name="description" content="每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。">
 <meta property="og:type" content="website">
 <meta property="og:title" content="每日股票型態確認">
-<meta property="og:description" content="每日收盤後自動更新，依族群統計台股有多少檔轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。">
+<meta property="og:description" content="每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。">
 <meta property="og:locale" content="zh_TW">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#12101a">
@@ -19,7 +19,7 @@
 :root{
   --bg:#12101a;--panel:#1b1826;--line:#2e2a3d;--line-t:rgba(255,255,255,.16);--fg:#ece8f5;--mute:#9a93ad;
   --up:#ef4444;--down:#22c55e;
-  --s-strong:#ef4444;--s-good:#f59e0b;--s-range:#8b93a7;--s-weak:#22c55e;
+  --s-strong:#ef4444;--s-wstrong:#f472b6;--s-good:#f59e0b;--s-range:#8b93a7;--s-weak:#22c55e;
   --box:#f0d34a;--bull:#ef4444;--bear:#22c55e;
   color-scheme:dark;
 }
@@ -58,8 +58,8 @@ tr.row{cursor:pointer}
 tr.row:hover{background:rgba(255,255,255,.08)}
 .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:120px;background:#0003}
 .bar i{display:block;height:100%}
-.c-strong{color:var(--s-strong)}.c-good{color:var(--s-good)}.c-range{color:var(--s-range)}.c-weak{color:var(--s-weak)}
-.b-strong{background:var(--s-strong)}.b-good{background:var(--s-good)}.b-range{background:var(--s-range)}.b-weak{background:var(--s-weak)}
+.c-strong{color:var(--s-strong)}.c-wstrong{color:var(--s-wstrong)}.c-good{color:var(--s-good)}.c-range{color:var(--s-range)}.c-weak{color:var(--s-weak)}
+.b-strong{background:var(--s-strong)}.b-wstrong{background:var(--s-wstrong)}.b-good{background:var(--s-good)}.b-range{background:var(--s-range)}.b-weak{background:var(--s-weak)}
 .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--mute);margin:1px 0 1px 4px}
 .tag.hot{border-color:var(--s-strong);color:var(--s-strong);font-weight:700}
 .tag.bad{border-color:#fb7185;color:#fb7185}
@@ -165,15 +165,15 @@ svg text{fill:var(--fg);font-size:11px}
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
   <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">篩選</a></nav><div class="fz"><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
-  <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
+  <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
 <footer class="wrap mute" style="font-size:12px;padding-bottom:40px">資料來源：證交所、櫃買中心盤後資料（價格未做除權息還原）。本站內容由程式自動計算，僅供研究與資訊參考，不構成任何投資建議；型態判定為系統規則，可能與實際看盤有落差，請自行判斷、風險自負。</footer>
 <script src="data.js"></script>
 <script>
 const D = window.DATA;
-const STATES = ["轉強","型態好","盤整","走弱"];
-const CLS = {"轉強":"strong","型態好":"good","盤整":"range","走弱":"weak"};
+const STATES = ["轉強","弱轉強","型態好","盤整","走弱"];
+const CLS = {"轉強":"strong","弱轉強":"wstrong","型態好":"good","盤整":"range","走弱":"weak"};
 const $ = s => document.querySelector(s);
 const AM=D.asofM||{};
 $("#asof").textContent = D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 " + D.asof;
@@ -264,7 +264,7 @@ function home(){
     const small = g.n < 5;
     const rb = g.stocks.filter(c=>D.stocks[c].rebound).length;
     h += `<tr class="row" data-g="${g.name}"><td>${g.name}${small?'<span class="tag">樣本少</span>':""}</td><td>${g.n}</td>` +
-      STATES.map(s=>`<td class="c-${CLS[s]}">${g.counts[s]}${small?"":`<span class="mute" style="font-size:11px"> ${pct(g.counts[s],g.n)}</span>`}${s==="走弱"&&g.counts[s]?`<div class="mute" style="font-size:11px">回檔${g.weak_pull}・<span style="color:#fb7185">破底${g.weak_break}</span></div>`:""}${s==="轉強"&&g.counts[s]?`<div class="mute" style="font-size:11px">弱轉強${g.weak_strong||0}</div>`:""}</td>`).join("") +
+      STATES.map(s=>`<td class="c-${CLS[s]}">${g.counts[s]}${small?"":`<span class="mute" style="font-size:11px"> ${pct(g.counts[s],g.n)}</span>`}${s==="走弱"&&g.counts[s]?`<div class="mute" style="font-size:11px">回檔${g.weak_pull}・<span style="color:#fb7185">破底${g.weak_break}</span></div>`:""}</td>`).join("") +
       `<td class="hide-s"><div class="bar">` + STATES.map(s=>`<i class="b-${CLS[s]}" style="width:${g.counts[s]/g.n*100}%"></i>`).join("") + `</div></td>` +
       `<td>${g.first.length? g.first.map(c=>`<span class="tag hot">${D.stocks[c].name}</span>`).join(""):'<span class="mute">-</span>'}</td>` +
       `<td>${rb? rb : '<span class="mute">-</span>'}</td></tr>`;
@@ -278,7 +278,7 @@ function home(){
 /* ───────── 族群頁 ───────── */
 function group(name){
   const g = D.groups.find(x=>x.name===name); if(!g) return home();
-  const order = {"轉強":0,"型態好":1,"盤整":2,"走弱":3};
+  const order = {"轉強":0,"弱轉強":1,"型態好":2,"盤整":3,"走弱":4};
   const list = g.stocks.map(c=>D.stocks[c]).sort((a,b)=>order[a.state]-order[b.state] || b.chg-a.chg);
   let h = `<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 10px">${g.name}</h2>`;
   h += stockTable(list);
@@ -307,6 +307,7 @@ const FIND_MAX=15;
 function stRank(s){
   if(s.tags.includes("突破第1根")) return 0;
   if(s.state==="轉強") return 1;
+  if(s.state==="弱轉強") return 1.5;
   if(s.state==="型態好") return 2;
   if(s.state==="盤整") return s.tags.some(t=>/蓄勢待發|準備突破/.test(t))?3:4;
   return 5;
@@ -346,8 +347,8 @@ const FILTERS = [
   {k:"rb3", name:"強勢止跌反彈", f:s=>s.rebound&&s.rebound.tier==="強"},
   {k:"rb",  name:"止跌反彈（全部）", f:s=>!!s.rebound},
   {k:"b1",  name:"突破第1根", f:s=>has(s,/突破第1根/)},
-  {k:"up",  name:"轉強（均線已排列向上）", f:s=>s.state==="轉強"&&s.sub!=="弱轉強"},
-  {k:"wup", name:"弱轉強（均線尚未排列）", f:s=>s.sub==="弱轉強"},
+  {k:"up",  name:"轉強", f:s=>s.state==="轉強"},
+  {k:"wup", name:"弱轉強（均線尚未排列向上）", f:s=>s.state==="弱轉強"},
   {k:"rdy", name:"蓄勢待發／準備突破", f:s=>has(s,/蓄勢待發|準備突破/)},
   {k:"cup", name:"杯柄", f:s=>s.geo.some(g=>g.kind==="杯柄")},
   {k:"rnd", name:"圓弧底", f:s=>s.geo.some(g=>g.kind==="圓弧底")},
