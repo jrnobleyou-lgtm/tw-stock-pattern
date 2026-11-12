@@ -47,7 +47,8 @@ function parseMis(j) {
   const d = String(m.d || ""); if (d.length !== 8) return null;
   const date = d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
   const tl = m.tlong ? Math.floor(Number(m.tlong) / 1000) : 0;
-  return { date, o, h, l, c, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, src: "mis", delay: 0 };
+  const idx = m.c === "t00" || m.c === "o00", amt = idx && num(m.m) != null ? Math.round(num(m.m)) / 1000 : null;   // 指數：m 為成交金額（10 萬元）→ 億元
+  return { date, o, h, l, c, amt, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, src: "mis", delay: 0 };
 }
 async function misQuote(sym) {
   const ch = misChannel(sym); if (!ch) { misErr = "nochannel"; return null; }
@@ -82,7 +83,7 @@ async function misBatch(ex) {
       const r = await fetch(`${MIS_URL}api/getStockInfo.jsp?ex_ch=${list.join("%7C")}&json=1&delay=0&_=${now}`, {
         headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": misCookie, "accept": "application/json" },
       });
-      if (r.ok) { const j = JSON.parse(await r.text()); if (j && j.msgArray) return j.msgArray.map(m => ({ c: m.c, ex: m.ex, z: m.z, o: m.o, h: m.h, l: m.l, y: m.y, v: m.v, tv: m.tv, d: m.d, t: m.t, b: m.b, ...(m.c === 't00' || m.c === 'o00' ? { raw: m } : {}) })); }
+      if (r.ok) { const j = JSON.parse(await r.text()); if (j && j.msgArray) return j.msgArray.map(m => ({ c: m.c, ex: m.ex, z: m.z, o: m.o, h: m.h, l: m.l, y: m.y, v: m.v, tv: m.tv, d: m.d, t: m.t, b: m.b, a: m.a })); }
     } catch (e) { /* 重試 */ }
     misCookie = ""; await new Promise(r => setTimeout(r, 300));
   }

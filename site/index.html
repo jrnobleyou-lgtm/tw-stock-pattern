@@ -388,8 +388,8 @@ function startLive(c,sym,isIndex){
       const last=c.raw[c.raw.length-1];
       const open=twMarketOpen();
       if(last&&q.date<last.d) return;
-      if(last&&q.date===last.d&&!open) return;           // 收盤後正式資料已經有今天，不覆蓋
-      c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?0:Math.round(q.v/1000),f:1});
+      if(last&&q.date===last.d&&!open&&!(D.live&&D.live.date===q.date)) return;   // 收盤後，若靜態資料是官方收盤資料就不覆蓋；若是盤中暫時價（D.live）就用最後的即時價更新
+      c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?(q.amt||0):Math.round(q.v/1000),f:1});
       const t=tag(); if(t){const hm=q.hms||new Date((q.t+28800)*1000).toISOString().slice(11,16);t.style.display="";t.textContent=(open?"盤中 ":"即時 ")+hm+(q.src==="yahoo"?"（延遲約20分）":"")}
     }catch(_){}
     if(chart===c&&twMarketOpen()) liveTimer=setTimeout(run,10000);
@@ -412,7 +412,7 @@ function openStock(code){
 function openIndex(key){
   const ix=(D.index||{})[key]; if(!ix) return;
   const s={code:key,name:ix.name,group:"台股大盤",industry:"",bars:ix.bars,geo:[],tags:[],defInd:ix.defInd||{}};
-  mountModal(s, `<div class="mtitle"><b>${ix.name}</b> <span class="mute"> 台股大盤</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span></div>`, {notes:`<p>${ix.name}日 K（無成交量資料）。</p>`});
+  mountModal(s, `<div class="mtitle"><b>${ix.name}</b> <span class="mute"> 台股大盤</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span></div>`, {notes:`<p>${ix.name}日 K。成交值單位為億元，${key==="TWII"?"為證交所官方統計。":"本月起為櫃買中心官方統計，更早的月份是依個股成交資料估算（趨勢參考）。"}</p>`});
   startLive(chart, key==="TWII"?"^TWII":"^TWOII", true);
 }
 
@@ -889,14 +889,14 @@ class Chart{
     }
     cv.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;inset:0;display:block" draggable="false">${o}</svg>`;
     // ── 資料列（上方一排）
-    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月";
+    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月", vlab=(s.code==="TWII"||s.code==="OTC")?"成交值(億)":"成交量(張)";
     let html;
     if(ci!=null&&ci>=0&&ci<B.length){
       const b=B[ci],prev=ci>0?B[ci-1].c:b.o,chg=(b.c/prev-1)*100;
       const dl=this.tf==="D"?b.d:this.tf==="W"?`${b.s} ~ ${b.d.slice(5)}`:b.d.slice(0,7);
       html=`<div><span>${lab}</span><b>${dl}</b></div><div><span>開盤</span><b>${fmt(b.o)}</b></div><div><span>最高</span><b>${fmt(b.h)}</b></div><div><span>最低</span><b>${fmt(b.l)}</b></div>`+
-        `<div><span>收盤</span><b style="color:${chgColor(chg)}">${fmt(b.c)}</b></div><div><span>漲跌幅</span><b style="color:${chgColor(chg)}">${chg>0?"+":""}${chg.toFixed(2)}%</b></div>`+(hasVol?`<div><span>成交量(張)</span><b>${b.v.toLocaleString()}</b></div>`:"");
-    } else html=[lab,"開盤","最高","最低","收盤","漲跌幅"].concat(hasVol?["成交量(張)"]:[]).map(t=>`<div><span>${t}</span><b class="mute">—</b></div>`).join("");
+        `<div><span>收盤</span><b style="color:${chgColor(chg)}">${fmt(b.c)}</b></div><div><span>漲跌幅</span><b style="color:${chgColor(chg)}">${chg>0?"+":""}${chg.toFixed(2)}%</b></div>`+(hasVol?`<div><span>${vlab}</span><b>${b.v.toLocaleString()}</b></div>`:"");
+    } else html=[lab,"開盤","最高","最低","收盤","漲跌幅"].concat(hasVol?[vlab]:[]).map(t=>`<div><span>${t}</span><b class="mute">—</b></div>`).join("");
     this.el.querySelector("#info").innerHTML=html;
     // 右側：選取提示列
     const rb=this.el.querySelector("#rangebar");

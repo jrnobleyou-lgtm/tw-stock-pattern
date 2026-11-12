@@ -105,4 +105,5 @@ with open(pp, "w", newline="", encoding="utf-8") as f:
 
 # ── 大盤指數（增量）
 os.system(f'{sys.executable} {os.path.join(ROOT, "scripts", "fetch_index.py")}')
+os.system(f'{sys.executable} {os.path.join(ROOT, "scripts", "fetch_turnover.py")}')
 print("完成：新增", len(new_rows), "列")

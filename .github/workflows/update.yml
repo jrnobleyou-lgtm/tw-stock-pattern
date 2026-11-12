@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['site/index.html', 'site/worker.js', 'site/wrangler.jsonc', 'site/.assetsignore', 'site/*.png', 'site/*.jpg', 'scripts/**', 'data/groups_tw_all.csv', '.github/workflows/update.yml']
+    paths: ['site/index.html', 'scripts/fetch_turnover.py', 'data/index_*.json', 'site/worker.js', 'site/wrangler.jsonc', 'site/.assetsignore', 'site/*.png', 'site/*.jpg', 'scripts/**', 'data/groups_tw_all.csv', '.github/workflows/update.yml']
 env:
   SITE_URL: https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev
 permissions:
