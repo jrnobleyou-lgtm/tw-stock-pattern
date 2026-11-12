@@ -205,7 +205,7 @@ function nextWeekday(d){const t=new Date(d+"T00:00:00Z");do{t.setUTCDate(t.getUT
 const ymd=x=>x&&x.length===8?`${x.slice(0,4)}-${x.slice(4,6)}-${x.slice(6)}`:null;
 const hms=x=>x&&x.length>=6?`${x.slice(0,2)}:${x.slice(2,4)}:${x.slice(4,6)}`:"";
 let txLive=null;                  // 最近一次 /api/tx 的結果
-async function fetchTX(){try{const r=await fetch("/api/tx",{cache:"no-store"});if(!r.ok)return null;const j=await r.json();if(j&&j.day)txLive=j;return txLive}catch(_){return null}}
+async function fetchTX(){try{const r=await fetch("/api/tx",{cache:"no-store"});if(!r.ok)return null;const j=await r.json();if(j&&(j.day||j.night))txLive=j;return txLive}catch(_){return null}}
 function txBar(j,mode){           // 由即時資料組今天（交易日）的 K 棒；mode：all 全盤（夜盤＋日盤）／day 日盤／night 夜盤
   const d=j.day,n=j.night,ok=q=>q&&q.o>0&&q.h>0&&q.l>0&&q.c>0;
   const dd=ok(d)?ymd(d.date):null, nd=ok(n)?nextWeekday(ymd(n.date)):null;     // 夜盤算在下一個交易日

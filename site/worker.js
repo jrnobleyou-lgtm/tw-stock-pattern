@@ -233,19 +233,45 @@ async function usIngest(req, env, u) {          // 每日更新程式用：上�
   return new Response(JSON.stringify({ ok: true, n: Object.keys(j.files || {}).length }), { headers: { "content-type": "application/json" } });
 }
 
+// 備援：Yahoo 奇摩股市的台指期近一（WTX&）與現貨（WTX00），只有「目前時段」的報價，期交所連不上時使用
+async function yahooTX() {
+  const r = await fetch("https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;symbols=WTX%26%2CWTX00", { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!r.ok) return null;
+  const arr = await r.json(), f = arr.find(x => x.symbol === "WTX&"), sp = arr.find(x => x.symbol === "WTX00");
+  if (!f) return null;
+  const raw = x => x && x.raw != null ? Number(x.raw) : null;
+  const t = new Date(f.regularMarketTime), tw = new Date(t.getTime() + 8 * 3600e3);
+  const hm = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  const isDay = hm >= 525 && hm <= 830;
+  const d0 = new Date(tw.getTime() - (hm < 300 ? 86400e3 : 0));               // 夜盤過了半夜，日期算開盤那天
+  const ymd8 = d0.toISOString().slice(0, 10).replace(/-/g, ""), hms6 = tw.toISOString().slice(11, 19).replace(/:/g, "");
+  const q = { id: "WTX&", name: f.symbolName, date: ymd8, time: hms6, o: raw(f.regularMarketOpen), h: raw(f.regularMarketDayHigh), l: raw(f.regularMarketDayLow),
+              c: raw(f.price), ref: raw(f.regularMarketPreviousClose), v: Number(f.volume) || 0, oi: Number(f.openInterest) || null };
+  const spot = sp ? { c: raw(sp.price), ref: raw(sp.regularMarketPreviousClose) } : null;
+  return isDay ? { day: q, night: null, spot, spotNight: null, src: "yahoo" } : { day: null, night: q, spot: null, spotNight: spot ? { ref: spot.c } : null, src: "yahoo" };
+}
+
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const u = new URL(req.url);
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
     if (u.pathname.startsWith("/admin/")) return usRoute(req, env, u);
     if (u.pathname === "/api/us-ingest") return usIngest(req, env, u);
     if (u.pathname === "/api/tx") {
       try {
+        const ck = new Request("https://cache.local/api/tx"), cache = caches.default;        // 同一節點 5 秒內共用一次結果，減少對期交所的請求
+        const hit = await cache.match(ck); if (hit) return hit;
         const [d, n] = await Promise.all([taifexList(0), taifexList(1)]);
         const day = txPick(d), night = txPick(n);
-        const out = { day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot };
-        if (!out.day && !out.night) out.dbg = { colo: (req.cf && req.cf.colo) || "", err: txErr };
-        return new Response(JSON.stringify(out), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } });
+        let out = { day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot, src: "taifex" };
+        if (!out.day && !out.night) {
+          const err = txErr;
+          try { const y = await yahooTX(); if (y) out = y; } catch (e) { /* 兩邊都失敗 */ }
+          out.dbg = { colo: (req.cf && req.cf.colo) || "", err };
+        }
+        const resp = new Response(JSON.stringify(out), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=5" } });
+        if (out.day || out.night) ctx.waitUntil(cache.put(ck, resp.clone()));
+        return resp;
       } catch (e) {
         return new Response(JSON.stringify({ error: "unavailable" }), { status: 502, headers: { "content-type": "application/json" } });
       }
