@@ -31,17 +31,20 @@ def r2(x):
 def main():
     # 用法：analyze.py        → 你的 207 檔（舊資料）
     #       analyze.py all    → 全市場（prices_all.csv + groups_tw_all.csv），個股 K 線拆成 site/s/<代號>.json
-    full = len(sys.argv) > 1 and sys.argv[1] == "all"
-    by, mk = load_prices(os.path.join(ROOT, "data", "prices_all.csv" if full else "prices_tw.csv"))
+    mode = sys.argv[1] if len(sys.argv) > 1 else ""
+    us = mode == "us"                               # analyze.py us → 美股（prices_us.csv + groups_us.csv），輸出到 site/us/
+    full = mode in ("all", "us")
+    OUT = os.path.join(ROOT, "site", "us") if us else os.path.join(ROOT, "site")
+    by, mk = load_prices(os.path.join(ROOT, "data", "prices_us.csv" if us else "prices_all.csv" if full else "prices_tw.csv"))
     all_dates = sorted({d for s in by.values() for d in s})
     asof = all_dates[-1]
     asof_m = {}                                   # 上市、上櫃各自的最新資料日（兩邊更新時間不同）
     for code_, s_ in by.items():
         m_ = mk.get(code_)
         asof_m[m_] = max(asof_m.get(m_, ""), max(s_))
-    groups = list(csv.DictReader(open(os.path.join(ROOT, "data", "groups_tw_all.csv" if full else "groups_tw.csv"), encoding="utf-8")))
+    groups = list(csv.DictReader(open(os.path.join(ROOT, "data", "groups_us.csv" if us else "groups_tw_all.csv" if full else "groups_tw.csv"), encoding="utf-8")))
     if full:
-        os.makedirs(os.path.join(ROOT, "site", "s"), exist_ok=True)
+        os.makedirs(os.path.join(OUT, "s"), exist_ok=True)
 
     di = {d: i for i, d in enumerate(all_dates)}
     stocks, missing = {}, []
@@ -125,7 +128,7 @@ def main():
         n0 = max(0, len(bars) - CHART_BARS)
         rows = [[di[b["d"]], b["o"], b["h"], b["l"], b["c"], round(b["v"] / 1000), round(b["f"], 5)] for b in raw[n0:]]
         if full:
-            with open(os.path.join(ROOT, "site", "s", code + ".json"), "w") as f:
+            with open(os.path.join(OUT, "s", code + ".json"), "w") as f:
                 json.dump({"bars": rows}, f, separators=(",", ":"))
         else:
             st["bars"] = rows
@@ -150,16 +153,18 @@ def main():
 
     total = {s: sum(1 for st in stocks.values() if st["state"] == s) for s in STATES}      # 雙族群不重複計算
     index = {}
-    for key, name, defind in (("TX", "台指期", {}), ("TXD", "台指期（日盤）", {}), ("TXN", "台指期（夜盤）", {}), ("TWII", "加權指數", {}), ("OTC", "櫃買指數", {"macd": 1})):
+    for key, name, defind in (() if us else (("TX", "台指期", {}), ("TXD", "台指期（日盤）", {}), ("TXN", "台指期（夜盤）", {}), ("TWII", "加權指數", {}), ("OTC", "櫃買指數", {"macd": 1}))):
         fp = os.path.join(ROOT, "data", {"TXD": "index_TX_day.json", "TXN": "index_TX_night.json"}.get(key, f"index_{key}.json"))
         if os.path.exists(fp):
             index[key] = {"name": name, "bars": json.load(open(fp)), "defInd": defind}
     live = None
     mp = os.path.join(ROOT, "data", "intraday_meta.json")
-    if full and os.path.exists(mp):
+    if full and not us and os.path.exists(mp):
         live = json.load(open(mp))
     out = {"live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
-    with open(os.path.join(ROOT, "site", "data.js"), "w", encoding="utf-8") as f:
+    if us:
+        out["market"] = "US"
+    with open(os.path.join(OUT, "data.js"), "w", encoding="utf-8") as f:
         f.write("window.DATA=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";")
     print("asof", asof, "stocks", len(stocks), "missing", len(missing), missing[:20])
     print("total", total)

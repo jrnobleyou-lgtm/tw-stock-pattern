@@ -29,3 +29,8 @@ scripts/chart2.txt
 
 data/intraday*.csv
 data/intraday_meta.json
+
+# 美股資料不公開（不進版控）
+data/us/
+data/prices_us.csv
+site/us/

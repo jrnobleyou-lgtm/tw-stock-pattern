@@ -464,7 +464,7 @@ function openStock(code){
   }
   const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
   mountModal(s, head, {notes:notesHTML(s)});
-  startLive(chart, code+(s.market==="TPEX"?".TWO":".TW"), false);
+  if(D.market!=="US") startLive(chart, code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
 function openIndex(key){
   const ix=(D.index||{})[key]; if(!ix) return;
@@ -953,7 +953,7 @@ class Chart{
     }
     cv.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;inset:0;display:block" draggable="false">${o}</svg>`;
     // ── 資料列（上方一排）
-    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月", vlab=(s.code==="TWII"||s.code==="OTC")?"成交值(億)":(s.code==="TX"||s.code==="TXD")?"成交量(口)":"成交量(張)";
+    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月", vlab=(s.code==="TWII"||s.code==="OTC")?"成交值(億)":(s.code==="TX"||s.code==="TXD"||s.code==="TXN")?"成交量(口)":D.market==="US"?"成交量(千股)":"成交量(張)";
     let html;
     const ii=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;          // 沒點選時預設顯示畫面最右邊（最新）那根
     if(ii>=0&&ii<B.length){
@@ -1057,7 +1057,13 @@ function scrollToFirstRow(){
   });
 }
 $("#home-link").onclick=()=>{if(location.hash)location.hash="";else{window.scrollTo(0,0);baseRaw=null;route()}};
-renderIdx();pollIdx();
+if(D.market==="US"){                 // 美股版：同一套頁面，換標題與說明，不抓台股即時
+  document.title="美股型態確認"; $("#home-link").textContent="美股型態確認";
+  $("#sq").placeholder="自訂搜尋：NVDA AAPL 微軟…";
+  const p=document.querySelector("header>p"); if(p) p.textContent="每日美股收盤後自動更新，依族群統計美股有多少檔轉強、弱轉強、型態好、盤整、走弱。資料來源：Yahoo Finance。";
+  $("#asof").textContent="資料日期 "+D.asof+"（美東）";
+}
+renderIdx();if(D.market!=="US")pollIdx();
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
 window.onhashchange = route; route();
