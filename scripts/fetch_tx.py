@@ -1,5 +1,5 @@
 """台指期（大台 TX）近月日 K：期交所「期貨每日交易行情」下載（逐月查詢）。
-輸出 data/index_TX.json（全盤＝前一晚夜盤＋當天日盤）與 data/index_TX_day.json（只有日盤）：
+輸出 data/index_TX.json（全盤＝前一晚夜盤＋當天日盤）、data/index_TX_day.json（日盤）、data/index_TX_night.json（夜盤，算在下一個交易日）：
   [[交易日, 開, 高, 低, 收, 成交量(口), 1.0], ...]
 近月：每個交易日、每個時段取「到期月份最近」的月契約（不含週契約），所以結算日當天日盤還是舊月份，
       當天 15:00 開始的夜盤（算在下一個交易日）就自動換到下個月。
@@ -9,6 +9,7 @@ import csv, datetime, io, json, os, sys, time, urllib.parse, urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P_ALL = os.path.join(ROOT, "data", "index_TX.json")
 P_DAY = os.path.join(ROOT, "data", "index_TX_day.json")
+P_NIGHT = os.path.join(ROOT, "data", "index_TX_night.json")
 FULL = "--full" in sys.argv or not os.path.exists(P_ALL)
 
 def month_rows(start, end):
@@ -55,9 +56,11 @@ for m in sorted(months):
     time.sleep(2)
 
 dates = sorted({d for d, _ in best})
-day_rows, all_rows = [], []
+day_rows, all_rows, night_rows = [], [], []
 for d in dates:
     dy, nt = best.get((d, "day")), best.get((d, "night"))
+    if nt:
+        night_rows.append([d, nt[1], nt[2], nt[3], nt[4], int(nt[5]), 1.0])
     if dy:
         day_rows.append([d, dy[1], dy[2], dy[3], dy[4], int(dy[5]), 1.0])
     if dy and nt and nt[0] == dy[0]:                # 夜盤和日盤是同一個契約才合併
@@ -70,5 +73,5 @@ def merge(p, rows):
     out = sorted({r[0]: r for r in old + rows}.values())
     json.dump(out, open(p, "w")); return out
 
-a = merge(P_ALL, all_rows); b = merge(P_DAY, day_rows)
-print("台指期 全盤", len(a), a[-1] if a else None, "；日盤", len(b))
+a = merge(P_ALL, all_rows); b = merge(P_DAY, day_rows); c = merge(P_NIGHT, night_rows)
+print("台指期 全盤", len(a), a[-1] if a else None, "；日盤", len(b), "；夜盤", len(c))
