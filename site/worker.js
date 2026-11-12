@@ -47,7 +47,7 @@ function parseMis(j) {
   const d = String(m.d || ""); if (d.length !== 8) return null;
   const date = d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
   const tl = m.tlong ? Math.floor(Number(m.tlong) / 1000) : 0;
-  const idx = m.c === "t00" || m.c === "o00", amt = idx && num(m.m) != null ? Math.round(num(m.m)) / 1000 : null;   // 指數：m 為成交金額（10 萬元）→ 億元
+  const idx = m.c === "t00" || m.c === "o00", amt = idx && num(m.m) != null ? Math.round(num(m.m) * (m.c === "t00" ? 0.776 : 0.967)) / 1000 : null;   // 指數：m 換算成億元，再依 11/12 官方值校正（證交所即時的 m 比官方成交金額高：加權約 +29%、櫃買約 +3.5%）；收盤後以官方為準
   return { date, o, h, l, c, amt, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, src: "mis", delay: 0 };
 }
 async function misQuote(sym) {
