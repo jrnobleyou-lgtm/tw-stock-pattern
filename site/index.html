@@ -593,6 +593,9 @@ function calcStats(B,i0,i1){
   const last=B[i1].c;
   return{hi,hiI,lo,loI,dd,ddA,ddB,fromHi:last/hi-1,fromLo:last/lo-1,swing,n:i1-i0+1};
 }
+function alertBox(el,msg){const n=el.querySelector("#rangebar");if(n){n.innerHTML=`<div class="note" style="color:#fb7185;margin:6px 0">${msg}</div>`}}
+function loadBoxes(code){try{return JSON.parse(localStorage.getItem("cb:"+code)||"[]")}catch(_){return[]}}
+function saveBoxes(code,v){try{localStorage.setItem("cb:"+code,JSON.stringify(v))}catch(_){}}
 function loadRanges(code){try{return JSON.parse(localStorage.getItem("cr:"+code)||"[]")}catch(_){return[]}}
 function saveRanges(code,v){try{localStorage.setItem("cr:"+code,JSON.stringify(v))}catch(_){}}
 const MA_COL={5:"#facc15",10:"#38bdf8",20:"#c084fc",60:"#e5e7eb",120:"#fb923c",250:"#f472b6"};
@@ -606,7 +609,8 @@ class Chart{
     this.tf="D"; this.geo=true; this.sup=true; this.adjOn=false;
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
-    this.sel=null; this.scissor=false; this.range=null; this.active=null; this.listOpen=false;
+    this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
+    this.cboxes=loadBoxes(s.code);
     this.custom=loadRanges(s.code); this.ptrs=new Map();
     this.setTF("D");
   }
@@ -635,11 +639,13 @@ class Chart{
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
       this.btn("geo","形態",this.geo);
     const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
-    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",this.scissor)+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup);
+    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
     const allOn=MA_ALL.every(n=>this.maOn[n]);
     const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"✓ 全選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${this.maOn[n]?"✓ ":""}${n}日</button>`).join("")}</div>`:"";
-    const list=this.listOpen?`<div class="chips">${this.custom.length?this.custom.map((r,i)=>`<span class="chip2"><button class="btn" data-a="use-${i}">${MD(r.from)}～${MD(r.to)}</button><button class="btn" data-a="del-${i}" title="刪除">×</button></span>`).join(""):'<span class="mute" style="font-size:12px">還沒有自訂區間。開啟「✂️ 剪刀」，在圖上按住拖出區間後存起來。</span>'}</div>`:"";
+    const B0=this.bars,dmin=B0.length?B0[0].d:"",dmax=B0.length?B0[B0.length-1].d:"";
+    const list=this.listOpen?`<div class="rangebar" style="flex-wrap:wrap"><span style="flex:none">起</span><input type="date" id="cr-from" min="${dmin}" max="${dmax}" value="${this.crFrom||""}"><span style="flex:none">止</span><input type="date" id="cr-to" min="${dmin}" max="${dmax}" value="${this.crTo||dmax}"><button class="btn on" data-a="crapply">套用</button><button class="btn" data-a="crsave">儲存</button></div>
+      <div class="chips">${this.custom.length?this.custom.map((r,i)=>`<span class="chip2"><button class="btn" data-a="use-${i}">${MD(r.from)}～${MD(r.to)}</button><button class="btn" data-a="del-${i}" title="刪除">×</button></span>`).join(""):'<span class="mute" style="font-size:12px">輸入起止日期後按「套用」看這段的統計；按「儲存」留下來，下次可以直接點。</span>'}</div>`:"";
     this.el.innerHTML=`<div class="cmod">
       <div class="cl"><div class="info" id="info"></div><div class="chart" id="cv"></div></div>
       <div class="cr">
@@ -674,7 +680,18 @@ class Chart{
     if(a==="geo"){this.geo=!this.geo;return this.build()}
     if(a==="sup"){this.sup=!this.sup;return this.build()}
     if(a==="list"){this.listOpen=!this.listOpen;return this.build()}
-    if(a==="scissor"){this.scissor=!this.scissor;this.range=null;return this.build()}
+    if(a==="scissor"){this.scMode=this.scMode?null:"menu";this.range=null;return this.build()}
+    if(a==="sc-box"||a==="sc-zoom"){this.scMode=a==="sc-box"?"box":"zoom";this.range=null;return this.build()}
+    if(a==="boxon"){this.boxOn=!this.boxOn;return this.build()}
+    if(a.startsWith("cbdel-")){this.cboxes.splice(+a.slice(6),1);saveBoxes(this.s.code,this.cboxes);return this.build()}
+    if(a==="crapply"||a==="crsave"){
+      const f=this.el.querySelector("#cr-from").value,t=this.el.querySelector("#cr-to").value;
+      if(!f||!t||f>t){alertBox(this.el,"請選好起日和止日（起日要早於止日）");return}
+      const ia=this.bars.findIndex(b=>b.d>=f), ib=(()=>{let k=-1;this.bars.forEach((b,i)=>{if(b.s<=t)k=i});return k})();
+      if(ia<0||ib<ia){alertBox(this.el,"這段日期沒有 K 棒");return}
+      this.crFrom=f;this.crTo=t;const r={from:this.bars[ia].s,to:this.bars[ib].d};
+      if(a==="crsave"){this.custom.push(r);saveRanges(this.s.code,this.custom)}
+      this.active=r;this.build();this.fit(ia,ib);return}
     if(a.startsWith("use-")){const r=this.custom[+a.slice(4)];if(r)this.useRange(r);return}
     if(a.startsWith("del-")){this.custom.splice(+a.slice(4),1);saveRanges(this.s.code,this.custom);this.active=null;return this.build()}
     if(a==="save"){this.saveRange();return}
@@ -696,7 +713,7 @@ class Chart{
     saveRanges(this.s.code,this.custom);
     this.active=this.custom[this.custom.length-1];this.range=null;this.listOpen=true;this.build();
   }
-  clear(){ if(this.sel!=null){this.sel=null;this.draw()} }
+  clear(){ if(this.cancelScissor()) return; if(this.sel!=null){this.sel=null;this.draw()} }
   geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/n}}
   rect(){const s=this.cv.querySelector("svg");return (s||this.cv).getBoundingClientRect()}
   indexAtX(cx){const g=this.geom(),r=this.rect(),x=(cx-r.left)/r.width*g.W;return Math.min(this.end-1,Math.max(g.vs,g.vs+Math.floor((x-g.pl)/g.cw)))}
@@ -707,11 +724,11 @@ class Chart{
     this.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(e.pointerType==="mouse"){
       if(e.button!==0) return;
-      if(this.scissor){this.startRange(e);return}
+      if(this.scMode==="box"||this.scMode==="zoom"){this.startRange(e);return}
       this.drag={x:e.clientX,vs:this.geom().vs,moved:false};return;
     }
     if(this.ptrs.size>=2){this.cancelHold();this.tstate=null;this.drawing=false;this.startPinch();return}
-    if(this.scissor){this.startRange(e);return}
+    if(this.scMode==="box"||this.scMode==="zoom"){this.startRange(e);return}
     this.tstate={x:e.clientX,vs:this.geom().vs,mode:"wait"};
     this.lastX=e.clientX;
     clearTimeout(this.holdTimer);
@@ -723,7 +740,7 @@ class Chart{
     const p=this.ptrs.get(e.pointerId); if(p){p.x=e.clientX;p.y=e.clientY}
     this.lastX=e.clientX;
     if(e.pointerType==="mouse"){
-      if(this.drawing){this.range.b=this.indexAt(e);this.draw();return}
+      if(this.drawing){this.range.b=this.indexAt(e);this.range.p1=this.priceAt(e);this.draw();return}
       if(!this.drag) return;
       const dx=e.clientX-this.drag.x;
       if(Math.abs(dx)>4) this.drag.moved=true;
@@ -731,7 +748,7 @@ class Chart{
       return;
     }
     if(this.pinch&&this.ptrs.size>=2){this.doPinch();return}
-    if(this.drawing){this.range.b=this.indexAt(e);this.draw();return}
+    if(this.drawing){this.range.b=this.indexAt(e);this.range.p1=this.priceAt(e);this.draw();return}
     const st=this.tstate; if(!st) return;
     const dx=e.clientX-st.x;
     if(st.mode==="wait"&&Math.abs(dx)>8){this.cancelHold();st.mode="pan"}
@@ -771,8 +788,19 @@ class Chart{
     const vs=Math.max(0,Math.min(N-n,Math.round(idx-frac*n)));
     this.n=n;this.end=vs+n;this.draw();
   }
-  startRange(e){const i=this.indexAt(e);this.range={a:i,b:i};this.drawing=true;this.sel=null;this.draw()}
-  finishRange(){this.drawing=false;if(Math.abs(this.range.b-this.range.a)<2){this.range=null}this.draw()}
+  priceAt(e){const g=this.pg;if(!g)return null;const r=this.rect(),yy=(e.clientY-r.top)/r.height*this.H;return g.hi-(yy-g.pt)/(g.priceBot-g.pt)*(g.hi-g.lo)}
+  startRange(e){const i=this.indexAt(e),p=this.priceAt(e);this.range={a:i,b:i,p0:p,p1:p};this.drawing=true;this.sel=null;this.draw()}
+  finishRange(){
+    this.drawing=false; const R=this.range; this.range=null;
+    if(!R||Math.abs(R.b-R.a)<2){this.draw();return}
+    const a=Math.min(R.a,R.b),b=Math.max(R.a,R.b);
+    if(this.scMode==="zoom"){this.scMode=null;this.build();this.fit(a,b);return}       // 放大 K 線圖：放開就放大到這段
+    const hi=Math.max(R.p0,R.p1),lo=Math.min(R.p0,R.p1);
+    if(!(hi>lo)){this.draw();return}
+    this.cboxes.push({from:this.bars[a].s,to:this.bars[b].d,hi:+hi.toFixed(2),lo:+lo.toFixed(2)});    // 自訂盤整區間：存起來
+    saveBoxes(this.s.code,this.cboxes); this.scMode=null; this.build();
+  }
+  cancelScissor(){ if(!this.scMode) return false; this.scMode=null; this.range=null; this.drawing=false; this.build(); return true }
 
   draw(){
     const cv=this.cv; if(!cv) return;
@@ -789,10 +817,11 @@ class Chart{
     const vis=B.slice(vs,ve);
     let hi=Math.max(...vis.map(b=>b.h)), lo=Math.min(...vis.map(b=>b.l));
     const bx=s.box?{...s.box,hi:this.adjOn&&s.box.hiA!=null?s.box.hiA:s.box.hi,lo:this.adjOn&&s.box.loA!=null?s.box.loA:s.box.lo}:null;
-    if(bx && idxOf(B,bx.s)<ve && (bx.live||idxOf(B,bx.e)>=vs)){hi=Math.max(hi,Math.min(bx.hi,hi*1.3));lo=Math.min(lo,Math.max(bx.lo,lo*0.75))}
+    if(bx && this.boxOn && idxOf(B,bx.s)<ve && (bx.live||idxOf(B,bx.e)>=vs)){hi=Math.max(hi,Math.min(bx.hi,hi*1.3));lo=Math.min(lo,Math.max(bx.lo,lo*0.75))}
     for(const n of MA_ALL) if(this.maOn[n]) for(let i=vs;i<ve;i++){const v=this.ma[n][i];if(v!=null&&v>lo*0.7&&v<hi*1.3){hi=Math.max(hi,v);lo=Math.min(lo,v)}}
     const pad=(hi-lo)*.07||1; hi+=pad; lo-=pad;
     const y=v=>pt+(hi-v)/(hi-lo)*(priceBot-pt), x=i=>pl+(i-vs)*cw+cw/2;
+    this.pg={pt,priceBot,hi,lo};
     let o="";
     // ── 避開 K 棒的文字擺放：先把 K 棒、均線佔用的位置登記，再為每段文字找空位
     const occ=[], pad2=2;
@@ -821,16 +850,29 @@ class Chart{
       o+=`<text x="${best.x}" y="${best.y+fs}" style="fill:${op.color||"#ece8f5"};${op.weight?"font-weight:"+op.weight:""};font-size:${fs}px">${text}</text>`;
     };
     for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;o+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#2e2a3d"/><text x="${W-pr+4}" y="${y(v)+4}">${fmt(v)}</text>`}
+    const labels=[];
     const shade=(a,b,col,label)=>{
       const A=Math.max(vs,Math.min(a,b)),Z=Math.min(ve-1,Math.max(a,b)); if(Z<A) return;
       o+=`<rect x="${pl+(A-vs)*cw}" y="${pt}" width="${(Z-A+1)*cw}" height="${priceBot-pt}" fill="${col}" fill-opacity=".12" stroke="${col}" stroke-opacity=".7" stroke-dasharray="4 3"/>`;
       if(label) o+=`<text x="${pl+(A-vs)*cw+4}" y="${pt+13}" style="fill:${col}">${label}</text>`;
     };
     if(this.active){const a=idxOf(B,this.active.from),b=idxOf(B,this.active.to);if(a>=0&&b>=0)shade(a,b,"#38bdf8","自訂區間")}
-    if(this.range) shade(this.range.a,this.range.b,"#f0d34a","剪刀選取");
+    if(this.range){
+      if(this.scMode==="box"&&this.range.p0!=null&&this.range.p1!=null){        // 拖拉中的自訂盤整框
+        const A=Math.max(vs,Math.min(this.range.a,this.range.b)),Z=Math.min(ve-1,Math.max(this.range.a,this.range.b)),h1=Math.max(this.range.p0,this.range.p1),l1=Math.min(this.range.p0,this.range.p1);
+        o+=`<rect x="${pl+(A-vs)*cw}" y="${y(h1)}" width="${(Z-A+1)*cw}" height="${Math.max(1,y(l1)-y(h1))}" fill="#fb923c" fill-opacity=".12" stroke="#fb923c" stroke-dasharray="4 3"/>`;
+      } else shade(this.range.a,this.range.b,"#f0d34a","放大範圍");
+    }
+    (this.cboxes||[]).forEach(cb=>{                                              // 使用者自訂的盤整區間
+      const A=idxOf(B,cb.from),Z=idxOf(B,cb.to); if(A<0||Z<0||Z<vs||A>=ve) return;
+      const a2=Math.max(vs,A),z2=Math.min(ve-1,Z),xx=pl+(a2-vs)*cw,ww=(z2-a2+1)*cw;
+      const yt=Math.max(pt,Math.min(priceBot,y(cb.hi))),yb=Math.max(pt,Math.min(priceBot,y(cb.lo)));      // 超出畫面的部分不畫，避免蓋到成交量
+      o+=`<rect x="${xx}" y="${yt}" width="${ww}" height="${Math.max(1,yb-yt)}" fill="#fb923c" fill-opacity=".10" stroke="#fb923c" stroke-dasharray="4 3"/>`;
+      labels.push([`自訂 上 ${fmt(cb.hi)}`,xx+ww/2,yt,{color:"#fb923c",prefer:["up","right","left","down"]}]);
+      labels.push([`下 ${fmt(cb.lo)}`,xx+ww/2,yb,{color:"#fb923c",prefer:["down","right","left","up"]}]);
+    });
     // 盤整區間
-    const labels=[];
-    if(bx){
+    if(bx&&this.boxOn){
       const a=Math.max(vs,idxOf(B,bx.s)),b0=bx.live?ve-1:idxOf(B,bx.e),b=Math.min(ve-1,b0);
       if(idxOf(B,bx.s)<ve&&b0>=vs&&b>=a){
         const xx=pl+(a-vs)*cw,ww=(b-a+1)*cw,old=!!(s.ev&&(s.ev.expired||s.ev.state==="breakdown_confirmed")),bc=old?"#c9a7f0":"#f0d34a";
@@ -970,12 +1012,11 @@ class Chart{
     this.el.querySelector("#info").innerHTML=html;
     // 右側：選取提示列
     const rb=this.el.querySelector("#rangebar");
-    if(this.scissor&&!this.range) rb.innerHTML=`<div class="note" style="margin:6px 0">✂️ 剪刀：按住拖出要留下的區間。放開後可存成自訂區間。</div>`;
-    else if(this.scissor&&this.range&&!this.drawing){
-      const a=Math.min(this.range.a,this.range.b),b=Math.max(this.range.a,this.range.b);
-      rb.innerHTML=`<div class="rangebar"><span>已選 ${B[a].s} ～ ${B[b].d}（${b-a+1} 根）</span><button class="btn on" data-a="save">存成自訂區間</button><button class="btn" data-a="zoomrange">放大到此區間</button><button class="btn" data-a="cancelrange">取消</button></div>`;
-      rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a));
-    } else if(!this.scissor) rb.innerHTML="";
+    if(this.scMode==="menu") rb.innerHTML=`<div class="rangebar"><span>剪刀要做什麼？</span><button class="btn on" data-a="sc-box">自訂盤整區間</button><button class="btn on" data-a="sc-zoom">放大 K 線圖</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`;
+    else if(this.scMode==="box") rb.innerHTML=`<div class="note" style="margin:6px 0">✂️ 自訂盤整區間：在圖上按住，拖出框的大小（左右＝日期、上下＝價格），放開就存起來。點空白處或按 ESC 取消。</div>`;
+    else if(this.scMode==="zoom") rb.innerHTML=`<div class="note" style="margin:6px 0">✂️ 放大 K 線圖：在圖上按住，左右拖出要看的範圍，放開就放大。點空白處或按 ESC 取消。</div>`;
+    else rb.innerHTML=(this.cboxes||[]).length?`<div class="chips">${this.cboxes.map((c,i)=>`<span class="chip2"><span class="btn" style="cursor:default;color:#fb923c">自訂框 ${MD(c.from)}～${MD(c.to)}　${fmt(c.lo)}–${fmt(c.hi)}</span><button class="btn" data-a="cbdel-${i}" title="刪除這個框">×</button></span>`).join("")}</div>`:"";
+    rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a));
     // 右側：統計
     let a=vs,b=ve-1,tag="目前畫面";
     if(this.range){a=Math.min(this.range.a,this.range.b);b=Math.max(this.range.a,this.range.b);tag="剪刀選取"}
@@ -1012,6 +1053,7 @@ function goBack(){
 }
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
+  if(chart&&chart.cancelScissor&&chart.cancelScissor()) return;          // 剪刀進行中：ESC 只取消剪刀
   const h=decodeURIComponent(location.hash.slice(1));
   if(!h){ const q=$("#sq"); q.value=""; q.focus(); window.scrollTo(0,0); return }   // 已經在最上層：回到自訂搜尋框
   goBack();
