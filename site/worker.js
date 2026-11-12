@@ -1,6 +1,6 @@
 // 盤中即時 K 棒：瀏覽器呼叫 /api/quote?s=2330.TW ，這裡代為向 Yahoo 取當日 1 分 K 並合成今天的 開高低收量。
 // 其餘網址由 Cloudflare 直接提供靜態網站檔案（不會進到這支程式）。
-const SYM = /^(\d{4,6}[A-Z]?\.(TW|TWO)|\^TWII|\^TWOII)$/;
+const SYM = /^(\d{4,6}[A-Z]?\.(TW|TWO)|\^TWII|\^TWOII|[A-Z][A-Z0-9.\-]{0,9})$/;     // 最後一種是美股代號
 
 function parseChart(j) {
   const r = j && j.chart && j.chart.result && j.chart.result[0];
@@ -301,16 +301,17 @@ export default {
     if (u.pathname !== "/api/quote") return new Response("Not found", { status: 404 });
     const sym = u.searchParams.get("s") || "";
     if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1m&range=1d&includePrePost=false`;
+    const isUS = !/\.(TW|TWO)$|^\^/.test(sym);
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(isUS ? sym.replace(/\./g, "-") : sym)}?interval=1m&range=1d&includePrePost=false`;
     let out = { error: "unavailable" }, status = 502;
     let q = null;
-    for (let k = 0; k < 3 && !q; k++) { if (k) await new Promise(r => setTimeout(r, 300)); try { q = await misQuote(sym); } catch (e) { misCookie = ""; misErr = "exc " + String(e).slice(0, 80); } }
+    for (let k = 0; k < (isUS ? 0 : 3) && !q; k++) { if (k) await new Promise(r => setTimeout(r, 300)); try { q = await misQuote(sym); } catch (e) { misCookie = ""; misErr = "exc " + String(e).slice(0, 80); } }
     if (q) lastGood[sym] = { q, at: Date.now() };
     else if (lastGood[sym] && Date.now() - lastGood[sym].at < 90000) q = { ...lastGood[sym].q, stale: true };   // 失敗就換新的連線 cookie 再試一次
     try { if (q) return new Response(JSON.stringify(q), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } }); } catch (e) { /* 改用 Yahoo */ }
     try {
       const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 20, cacheEverything: true } });
-      if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, src: "yahoo", delay: 20, dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }; status = 200; } }
+      if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, src: isUS ? "yahoo-us" : "yahoo", delay: isUS ? 0 : 20, dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }; status = 200; } }
     } catch (e) { /* 回傳 502 */ }
     if (status !== 200) out.dbg = { colo: (req.cf && req.cf.colo) || "", misErr };   // 失敗原因（在失敗之後才取，才是這次的結果）
     return new Response(JSON.stringify(out), { status, headers: { "content-type": "application/json", "cache-control": "public, max-age=5" } });

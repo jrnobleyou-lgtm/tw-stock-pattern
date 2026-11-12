@@ -421,7 +421,12 @@ function twMarketOpen(){
   const p=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Taipei",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});
   const m=(+p.hour%24)*60+ +p.minute; return !/Sat|Sun/.test(p.weekday)&&m>=540&&m<=815;
 }
+function usMarketOpen(){
+  const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});
+  const m=(+p.hour%24)*60+ +p.minute; return !/Sat|Sun/.test(p.weekday)&&m>=570&&m<=965;      // 美東 09:30–16:05
+}
 function startLive(c,sym,isIndex){
+  const US=D.market==="US", isOpen=US?usMarketOpen:twMarketOpen;
   clearTimeout(liveTimer);
   const tag=()=>modalEl&&modalEl.querySelector("#livetag");
   const run=async()=>{
@@ -430,13 +435,13 @@ function startLive(c,sym,isIndex){
       const r=await fetch("/api/quote?s="+encodeURIComponent(sym),{cache:"no-store"}); if(!r.ok) throw 0;
       const q=await r.json(); if(chart!==c||!q||!q.date||!(q.o>0&&q.h>0&&q.l>0&&q.c>0&&q.h>=q.l)) return;   // 價格不合理（0、缺值）就不採用
       const last=c.raw[c.raw.length-1];
-      const open=twMarketOpen();
+      const open=isOpen();
       if(last&&q.date<last.d) return;
       if(last&&q.date===last.d&&!open&&!(D.live&&D.live.date===q.date)) return;   // 收盤後，若靜態資料是官方收盤資料就不覆蓋；若是盤中暫時價（D.live）就用最後的即時價更新
       c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?(q.amt||0):Math.round(q.v/1000),f:1});
-      const t=tag(); if(t){const hm=q.hms||new Date((q.t+28800)*1000).toISOString().slice(11,16);t.style.display="";t.textContent=open?("盤中 "+hm+(q.src==="yahoo"?"（延遲約20分）":"")):("收盤 "+hm+(isIndex?"（官方資料稍後更新）":sym.endsWith(".TWO")?"（官方資料今天 15:10 後更新）":"（官方資料明天 06:00 後更新）"))}
+      const t=tag(); if(t){const hm=q.hms||(US?new Date(q.t*1000).toLocaleTimeString("zh-TW",{timeZone:"America/New_York",hour12:false,hour:"2-digit",minute:"2-digit"})+" 美東":new Date((q.t+28800)*1000).toISOString().slice(11,16));t.style.display="";t.textContent=open?("盤中 "+hm+(q.src==="yahoo"?"（延遲約20分）":"")):("收盤 "+hm+(US?"":isIndex?"（官方資料稍後更新）":sym.endsWith(".TWO")?"（官方資料今天 15:10 後更新）":"（官方資料明天 06:00 後更新）"))}
     }catch(_){}
-    if(chart===c&&twMarketOpen()) liveTimer=setTimeout(run,10000);
+    if(chart===c&&isOpen()) liveTimer=setTimeout(run,10000);
   };
   run();
 }
@@ -469,7 +474,7 @@ function openStock(code){
   }
   const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
   mountModal(s, head, {notes:notesHTML(s)});
-  if(D.market!=="US") startLive(chart, code+(s.market==="TPEX"?".TWO":".TW"), false);
+  startLive(chart, D.market==="US"?code:code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
 function openIndex(key){
   const ix=(D.index||{})[key]; if(!ix) return;
