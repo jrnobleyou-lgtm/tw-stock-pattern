@@ -1,0 +1,30 @@
+name: us
+on:
+  schedule:
+    - cron: '20 22 * * 1-5'      # 美股收盤後：台灣時間 週二～週六 06:20（夏令時間也已收盤）
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write                 # 用 GitHub 身分證明上傳到 Cloudflare，不需要存金鑰
+concurrency:
+  group: us
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 下載美股歷史資料與族群（Cloudflare 私人空間）
+        run: python3 scripts/us_sync.py pull
+      - name: 抓 Yahoo 最新日 K
+        run: python3 scripts/us_fetch.py
+      - name: 分析並產生頁面
+        run: |
+          python3 scripts/analyze.py us
+          python3 scripts/make_us_page.py
+      - name: 上傳到 Cloudflare（需要密碼才看得到）
+        run: python3 scripts/us_sync.py push

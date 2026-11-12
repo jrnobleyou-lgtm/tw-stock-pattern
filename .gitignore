@@ -34,3 +34,5 @@ data/intraday_meta.json
 data/us/
 data/prices_us.csv
 site/us/
+data/groups_us.csv
+data/groups_us_v1.csv

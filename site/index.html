@@ -164,7 +164,7 @@ svg text{fill:var(--fg);font-size:11px}
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">篩選</a></nav><div class="fz"><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">篩選</a><a href="/us/" id="n-mkt">美股</a></nav><div class="fz"><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
@@ -1062,6 +1062,7 @@ if(D.market==="US"){                 // 美股版：同一套頁面，換標題�
   $("#sq").placeholder="自訂搜尋：NVDA AAPL 微軟…";
   const p=document.querySelector("header>p"); if(p) p.textContent="每日美股收盤後自動更新，依族群統計美股有多少檔轉強、弱轉強、型態好、盤整、走弱。資料來源：Yahoo Finance。";
   $("#asof").textContent="資料日期 "+D.asof+"（美東）";
+  const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; nm.insertAdjacentHTML("afterend",'<a href="/us/admin">管理</a>');
 }
 renderIdx();if(D.market!=="US")pollIdx();
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的

@@ -2,5 +2,6 @@
   "name": "news-findstockpattern-swing-breakout",
   "main": "worker.js",
   "compatibility_date": "2025-01-01",
-  "assets": { "directory": "./" }
+  "assets": { "directory": "./" },
+  "kv_namespaces": [{ "binding": "US", "id": "a9956db1f402402cb08454fc7ae6ef03" }]
 }

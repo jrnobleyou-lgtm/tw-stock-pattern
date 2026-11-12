@@ -124,9 +124,117 @@ function txPick(list) {
   return { fut: f(fut), spot: f(spot) };
 }
 
+
+// ════════ 美股（需要密碼）：資料放在 Cloudflare KV（綁定名稱 US），不經過公開的 GitHub ════════
+// KV 內容：site/<路徑>＝美股頁面檔案；auth＝{salt,hash,iter}（PBKDF2-SHA256）；meta＝更新狀態；state/*＝每日更新用的歷史資料
+const enc = new TextEncoder();
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+const unhex = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+async function pbkdf2(pw, saltHex, iter) {
+  const k = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"]);
+  return hex(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: unhex(saltHex), iterations: iter }, k, 256));
+}
+async function hmac(keyHex, msg) {
+  const k = await crypto.subtle.importKey("raw", unhex(keyHex), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return hex(await crypto.subtle.sign("HMAC", k, enc.encode(msg)));
+}
+async function usAuthed(req, env) {
+  const auth = await env.US.get("auth", "json"); if (!auth) return false;
+  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)us_auth=(\d+)\.([0-9a-f]{64})/);
+  if (!m || Number(m[1]) < Date.now()) return false;
+  return (await hmac(auth.hash, m[1])) === m[2];               // 改密碼後舊的登入自動失效
+}
+const page = (title, body) => new Response(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="icon" href="/favicon.ico">
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#100c1f url(/bg.jpg) center/cover;font:15px/1.6 -apple-system,"Noto Sans TC","PingFang TC",sans-serif;color:#ece8f5}
+.box{background:rgba(20,16,32,.92);border:1px solid #3a3450;border-radius:12px;padding:24px;width:min(92vw,380px);display:flex;flex-direction:column;gap:12px}
+h1{font-size:19px;margin:0}input{font:inherit;padding:9px 11px;border-radius:8px;border:1px solid #3a3450;background:#0c0a16;color:#ece8f5}
+button{font:inherit;padding:9px;border-radius:8px;border:0;background:#f0d34a;color:#241c00;font-weight:700;cursor:pointer}.m{color:#9a93ad;font-size:13px}.e{color:#fb7185;font-size:13px}a{color:#c9b6ff}
+table{border-collapse:collapse;font-size:13px}td{padding:3px 8px 3px 0}</style></head><body><div class="box">${body}</div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+const loginForm = (err = "") => page("美股型態確認｜登入", `<h1>美股型態確認</h1><div class="m">請輸入密碼</div>
+<form method="post" action="/us/login" style="display:flex;flex-direction:column;gap:10px"><input type="password" name="pw" id="pw" autocomplete="current-password" autofocus required><button>登入</button></form>
+${err ? `<div class="e">${err}</div>` : ""}<a href="/" class="m">← 回台股</a>`);
+const TYPES = { html: "text/html; charset=utf-8", js: "application/javascript; charset=utf-8", json: "application/json", css: "text/css", png: "image/png", jpg: "image/jpeg" };
+async function usRoute(req, env, u) {
+  const p = u.pathname;
+  if (!env.US) return new Response("美股尚未設定", { status: 503 });
+  if (p === "/us/login" && req.method === "POST") {
+    const f = await req.formData(), auth = await env.US.get("auth", "json");
+    if (!auth || (await pbkdf2(String(f.get("pw") || ""), auth.salt, auth.iter)) !== auth.hash) return loginForm("密碼不對，請再試一次");
+    const exp = String(Date.now() + 30 * 864e5);
+    return new Response(null, { status: 303, headers: { location: "/us/", "set-cookie": `us_auth=${exp}.${await hmac(auth.hash, exp)}; Path=/us; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
+  }
+  if (p === "/us/logout") return new Response(null, { status: 303, headers: { location: "/us/login", "set-cookie": "us_auth=; Path=/us; Max-Age=0; HttpOnly; Secure; SameSite=Lax" } });
+  if (!(await usAuthed(req, env))) return p === "/us/login" ? loginForm() : new Response(null, { status: 303, headers: { location: "/us/login" } });
+  if (p === "/us/login") return new Response(null, { status: 303, headers: { location: "/us/" } });
+  if (p === "/us/admin") {
+    let msg = "";
+    if (req.method === "POST") {
+      const f = await req.formData(), auth = await env.US.get("auth", "json");
+      const cur = String(f.get("cur") || ""), n1 = String(f.get("n1") || ""), n2 = String(f.get("n2") || "");
+      if ((await pbkdf2(cur, auth.salt, auth.iter)) !== auth.hash) msg = `<div class="e">目前密碼不對</div>`;
+      else if (n1.length < 6) msg = `<div class="e">新密碼至少 6 個字</div>`;
+      else if (n1 !== n2) msg = `<div class="e">兩次輸入的新密碼不一樣</div>`;
+      else {
+        const salt = hex(crypto.getRandomValues(new Uint8Array(16))), iter = 100000;
+        const hash = await pbkdf2(n1, salt, iter);
+        await env.US.put("auth", JSON.stringify({ salt, hash, iter }));
+        const exp = String(Date.now() + 30 * 864e5);
+        return new Response(null, { status: 303, headers: { location: "/us/admin?ok=1", "set-cookie": `us_auth=${exp}.${await hmac(hash, exp)}; Path=/us; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
+      }
+    }
+    if (u.searchParams.get("ok")) msg = `<div class="m" style="color:#7ee0a1">密碼已更新，其他裝置需要重新登入。</div>`;
+    const meta = (await env.US.get("meta", "json")) || {};
+    const rows = [["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", (meta.missing || []).join("、") || "無"]]
+      .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
+    return page("美股｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
+<h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
+<input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
+<div class="m"><a href="/us/">← 回美股</a>　<a href="/us/logout">登出</a></div>`);
+  }
+  let key = "site/" + (p.slice(4) || "index.html");
+  if (key.endsWith("/")) key += "index.html";
+  const v = await env.US.get(key, "arrayBuffer");
+  if (!v) return new Response("找不到", { status: 404 });
+  const ext = key.split(".").pop();
+  return new Response(v, { headers: { "content-type": TYPES[ext] || "application/octet-stream", "cache-control": "private, no-cache" } });
+}
+// GitHub Actions 的 OIDC 身分證明：只有本專案 main 分支上的工作流程能上傳，不需要把金鑰放進 GitHub
+let jwks = null, jwksAt = 0;
+const b64u = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function githubOidcOk(tok) {
+  try {
+    const [h, p, sig] = tok.split("."); const head = JSON.parse(new TextDecoder().decode(b64u(h))), c = JSON.parse(new TextDecoder().decode(b64u(p)));
+    if (c.iss !== "https://token.actions.githubusercontent.com" || c.aud !== "tw-stock-us" || c.exp * 1000 < Date.now()) return false;
+    if (c.repository !== "jrnobleyou-lgtm/tw-stock-pattern" || c.ref !== "refs/heads/main") return false;
+    if (!jwks || Date.now() - jwksAt > 3600e3) { jwks = (await (await fetch("https://token.actions.githubusercontent.com/.well-known/jwks")).json()).keys; jwksAt = Date.now(); }
+    const jwk = jwks.find(k => k.kid === head.kid); if (!jwk) return false;
+    const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64u(sig), enc.encode(h + "." + p));
+  } catch (e) { return false; }
+}
+async function usIngest(req, env, u) {          // 每日更新程式用：上傳／下載 KV。GitHub Actions 用 OIDC，手動用 X-Ingest-Key
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const ok = (env.US_INGEST_KEY && req.headers.get("x-ingest-key") === env.US_INGEST_KEY) || (bearer && await githubOidcOk(bearer));
+  if (!env.US || !ok) return new Response("forbidden", { status: 403 });
+  if (req.method === "GET") {
+    const v = await env.US.get(u.searchParams.get("key") || "", "arrayBuffer");
+    return v ? new Response(v) : new Response("not found", { status: 404 });
+  }
+  const j = await req.json();
+  for (const [k, b64] of Object.entries(j.files || {})) {
+    if (!/^(site|state)\//.test(k)) continue;
+    await env.US.put(k, Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+  }
+  if (j.meta) await env.US.put("meta", JSON.stringify(j.meta));
+  return new Response(JSON.stringify({ ok: true, n: Object.keys(j.files || {}).length }), { headers: { "content-type": "application/json" } });
+}
+
 export default {
-  async fetch(req) {
+  async fetch(req, env) {
     const u = new URL(req.url);
+    if (u.pathname === "/us" ) return new Response(null, { status: 301, headers: { location: "/us/" } });
+    if (u.pathname.startsWith("/us/")) return usRoute(req, env, u);
+    if (u.pathname === "/api/us-ingest") return usIngest(req, env, u);
     if (u.pathname === "/api/tx") {
       try {
         const [d, n] = await Promise.all([taifexList(0), taifexList(1)]);
