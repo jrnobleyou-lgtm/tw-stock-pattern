@@ -8,7 +8,7 @@
   - 收盤可小幅越界（3% 內），但不能連續 2 天收在上下緣之外。
   - 區間不能跨過一次突破或跌破：區間內若有連 3 日收盤站上之前那段的最高價（或跌破最低價），
     ，就代表股價已經走出新的一段，舊區間到那裡結束。
-  - 上升通道不算盤整：區間內收盤趨勢線漲幅 ≥ 10% 且走得很穩（R² ≥ 0.75）。
+  - 太斜不算盤整：區間內收盤趨勢線從頭到尾的漲跌超過框高度的 6 成；或區間內收盤趨勢線漲或跌 ≥ 10% 且走得很穩（R² ≥ 0.75），沿著上升／下降趨勢線走。
   - 突破：收盤站上上緣且量達區間均量 1.5 倍 → 突破訊號（第 1 日）；3 日內收回上緣之下 = 假突破，區間繼續；
           連 3 日守在上緣之上 = 突破確認（壓力轉支撐），區間結束，之後跌回也不再接回。
           沒帶量但收盤離開區間 → 區間結束，標示「無量突破待追蹤」，不算轉強。
@@ -23,7 +23,8 @@ MAX_RANGE = 0.20       # 波動小的股票
 MAX_RANGE_VOL = 0.25   # 波動大的股票（近 60 日平均每日振幅 ≥ VOL_AMP）
 VOL_AMP = 0.03
 STEP_TOL = 0.0          # 收盤超過之前那段的最高／最低價就算（連 3 日）
-RISE_PCT = 0.10        # 上升通道：區間內趨勢線漲幅 ≥ 10%
+RISE_PCT = 0.10        # 趨勢通道：區間內趨勢線漲跌幅 ≥ 10%
+TREND_RATIO = 0.6      # 趨勢線從頭到尾的漲跌 > 框高度的 6 成：太斜，是趨勢不是盤整
 RISE_R2 = 0.75         # 且走得很穩（直線貼合度 R² ≥ 0.75）→ 不算盤整
 STEP_DAYS = 3          # 區間內若有連 3 日收盤站上（或跌破）之前那段的最高價（最低價），代表已經突破／跌破，區間不能跨過去
 TOUCH_TOL = 0.015
@@ -134,18 +135,19 @@ def _has_step(B, s, e):
     return False
 
 
-def _rising_channel(B, s, e):
-    """沿著上升趨勢線穩定往上走（漲幅大且很貼近一條直線）就不算盤整。下降的不在此限，交給跌破規則判斷。"""
+def _rising_channel(B, s, e, height):
+    """沿著上升或下降趨勢線穩定走（漲跌幅大且很貼近一條直線）就不算盤整。"""
     n = e - s + 1
     cs = [B[s + k]["c"] for k in range(n)]
     mx = (n - 1) / 2; my = sum(cs) / n
     sxx = sum((x - mx) ** 2 for x in range(n)) or 1
     k = sum((x - mx) * (y - my) for x, y in enumerate(cs)) / sxx
     ss = sum((y - my) ** 2 for y in cs)
-    if not ss or k <= 0:
+    if not ss:
         return False
     r2 = 1 - sum((y - (my + k * (x - mx))) ** 2 for x, y in enumerate(cs)) / ss
-    return k * (n - 1) / my >= RISE_PCT and r2 >= RISE_R2
+    change = abs(k * (n - 1))
+    return change > TREND_RATIO * height or (change / my >= RISE_PCT and r2 >= RISE_R2)
 
 
 def _amp(B, e, n=60):
@@ -181,7 +183,7 @@ def _box_in_window(B, a, e):
             continue
         if max(B[i]["h"] for i in range(s, e + 1)) > hi * (1 + MAX_WICK) or min(B[i]["l"] for i in range(s, e + 1)) < lo * (1 - MAX_WICK):
             continue                                    # 區間內曾大幅衝出上下緣（漲快跌快），不算盤整
-        if _has_step(B, s, e) or _rising_channel(B, s, e):
+        if _has_step(B, s, e) or _rising_channel(B, s, e, hi - lo):
             continue                                    # 中途已經突破或跌破過一次，舊區間到那裡就結束，不能和新的一段合成一個框
         avg = _closes_ok(B, s, e, hi, lo)
         if avg is None:
