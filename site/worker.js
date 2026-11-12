@@ -67,7 +67,7 @@ async function misQuote(sym) {
 }
 
 // 批次：給排程程式一次取多檔（上限 100 檔），回傳證交所原始欄位
-const EX = /^(tse|otc)_[0-9a-z]{4,6}\.tw$/;
+const EX = /^(tse|otc)_([0-9a-z]{4,6}|t00|o00)\.tw$/;
 async function misBatch(ex) {
   const list = ex.split("|").filter(Boolean);
   if (!list.length || list.length > 100 || !list.every(x => EX.test(x))) return null;
@@ -82,7 +82,7 @@ async function misBatch(ex) {
       const r = await fetch(`${MIS_URL}api/getStockInfo.jsp?ex_ch=${list.join("%7C")}&json=1&delay=0&_=${now}`, {
         headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": misCookie, "accept": "application/json" },
       });
-      if (r.ok) { const j = JSON.parse(await r.text()); if (j && j.msgArray) return j.msgArray.map(m => ({ c: m.c, ex: m.ex, z: m.z, o: m.o, h: m.h, l: m.l, y: m.y, v: m.v, d: m.d, t: m.t, b: m.b })); }
+      if (r.ok) { const j = JSON.parse(await r.text()); if (j && j.msgArray) return j.msgArray.map(m => ({ c: m.c, ex: m.ex, z: m.z, o: m.o, h: m.h, l: m.l, y: m.y, v: m.v, tv: m.tv, d: m.d, t: m.t, b: m.b, ...(m.c === 't00' || m.c === 'o00' ? { raw: m } : {}) })); }
     } catch (e) { /* 重試 */ }
     misCookie = ""; await new Promise(r => setTimeout(r, 300));
   }
