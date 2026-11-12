@@ -630,15 +630,16 @@ class Chart{
     this.ma={}; for(const n of MA_ALL) this.ma[n]=sma(cl,n);
     this.cache={};
     this.n=Math.min(TF_N[tf],this.bars.length); this.end=this.bars.length;
-    this.sel=null; this.range=null; this.active=null;
+    this.sel=this.bars.length?this.bars.length-1:null; this.range=null; this.active=null;     // 打開時預設點選最新那根 K 棒
     this.build();
   }
   setLive(bar){
-    const last=this.raw[this.raw.length-1], atEnd=this.end===this.bars.length;
+    const last=this.raw[this.raw.length-1], atEnd=this.end===this.bars.length, onLast=this.sel===this.bars.length-1;
     if(last&&last.d===bar.d) this.raw[this.raw.length-1]=bar; else if(!last||bar.d>last.d) this.raw.push(bar); else return;
     this.bars=aggregate(this.adjOn?adjustBars(this.raw):this.raw,this.tf);
     const cl=this.bars.map(b=>b.c); for(const n of MA_ALL) this.ma[n]=sma(cl,n);
     this.cache={}; if(atEnd) this.end=this.bars.length;
+    if(onLast) this.sel=this.bars.length-1;          // 原本點在最新那根：即時新增一根時跟著移到新的最新一根
     this.draw();
   }
   get(k){ if(!this.cache[k]) this.cache[k]=({boll:calcBoll,dmi:calcDMI,kd:calcKD,macd:calcMACD})[k](this.bars); return this.cache[k] }
@@ -721,7 +722,7 @@ class Chart{
     if(a==="newer") this.end=Math.min(N,this.end+Math.ceil(this.n/3));
     if(a==="out"){this.n=Math.min(N,Math.round(this.n*1.4));this.end=Math.max(this.n,Math.min(N,this.end))}
     if(a==="in"){this.n=Math.max(15,Math.round(this.n/1.4))}
-    if(a==="reset"){this.n=Math.min(TF_N[this.tf],N);this.end=N;this.sel=null;this.range=null;this.active=null}
+    if(a==="reset"){this.n=Math.min(TF_N[this.tf],N);this.end=N;this.sel=N-1;this.range=null;this.active=null}
     this.draw();
   }
   fit(a,b){const N=this.bars.length,span=b-a+1;this.n=Math.max(15,Math.min(N,span+6));this.end=Math.min(N,Math.max(this.n,b+3));this.draw()}
