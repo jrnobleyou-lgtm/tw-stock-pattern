@@ -10,8 +10,9 @@ import csv, datetime, json, os, sys, time, urllib.request, urllib.error
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HIST = os.path.join(ROOT, "data", "us", "hist.csv")
-KEEP_DAYS = 1100
-GAP = 0.8
+KEEP_DAYS = 800      # 約 550 根日 K（圖最多顯示 520 根）
+GAP = 0.25           # 每條執行緒兩次請求的間隔
+WORKERS = 6
 
 def ysym(code):
     return code.replace(".", "-")
@@ -52,7 +53,10 @@ def parse(j):
     ev = r.get("events") or {}
     return out, bool(ev.get("dividends") or ev.get("splits"))
 
-codes = [r["代號"] for r in csv.DictReader(open(os.path.join(ROOT, "data", "groups_us.csv"), encoding="utf-8"))]
+GFILE = os.path.join(ROOT, "data", "groups_us_all.csv")
+if not os.path.exists(GFILE):
+    GFILE = os.path.join(ROOT, "data", "groups_us.csv")
+codes = [r["代號"] for r in csv.DictReader(open(GFILE, encoding="utf-8"))]
 hist = {}
 if os.path.exists(HIST):
     for r in csv.DictReader(open(HIST, encoding="utf-8")):
@@ -64,27 +68,37 @@ try:
 except RateLimited:
     sys.exit("Yahoo 限流（429），稍後再跑")
 print("Yahoo 最新交易日", latest)
-done = rebuilt = 0
-try:
-    for code in codes:
-        have = hist.get(code, {})
-        if have and latest and max(have) >= latest:
-            continue
+import threading
+from concurrent.futures import ThreadPoolExecutor
+stop = threading.Event(); lock = threading.Lock(); stat = {"done": 0, "rebuilt": 0}
+def work(code):
+    if stop.is_set():
+        return
+    have = hist.get(code, {})
+    if have and latest and max(have) >= latest:
+        return
+    try:
         time.sleep(GAP)
         full = not have
-        rows, has_ev = parse(chart(code, "5y" if full else "5d"))
+        rows, has_ev = parse(chart(code, "3y" if full else "5d"))
         if not full and has_ev:                      # 近幾天有分割或除息：整檔重建，讓舊資料的還原係數跟著更新
-            time.sleep(GAP); rows, _ = parse(chart(code, "5y")); full = True; rebuilt += 1
-        if not rows:
-            print("  沒有資料", code); continue
+            time.sleep(GAP); rows, _ = parse(chart(code, "3y")); full = True
+            with lock: stat["rebuilt"] += 1
+    except RateLimited:
+        stop.set(); return
+    if not rows:
+        return
+    with lock:
         if full:
             hist[code] = {}
         for r in rows:
             hist.setdefault(code, {})[r[0]] = r
-        done += 1
-except RateLimited:
-    print("遇到 429，先停在這裡，下次從斷點接著抓")
-
+        stat["done"] += 1
+with ThreadPoolExecutor(WORKERS) as ex:
+    list(ex.map(work, codes))
+if stop.is_set():
+    print("遇到 429（Yahoo 限流），先停在這裡，下次從斷點接著抓")
+done, rebuilt = stat["done"], stat["rebuilt"]
 cut = (datetime.date.today() - datetime.timedelta(days=KEEP_DAYS)).isoformat()
 with open(HIST, "w", newline="", encoding="utf-8") as f:
     w = csv.writer(f); w.writerow(["date", "code", "open", "high", "low", "close", "volume", "f"])
@@ -92,7 +106,7 @@ with open(HIST, "w", newline="", encoding="utf-8") as f:
         for d in sorted(hist[code]):
             if d >= cut:
                 w.writerow([d, code] + hist[code][d][1:])
-names = {r["代號"]: r["名稱"] for r in csv.DictReader(open(os.path.join(ROOT, "data", "groups_us.csv"), encoding="utf-8"))}
+names = {r["代號"]: r["名稱"] for r in csv.DictReader(open(GFILE, encoding="utf-8"))}
 with open(os.path.join(ROOT, "data", "prices_us.csv"), "w", newline="", encoding="utf-8") as f:
     w = csv.writer(f); w.writerow(["date", "code", "name", "market", "open", "high", "low", "close", "volume", "f"])
     for code in sorted(hist):

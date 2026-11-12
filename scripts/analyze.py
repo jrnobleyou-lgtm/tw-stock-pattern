@@ -42,7 +42,7 @@ def main():
     for code_, s_ in by.items():
         m_ = mk.get(code_)
         asof_m[m_] = max(asof_m.get(m_, ""), max(s_))
-    groups = list(csv.DictReader(open(os.path.join(ROOT, "data", "groups_us.csv" if us else "groups_tw_all.csv" if full else "groups_tw.csv"), encoding="utf-8")))
+    groups = list(csv.DictReader(open(os.path.join(ROOT, "data", ("groups_us_all.csv" if os.path.exists(os.path.join(ROOT, "data", "groups_us_all.csv")) else "groups_us.csv") if us else "groups_tw_all.csv" if full else "groups_tw.csv"), encoding="utf-8")))
     if full:
         os.makedirs(os.path.join(OUT, "s"), exist_ok=True)
 
