@@ -150,23 +150,23 @@ const page = (title, body) => new Response(`<!doctype html><html lang="zh-Hant">
 h1{font-size:19px;margin:0}input{font:inherit;padding:9px 11px;border-radius:8px;border:1px solid #3a3450;background:#0c0a16;color:#ece8f5}
 button{font:inherit;padding:9px;border-radius:8px;border:0;background:#f0d34a;color:#241c00;font-weight:700;cursor:pointer}.m{color:#9a93ad;font-size:13px}.e{color:#fb7185;font-size:13px}a{color:#c9b6ff}
 table{border-collapse:collapse;font-size:13px}td{padding:3px 8px 3px 0}</style></head><body><div class="box">${body}</div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
-const loginForm = (err = "") => page("美股型態確認｜登入", `<h1>美股型態確認</h1><div class="m">請輸入密碼</div>
-<form method="post" action="/us/login" style="display:flex;flex-direction:column;gap:10px"><input type="password" name="pw" id="pw" autocomplete="current-password" autofocus required><button>登入</button></form>
+const loginForm = (err = "") => page("管理者專區", `<h1>管理者專區</h1><div class="m">請輸入密碼</div>
+<form method="post" action="/admin/login" style="display:flex;flex-direction:column;gap:10px"><input type="password" name="pw" id="pw" autocomplete="current-password" autofocus required><button>登入</button></form>
 ${err ? `<div class="e">${err}</div>` : ""}<a href="/" class="m">← 回台股</a>`);
 const TYPES = { html: "text/html; charset=utf-8", js: "application/javascript; charset=utf-8", json: "application/json", css: "text/css", png: "image/png", jpg: "image/jpeg" };
 async function usRoute(req, env, u) {
   const p = u.pathname;
   if (!env.US) return new Response("美股尚未設定", { status: 503 });
-  if (p === "/us/login" && req.method === "POST") {
+  if (p === "/admin/login" && req.method === "POST") {
     const f = await req.formData(), auth = await env.US.get("auth", "json");
     if (!auth || (await pbkdf2(String(f.get("pw") || ""), auth.salt, auth.iter)) !== auth.hash) return loginForm("密碼不對，請再試一次");
     const exp = String(Date.now() + 30 * 864e5);
-    return new Response(null, { status: 303, headers: { location: "/us/", "set-cookie": `us_auth=${exp}.${await hmac(auth.hash, exp)}; Path=/us; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
+    return new Response(null, { status: 303, headers: { location: "/admin/", "set-cookie": `us_auth=${exp}.${await hmac(auth.hash, exp)}; Path=/admin; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
   }
-  if (p === "/us/logout") return new Response(null, { status: 303, headers: { location: "/us/login", "set-cookie": "us_auth=; Path=/us; Max-Age=0; HttpOnly; Secure; SameSite=Lax" } });
-  if (!(await usAuthed(req, env))) return p === "/us/login" ? loginForm() : new Response(null, { status: 303, headers: { location: "/us/login" } });
-  if (p === "/us/login") return new Response(null, { status: 303, headers: { location: "/us/" } });
-  if (p === "/us/admin") {
+  if (p === "/admin/logout") return new Response(null, { status: 303, headers: { location: "/admin/login", "set-cookie": "us_auth=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Lax" } });
+  if (!(await usAuthed(req, env))) return p === "/admin/login" ? loginForm() : new Response(null, { status: 303, headers: { location: "/admin/login" } });
+  if (p === "/admin/login") return new Response(null, { status: 303, headers: { location: "/admin/" } });
+  if (p === "/admin/settings") {
     let msg = "";
     if (req.method === "POST") {
       const f = await req.formData(), auth = await env.US.get("auth", "json");
@@ -179,19 +179,19 @@ async function usRoute(req, env, u) {
         const hash = await pbkdf2(n1, salt, iter);
         await env.US.put("auth", JSON.stringify({ salt, hash, iter }));
         const exp = String(Date.now() + 30 * 864e5);
-        return new Response(null, { status: 303, headers: { location: "/us/admin?ok=1", "set-cookie": `us_auth=${exp}.${await hmac(hash, exp)}; Path=/us; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
+        return new Response(null, { status: 303, headers: { location: "/admin/settings?ok=1", "set-cookie": `us_auth=${exp}.${await hmac(hash, exp)}; Path=/admin; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
       }
     }
     if (u.searchParams.get("ok")) msg = `<div class="m" style="color:#7ee0a1">密碼已更新，其他裝置需要重新登入。</div>`;
     const meta = (await env.US.get("meta", "json")) || {};
     const rows = [["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", (meta.missing || []).join("、") || "無"]]
       .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
-    return page("美股｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
+    return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
 <input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
-<div class="m"><a href="/us/">← 回美股</a>　<a href="/us/logout">登出</a></div>`);
+<div class="m"><a href="/admin/">← 回管理者專區</a>　<a href="/admin/logout">登出</a></div>`);
   }
-  let key = "site/" + (p.slice(4) || "index.html");
+  let key = "site/" + (p.slice(7) || "index.html");
   if (key.endsWith("/")) key += "index.html";
   const v = await env.US.get(key, "arrayBuffer");
   if (!v) return new Response("找不到", { status: 404 });
@@ -232,8 +232,8 @@ async function usIngest(req, env, u) {          // 每日更新程式用：上�
 export default {
   async fetch(req, env) {
     const u = new URL(req.url);
-    if (u.pathname === "/us" ) return new Response(null, { status: 301, headers: { location: "/us/" } });
-    if (u.pathname.startsWith("/us/")) return usRoute(req, env, u);
+    if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
+    if (u.pathname.startsWith("/admin/")) return usRoute(req, env, u);
     if (u.pathname === "/api/us-ingest") return usIngest(req, env, u);
     if (u.pathname === "/api/tx") {
       try {

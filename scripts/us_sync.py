@@ -1,6 +1,6 @@
 """美股資料與 Cloudflare KV 同步（資料不進公開的 GitHub）。
   us_sync.py pull  → 下載 state/hist.csv.gz、state/groups_us.csv 到 data/
-  us_sync.py push  → 上傳 site/us/ 的頁面檔案、歷史資料與狀態
+  us_sync.py push  → 上傳 site/admin/ 的頁面檔案、歷史資料與狀態
 身分：GitHub Actions 用 OIDC（不需要金鑰）；本機用環境變數 INGEST_KEY。"""
 import base64, csv, datetime, glob, gzip, hashlib, json, os, sys, urllib.request
 
