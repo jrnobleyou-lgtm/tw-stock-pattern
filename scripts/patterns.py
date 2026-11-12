@@ -106,6 +106,8 @@ def double_bottom_top(B, T, P):
         (i1, p1, t1), (i2, p2, t2), (i3, p3, t3) = P[k], P[k + 1], P[k + 2]
         if i3 < T - 45 or i3 - i1 < 10:
             continue
+        if k + 2 == len(P) - 1:
+            continue                                 # 第二個頂／底還在走（價格還沒從那裡反轉），不能算成形
         if t1 == "L" and t3 == "L":              # 雙重底
             if abs(p1 - p3) / min(p1, p3) > 0.04 or (p2 - max(p1, p3)) / max(p1, p3) < 0.08:
                 continue

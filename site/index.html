@@ -190,7 +190,8 @@ function tags(t){return (t||[]).map(x=>`<span class="tag ${tagCls(x)}">${x}</spa
 function pct(n,t){return t? (n/t*100).toFixed(0)+"%":"-"}
 function chgColor(v){return v>0?"var(--up)":v<0?"var(--down)":"var(--fg)"}
 function fmt(v){return v==null?"-":(v>=1000?v.toFixed(0):v>=100?v.toFixed(1):v.toFixed(2))}
-function stockBars(s){return s.bars.map(r=>({d:typeof r[0]==="string"?r[0]:D.dates[r[0]],o:r[1],h:r[2],l:r[3],c:r[4],v:r[5],f:r[6]==null?1:r[6]}))}
+function stockBars(s){const US=D.market==="US"&&s.market==="US";return s.bars.map(r=>({d:typeof r[0]==="string"?r[0]:D.dates[r[0]],o:r[1],h:r[2],l:r[3],c:r[4],v:US?r[5]*1000*r[4]:r[5],f:r[6]==null?1:r[6]}))}   // 美股：成交值（美元）＝千股×1000×收盤
+function fmtUSD(v){return v>=1e8?(v/1e8).toFixed(1)+" 億":v>=1e7?(v/1e7).toFixed(1)+" 千萬":(v/1e6).toFixed(1)+" 百萬"}
 
 /* ───────── 右上角：台股大盤 ───────── */
 /* ───────── 台指期：交易時段與即時資料 ───────── */
@@ -438,7 +439,7 @@ function startLive(c,sym,isIndex){
       const open=isOpen();
       if(last&&q.date<last.d) return;
       if(last&&q.date===last.d&&!open&&!(D.live&&D.live.date===q.date)) return;   // 收盤後，若靜態資料是官方收盤資料就不覆蓋；若是盤中暫時價（D.live）就用最後的即時價更新
-      c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?(q.amt||0):Math.round(q.v/1000),f:1});
+      c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?(q.amt||0):US?q.v*q.c:Math.round(q.v/1000),f:1});
       const t=tag(); if(t){const hm=q.hms||(US?new Date(q.t*1000).toLocaleTimeString("zh-TW",{timeZone:"America/New_York",hour12:false,hour:"2-digit",minute:"2-digit"})+" 美東":new Date((q.t+28800)*1000).toISOString().slice(11,16));t.style.display="";t.textContent=open?("盤中 "+hm+(q.src==="yahoo"?"（延遲約20分）":"")):("收盤 "+hm+(US?"":isIndex?"（官方資料稍後更新）":sym.endsWith(".TWO")?"（官方資料今天 15:10 後更新）":"（官方資料明天 06:00 後更新）"))}
     }catch(_){}
     if(chart===c&&isOpen()) liveTimer=setTimeout(run,10000);
@@ -1005,7 +1006,7 @@ class Chart{
     }
     cv.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;inset:0;display:block" draggable="false">${o}</svg>`;
     // ── 資料列（上方一排）
-    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月", vlab=(s.code==="TWII"||s.code==="OTC")?"成交值(億)":(s.code==="TX"||s.code==="TXD"||s.code==="TXN")?"成交量(口)":D.market==="US"?"成交量(千股)":"成交量(張)";
+    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月", vlab=(s.code==="TWII"||s.code==="OTC")?"成交值(億)":(s.code==="TX"||s.code==="TXD"||s.code==="TXN")?"成交量(口)":D.market==="US"?"成交值(美元)":"成交量(張)";
     let html;
     const ii=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;          // 沒點選時預設顯示畫面最右邊（最新）那根
     if(ii>=0&&ii<B.length){
@@ -1017,7 +1018,7 @@ class Chart{
       const chg=(b.c/prev-1)*100;
       const dl=this.tf==="D"?b.d:this.tf==="W"?`${b.s} ~ ${b.d.slice(5)}`:b.d.slice(0,7);
       html=`<div><span>${lab}</span><b>${dl}</b></div><div><span>開盤</span><b>${fmt(b.o)}</b></div><div><span>最高</span><b>${fmt(b.h)}</b></div><div><span>最低</span><b>${fmt(b.l)}</b></div>`+
-        `<div><span>收盤</span><b style="color:${chgColor(chg)}">${fmt(b.c)}</b></div><div><span>漲跌幅</span><b style="color:${chgColor(chg)}">${chg>0?"+":""}${chg.toFixed(2)}%</b></div>`+(hasVol?`<div><span>${vlab}</span><b>${b.v.toLocaleString()}</b></div>`:"");
+        `<div><span>收盤</span><b style="color:${chgColor(chg)}">${fmt(b.c)}</b></div><div><span>漲跌幅</span><b style="color:${chgColor(chg)}">${chg>0?"+":""}${chg.toFixed(2)}%</b></div>`+(hasVol?`<div><span>${vlab}</span><b>${D.market==="US"&&s.market==="US"?fmtUSD(b.v):b.v.toLocaleString()}</b></div>`:"");
     } else html=[lab,"開盤","最高","最低","收盤","漲跌幅"].concat(hasVol?[vlab]:[]).map(t=>`<div><span>${t}</span><b class="mute">—</b></div>`).join("");
     this.el.querySelector("#info").innerHTML=html;
     // 右側：選取提示列
