@@ -434,7 +434,7 @@ function startLive(c,sym,isIndex){
       if(last&&q.date<last.d) return;
       if(last&&q.date===last.d&&!open&&!(D.live&&D.live.date===q.date)) return;   // 收盤後，若靜態資料是官方收盤資料就不覆蓋；若是盤中暫時價（D.live）就用最後的即時價更新
       c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?(q.amt||0):Math.round(q.v/1000),f:1});
-      const t=tag(); if(t){const hm=q.hms||new Date((q.t+28800)*1000).toISOString().slice(11,16);t.style.display="";t.textContent=(open?"盤中 ":"即時 ")+hm+(q.src==="yahoo"?"（延遲約20分）":"")}
+      const t=tag(); if(t){const hm=q.hms||new Date((q.t+28800)*1000).toISOString().slice(11,16);t.style.display="";t.textContent=open?("盤中 "+hm+(q.src==="yahoo"?"（延遲約20分）":"")):("收盤 "+hm+(isIndex?"（官方資料稍後更新）":sym.endsWith(".TWO")?"（官方資料今天 15:10 後更新）":"（官方資料明天 06:00 後更新）"))}
     }catch(_){}
     if(chart===c&&twMarketOpen()) liveTimer=setTimeout(run,10000);
   };
