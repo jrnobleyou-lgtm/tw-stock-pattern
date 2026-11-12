@@ -93,6 +93,17 @@ async function misBatch(ex) {
 export default {
   async fetch(req) {
     const u = new URL(req.url);
+    if (u.pathname === "/api/misraw") {      // 除錯用：只允許證交所即時行情網站的 stock/data、stock/api 路徑
+      const path = u.searchParams.get("p") || "";
+      if (!/^stock\/(data|api)\/[A-Za-z_]+\.jsp(\?[A-Za-z0-9_=&.|%]*)?$/.test(path)) return new Response("bad path", { status: 400 });
+      try {
+        const r0 = await fetch(MIS_URL + "index.jsp", { headers: { "user-agent": "Mozilla/5.0" } });
+        const sc = r0.headers.getSetCookie ? r0.headers.getSetCookie() : [];
+        const ck = sc.map(x => x.split(";")[0]).join("; ");
+        const r = await fetch("https://mis.twse.com.tw/" + path, { headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": ck } });
+        return new Response((await r.text()).slice(0, 4000), { status: r.status, headers: { "content-type": "text/plain; charset=utf-8" } });
+      } catch (e) { return new Response("err " + e, { status: 502 }); }
+    }
     if (u.pathname === "/api/mis") {
       const arr = await misBatch(u.searchParams.get("ex_ch") || "");
       return new Response(JSON.stringify(arr ? { msgArray: arr } : { error: "unavailable" }), { status: arr ? 200 : 502, headers: { "content-type": "application/json", "cache-control": "no-store" } });
