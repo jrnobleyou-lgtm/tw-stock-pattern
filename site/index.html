@@ -287,10 +287,11 @@ function group(name){
 }
 const gtxt=s=>(s.groups||[s.group]).join("、");
 function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
-function stockTable(list,withGroup){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th><th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
+function turnover(s){const v=s.close*s.vol*1000;return D.market==="US"?fmtUSD(v):(v/1e8>=1?(v/1e8).toFixed(1)+" 億":(v/1e4).toFixed(0)+" 萬")}
+function stockTable(list,withGroup,showVal){
+  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th><th class="cc">收盤</th><th class="cc">漲跌%</th>${showVal?'<th class="cc">成交值</th>':""}</tr></thead><tbody>`;
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td>${s.code} ${s.name}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}</tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -298,7 +299,7 @@ function stateList(st){
   if(!STATES.includes(st)){location.hash="";return}
   const list=Object.values(D.stocks).filter(x=>x.state===st).sort((a,b)=>b.close*b.vol-a.close*a.vol);
   let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">依成交值由大到小排列，點股票看 K 線圖。</p>`;
-  h+=stockTable(list,true);
+  h+=stockTable(list,true,true);
   $("#app").innerHTML=h; bindRows();
 }
 function bindRows(){document.querySelectorAll("tr.row[data-c]").forEach(r=>r.onclick=()=>{location.hash="s-"+r.dataset.c})}
@@ -412,7 +413,7 @@ function mountModal(s, headHTML, opts){
   const el=document.createElement("div"); el.className="modal";
   el.innerHTML=`<div class="mpanel"><div class="mhead">${headHTML}<button class="btn" id="mclose">✕ 關閉（ESC）</button></div><div id="chart"></div></div>`;
   el.addEventListener("click",e=>{ if(e.target===el) goBack(); });                       // 點視窗外：關閉返回
-  el.querySelector(".mpanel").addEventListener("click",e=>{ if(!e.target.closest("#cv") && !e.target.closest("button") && true) chart && chart.clear(); });   // 圖以外的空白處（含右側欄、下方資訊欄）點一下就關閉 K 棒資訊
+  el.querySelector(".mpanel").addEventListener("click",e=>{ if(!e.target.closest("#cv") && !e.target.closest("button") && !e.target.closest("input,textarea,select,label")) chart && chart.clear(); });   // 圖以外的空白處（含右側欄、下方資訊欄）點一下就關閉 K 棒資訊
   el.querySelector("#mclose").onclick=goBack;
   document.body.appendChild(el); modalEl=el;
   chart=new Chart(el.querySelector("#chart"), s, opts||{});
@@ -617,6 +618,8 @@ class Chart{
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
+    this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[];
+    if(/^[A-Za-z0-9.\-^]{1,12}$/.test(s.code)) fetch(`/api/draw?m=${D.market==="US"?"US":"TW"}&c=${encodeURIComponent(s.code)}`,{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(v=>{if(Array.isArray(v)&&v.length){this.drawings=v;this.draw()}}).catch(()=>{});
     this.custom=loadRanges(s.code); this.ptrs=new Map();
     this.setTF("D");
   }
@@ -645,7 +648,7 @@ class Chart{
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
       this.btn("geo","形態",this.geo);
     const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
-    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup);
+    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
     const allOn=MA_ALL.every(n=>this.maOn[n]);
     const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"✓ 全選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${this.maOn[n]?"✓ ":""}${n}日</button>`).join("")}</div>`:"";
@@ -689,6 +692,16 @@ class Chart{
     if(a==="scissor"){this.scMode=this.scMode?null:"menu";this.range=null;return this.build()}
     if(a==="sc-box"||a==="sc-zoom"){this.scMode=a==="sc-box"?"box":"zoom";this.range=null;return this.build()}
     if(a==="boxon"){this.boxOn=!this.boxOn;return this.build()}
+    if(a==="draw"){this.drMode=this.drMode?null:"menu";this.drPts=[];this.drForm=false;this.scMode=null;return this.build()}
+    if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"){this.drMode=a.slice(3);this.drPts=[];return this.build()}
+    if(a==="dr-done"){if(this.drPts.length>=2){this.drForm=true;this.build()}return}
+    if(a==="dr-cancel"){this.cancelTools();return}
+    if(a==="dr-save"){
+      const nm=(this.el.querySelector("#dr-name")||{}).value||"", nt=(this.el.querySelector("#dr-note")||{}).value||"";
+      if(!nm.trim()){alertBox(this.el,"請輸入型態名稱");return}
+      const d={id:Date.now().toString(36),kind:this.drMode,name:nm.trim(),note:nt.trim(),pts:this.drPts};
+      this.saveDrawings([...this.drawings,d]); this.drMode=null;this.drPts=[];this.drForm=false;return this.build()}
+    if(a.startsWith("drdel-")){const id=a.slice(6);this.saveDrawings(this.drawings.filter(d=>d.id!==id));return this.build()}
     if(a.startsWith("cbdel-")){this.cboxes.splice(+a.slice(6),1);saveBoxes(this.s.code,this.cboxes);return this.build()}
     if(a==="crapply"||a==="crsave"){
       const f=this.el.querySelector("#cr-from").value,t=this.el.querySelector("#cr-to").value;
@@ -728,6 +741,14 @@ class Chart{
   pd(e){
     try{e.currentTarget.setPointerCapture(e.pointerId)}catch(_){}
     this.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(this.drMode&&this.drMode!=="menu"&&!this.drForm){            // 畫線模式：點一下加一個點
+      if(e.pointerType==="mouse"&&e.button!==0) return;
+      const i=this.indexAt(e),p=this.priceAt(e); if(i<0||p==null) return;
+      this.drPts.push([this.bars[i].d,+p.toFixed(2)]);
+      const need=this.drMode==="hline"?1:this.drMode==="line"?2:0;
+      if(need&&this.drPts.length>=need){this.drForm=true;this.build()} else this.draw();
+      return;
+    }
     if(e.pointerType==="mouse"){
       if(e.button!==0) return;
       if(this.scMode==="box"||this.scMode==="zoom"){this.startRange(e);return}
@@ -806,7 +827,15 @@ class Chart{
     this.cboxes.push({from:this.bars[a].s,to:this.bars[b].d,hi:+hi.toFixed(2),lo:+lo.toFixed(2)});    // 自訂盤整區間：存起來
     saveBoxes(this.s.code,this.cboxes); this.scMode=null; this.build();
   }
-  cancelScissor(){ if(!this.scMode) return false; this.scMode=null; this.range=null; this.drawing=false; this.build(); return true }
+  cancelScissor(){ return this.cancelTools() }
+  cancelTools(){ if(!this.scMode&&!this.drMode) return false; this.scMode=null; this.drMode=null; this.drPts=[]; this.drForm=false; this.range=null; this.drawing=false; this.build(); return true }
+  saveDrawings(list){
+    this.drawings=list; this.draw();
+    fetch(`/api/draw?m=${D.market==="US"?"US":"TW"}&c=${encodeURIComponent(this.s.code)}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(list)})
+      .then(r=>{if(!r.ok) alertBox(this.el,r.status===403?"登入已過期，請重新登入管理者專區後再存":"儲存失敗，請再試一次")}).catch(()=>alertBox(this.el,"儲存失敗，請檢查網路"));
+  }
+  idxOfDate(d){const B=this.bars;let lo=0,hi=B.length-1;if(!B.length)return -1;if(d<=B[0].d)return 0;if(d>B[hi].d)return hi;
+    while(lo<hi){const m=(lo+hi)>>1;if(B[m].d<d)lo=m+1;else hi=m}return lo}
 
   draw(){
     const cv=this.cv; if(!cv) return;
@@ -952,6 +981,18 @@ class Chart{
         labels.push([`預期支撐 ${fmt(sr.L)}（觸及 ${sr.touches} 次）`,Math.max(xa+10,x(ve-1)-110),yy2,{color:"#38bdf8",weight:600,prefer:["down","up","left","right"]}]);
       }
     }
+    // 管理者畫的型態線（粉紅色，和系統畫的線區分）
+    const DC="#ff5fd2";
+    const drawOne=(d,preview)=>{
+      const P=d.pts.map(([dd,pp])=>[this.idxOfDate(dd),pp]).filter(([i])=>i>=0); if(!P.length) return;
+      if(d.kind==="hline"){const [i,pp]=P[0];o+=`<line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="${DC}" stroke-width="1.6" ${preview?'stroke-dasharray="4 3"':""}/>`;
+        if(!preview&&d.name) labels.push([d.name+" "+fmt(pp),x(Math.max(vs,i))+30,y(pp),{color:DC,weight:700,prefer:["up","down","right"]}]);return}
+      o+=`<path d="${P.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("")}" fill="none" stroke="${DC}" stroke-width="1.8" ${preview?'stroke-dasharray="4 3"':""}/>`;
+      P.forEach(([i,pp])=>{if(i>=vs&&i<ve)o+=`<circle cx="${x(i)}" cy="${y(pp)}" r="2.6" fill="${DC}"/>`});
+      if(!preview&&d.name){const [li,lp]=P.reduce((a,b)=>b[1]>a[1]?b:a);labels.push([d.name,x(li),y(lp),{color:DC,weight:700,prefer:["up","right","left","down"]}])}
+    };
+    (this.drawings||[]).forEach(d=>drawOne(d,false));
+    if(this.drMode&&this.drPts.length) drawOne({kind:this.drMode,pts:this.drPts},true);
     for(const [t,ax,ay,op] of labels) put(t,ax,ay,op);
     // 日期軸（獨立一條，不與 K 棒、成交量重疊）
     const step=Math.max(1,Math.ceil(vis.length/Math.max(3,Math.floor((W-pl-pr)/90))));
@@ -1023,10 +1064,18 @@ class Chart{
     this.el.querySelector("#info").innerHTML=html;
     // 右側：選取提示列
     const rb=this.el.querySelector("#rangebar");
-    if(this.scMode==="menu") rb.innerHTML=`<div class="rangebar"><span>剪刀要做什麼？</span><button class="btn on" data-a="sc-box">自訂盤整區間</button><button class="btn on" data-a="sc-zoom">放大 K 線圖</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`;
+    if(this.drMode){
+      if(this.drForm){ if(rb.dataset.form!=="1"){rb.dataset.form="1";rb.innerHTML=`<div class="rangebar" style="flex-wrap:wrap"><input id="dr-name" placeholder="型態名稱，例如 雙重底" maxlength="30" style="flex:1;min-width:140px"><input id="dr-note" placeholder="備註（選填）" maxlength="200" style="flex:2;min-width:160px"><button class="btn on" data-a="dr-save">儲存</button><button class="btn" data-a="dr-cancel">取消</button></div>`;
+          rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); const n=rb.querySelector("#dr-name"); n&&n.focus()} }
+      else { rb.dataset.form=""; rb.innerHTML=this.drMode==="menu"
+        ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
+        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button></div>`;
+        rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); }
+    }
+    else if(this.scMode==="menu") rb.innerHTML=`<div class="rangebar"><span>剪刀要做什麼？</span><button class="btn on" data-a="sc-box">自訂盤整區間</button><button class="btn on" data-a="sc-zoom">放大 K 線圖</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`;
     else if(this.scMode==="box") rb.innerHTML=`<div class="note" style="margin:6px 0">✂️ 自訂盤整區間：在圖上按住，拖出框的大小（左右＝日期、上下＝價格），放開就存起來。點空白處或按 ESC 取消。</div>`;
     else if(this.scMode==="zoom") rb.innerHTML=`<div class="note" style="margin:6px 0">✂️ 放大 K 線圖：在圖上按住，左右拖出要看的範圍，放開就放大。點空白處或按 ESC 取消。</div>`;
-    else rb.innerHTML=(this.cboxes||[]).length?`<div class="chips">${this.cboxes.map((c,i)=>`<span class="chip2"><span class="btn" style="cursor:default;color:#fb923c">自訂框 ${MD(c.from)}～${MD(c.to)}　${fmt(c.lo)}–${fmt(c.hi)}</span><button class="btn" data-a="cbdel-${i}" title="刪除這個框">×</button></span>`).join("")}</div>`:"";
+    else { rb.dataset.form=""; rb.innerHTML=((this.isAdmin&&(this.drawings||[]).length)?`<div class="chips">${this.drawings.map(d=>`<span class="chip2"><span class="btn" style="cursor:default;color:#ff5fd2" title="${(d.note||"").replace(/"/g,"")}">✏️ ${d.name}</span><button class="btn" data-a="drdel-${d.id}" title="刪除這條線">×</button></span>`).join("")}</div>`:"")+((this.cboxes||[]).length?`<div class="chips">${this.cboxes.map((c,i)=>`<span class="chip2"><span class="btn" style="cursor:default;color:#fb923c">自訂框 ${MD(c.from)}～${MD(c.to)}　${fmt(c.lo)}–${fmt(c.hi)}</span><button class="btn" data-a="cbdel-${i}" title="刪除這個框">×</button></span>`).join("")}</div>`:""); }
     rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a));
     // 右側：統計
     let a=vs,b=ve-1,tag="目前畫面";

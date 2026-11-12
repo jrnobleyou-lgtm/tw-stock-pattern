@@ -163,11 +163,11 @@ async function usRoute(req, env, u) {
     if (!auth || (await pbkdf2(String(f.get("pw") || ""), auth.salt, auth.iter)) !== auth.hash) return loginForm("密碼不對，請再試一次", next);
     const exp = String(Date.now() + 30 * 864e5);
     const h = new Headers({ location: next });
-    h.append("set-cookie", `us_auth=${exp}.${await hmac(auth.hash, exp)}; Path=/admin; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
+    h.append("set-cookie", `us_auth=${exp}.${await hmac(auth.hash, exp)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
     h.append("set-cookie", "adm=1; Path=/; Max-Age=2592000; Secure; SameSite=Lax");      // 讓台股頁知道可以跨到管理者專區搜尋（不含任何權限）
     return new Response(null, { status: 303, headers: h });
   }
-  if (p === "/admin/logout") { const h = new Headers({ location: "/admin/login" }); h.append("set-cookie", "us_auth=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "adm=; Path=/; Max-Age=0; Secure; SameSite=Lax"); return new Response(null, { status: 303, headers: h }); }
+  if (p === "/admin/logout") { const h = new Headers({ location: "/admin/login" }); h.append("set-cookie", "us_auth=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "us_auth=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "adm=; Path=/; Max-Age=0; Secure; SameSite=Lax"); return new Response(null, { status: 303, headers: h }); }
   if (!(await usAuthed(req, env))) return p === "/admin/login" ? loginForm("", u.searchParams.get("next") || "/admin/") : new Response(null, { status: 303, headers: { location: "/admin/login?next=" + encodeURIComponent(p + u.search) } });
   if (p === "/admin/login") return new Response(null, { status: 303, headers: { location: "/admin/" } });
   if (p === "/admin/settings") {
@@ -183,7 +183,7 @@ async function usRoute(req, env, u) {
         const hash = await pbkdf2(n1, salt, iter);
         await env.US.put("auth", JSON.stringify({ salt, hash, iter }));
         const exp = String(Date.now() + 30 * 864e5);
-        return new Response(null, { status: 303, headers: { location: "/admin/settings?ok=1", "set-cookie": `us_auth=${exp}.${await hmac(hash, exp)}; Path=/admin; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
+        return new Response(null, { status: 303, headers: { location: "/admin/settings?ok=1", "set-cookie": `us_auth=${exp}.${await hmac(hash, exp)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
       }
     }
     if (u.searchParams.get("ok")) msg = `<div class="m" style="color:#7ee0a1">密碼已更新，其他裝置需要重新登入。</div>`;
@@ -258,9 +258,29 @@ async function yahooTX() {
   return isDay ? { day: q, night: null, spot, spotNight: null, src: "yahoo" } : { day: null, night: q, spot: null, spotNight: spot ? { ref: spot.c } : null, src: "yahoo" };
 }
 
+// ── 管理者自己畫的型態線：KV 的 draw/<市場>/<代號>；所有人都能讀（管理者專區的美股本身就要登入），只有管理者能寫
+async function drawRoute(req, env, u) {
+  const m = u.searchParams.get("m"), c = u.searchParams.get("c") || "";
+  if (!env.US || !/^(TW|US)$/.test(m) || !/^[A-Za-z0-9.\-^]{1,12}$/.test(c)) return new Response("bad", { status: 400 });
+  const key = `draw/${m}/${c}`;
+  if (req.method === "GET") {
+    if (m === "US" && !(await usAuthed(req, env))) return new Response("[]", { headers: { "content-type": "application/json" } });
+    return new Response((await env.US.get(key)) || "[]", { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  }
+  if (!(await usAuthed(req, env))) return new Response("請先登入管理者專區", { status: 403 });
+  const list = await req.json();
+  if (!Array.isArray(list) || list.length > 200) return new Response("bad", { status: 400 });
+  const clean = list.map(d => ({ id: String(d.id || "").slice(0, 20), kind: ["poly", "line", "hline"].includes(d.kind) ? d.kind : "poly",
+    name: String(d.name || "").slice(0, 30), note: String(d.note || "").slice(0, 200),
+    pts: (d.pts || []).slice(0, 30).map(p => [String(p[0]).slice(0, 10), Number(p[1])]).filter(p => /^\d{4}-\d\d-\d\d$/.test(p[0]) && isFinite(p[1])) }));
+  await env.US.put(key, JSON.stringify(clean));
+  return new Response(JSON.stringify({ ok: true, n: clean.length }), { headers: { "content-type": "application/json" } });
+}
+
 export default {
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
+    if (u.pathname === "/api/draw") return drawRoute(req, env, u);
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
     if (u.pathname.startsWith("/admin/")) return usRoute(req, env, u);
     if (u.pathname === "/api/us-ingest") return usIngest(req, env, u);
