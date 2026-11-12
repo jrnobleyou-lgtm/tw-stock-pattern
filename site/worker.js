@@ -91,12 +91,26 @@ async function misBatch(ex) {
 }
 
 // ── 台指期（大台近月）即時：期交所行情網站，日盤（MarketType 0）與夜盤（MarketType 1）
+let txErr = "";
+const txLast = {};
 async function taifexList(mt) {
   const body = JSON.stringify({ MarketType: String(mt), SymbolType: "F", KindID: "1", CID: "TXF", ExpireMonth: "", RowSize: "全部", PageNo: "", SortColumn: "", AscDesc: "A" });
-  const r = await fetch("https://mis.taifex.com.tw/futures/api/getQuoteList", { method: "POST", body, headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0" } });
-  if (!r.ok) return null;
-  const j = await r.json();
-  return (j && j.RtData && j.RtData.QuoteList) || null;
+  for (let k = 0; k < 2; k++) {
+    try {
+      const r = await fetch("https://mis.taifex.com.tw/futures/api/getQuoteList", { method: "POST", body, headers: {
+        "content-type": "application/json;charset=UTF-8", "accept": "application/json, text/plain, */*",
+        "origin": "https://mis.taifex.com.tw", "referer": "https://mis.taifex.com.tw/futures/RegularSession/EquityIndices/FuturesDomestic/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" } });
+      const t = await r.text();
+      if (!r.ok) { txErr = "http " + r.status + " " + t.slice(0, 60); continue; }
+      const j = JSON.parse(t);
+      const list = j && j.RtData && j.RtData.QuoteList;
+      if (list && list.length) { txLast[mt] = { list, at: Date.now() }; return list; }
+      txErr = "empty " + t.slice(0, 80);
+    } catch (e) { txErr = "exc " + String(e).slice(0, 80); }
+  }
+  const c = txLast[mt];
+  return c && Date.now() - c.at < 120000 ? c.list : null;       // 失敗時暫用 2 分鐘內最近一次成功的資料
 }
 function txPick(list) {
   if (!list) return { fut: null, spot: null };
@@ -117,7 +131,9 @@ export default {
       try {
         const [d, n] = await Promise.all([taifexList(0), taifexList(1)]);
         const day = txPick(d), night = txPick(n);
-        return new Response(JSON.stringify({ day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } });
+        const out = { day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot };
+        if (!out.day && !out.night) out.dbg = { colo: (req.cf && req.cf.colo) || "", err: txErr };
+        return new Response(JSON.stringify(out), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } });
       } catch (e) {
         return new Response(JSON.stringify({ error: "unavailable" }), { status: 502, headers: { "content-type": "application/json" } });
       }
