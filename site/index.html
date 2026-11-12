@@ -324,10 +324,10 @@ function finder(q){
   const tokens=q.split(/[\s,，、;；]+/).filter(Boolean);
   let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">自訂搜尋：${tokens.join("　")}</h2>`;
   if(!tokens.length) h+=`<p class="note">輸入股票代號或名稱（可一次輸入多檔，用空格分開），會把它排在第一個並顯示目前型態，再帶出同族群的公司。</p>`;
-  const seen=new Set();
+  const seen=new Set(), miss=[];
   for(const tk of tokens){
     const found=findStocks(tk).filter(s=>!seen.has(s.code));
-    if(!found.length){h+=`<p class="note">找不到「${tk}」。（目前只收台股上市櫃；美股之後開放。）</p>`;continue}
+    if(!found.length){miss.push(tk);continue}
     for(const s of found){
       seen.add(s.code);
       const mset=[...new Set((s.groups||[s.group]).flatMap(n=>{const g=D.groups.find(x=>x.name===n);return g?g.stocks:[]}))], mates=mset.filter(c=>c!==s.code).map(c=>D.stocks[c]);
@@ -337,6 +337,11 @@ function finder(q){
       h+=stockTable(list).replace(`<tr class="row" data-c="${s.code}">`,`<tr class="row" data-c="${s.code}" style="background:rgba(240,211,74,.12)">`);
     }
   }
+  // 這邊找不到的，到另一個市場找：台股頁 → 管理者專區（美股，需登入）；管理者專區 → 台股
+  const US=D.market==="US", canOther=US||/(?:^|;\s*)adm=1/.test(document.cookie);
+  const other=q=>US?"/#find-"+encodeURIComponent(q):"/admin/?q="+encodeURIComponent(q);
+  if(miss.length&&!seen.size&&canOther){ location.href=other(miss.join(" ")); return }
+  if(miss.length) h+=`<p class="note">找不到「${miss.join("、")}」。${canOther?`<a href="${other(miss.join(" "))}">到${US?"台股":"管理者專區"}找 →</a>`:"（目前只收台股上市櫃）"}</p>`;
   $("#app").innerHTML=h; bindRows();
   $("#app").insertAdjacentHTML("beforeend",`<div style="height:75vh"></div>`);   // 讓最後面的結果也能捲到最上方
   scrollToFirstRow();
@@ -1065,6 +1070,7 @@ if(D.market==="US"){                 // 美股版：同一套頁面，換標題�
   const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; nm.insertAdjacentHTML("afterend",'<a href="/admin/settings">設定</a>');
 }
 renderIdx();if(D.market!=="US")pollIdx();
+{const q=new URLSearchParams(location.search).get("q");if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
 window.onhashchange = route; route();
