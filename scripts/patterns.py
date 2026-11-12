@@ -112,16 +112,18 @@ def double_bottom_top(B, T, P):
             if min(B[j]["l"] for j in range(i3, T + 1)) < min(p1, p3) * 0.97:
                 continue
             st, d = _status(B, T, i3, p2, True)
-            out.append({"kind": "雙重底", "dir": "bull", "status": st, "day": d, "neck": p2,
-                        "pts": [[i1, p1], [i2, p2], [i3, p3]]})
+            pre = [[P[k - 1][0], P[k - 1][1]]] if k > 0 and P[k - 1][2] == "H" else []   # 畫成完整的 W：前一個高點 → 底 → 頸 → 底 → 現在
+            out.append({"kind": "雙重底", "dir": "bull", "status": st, "day": d, "neck": p2, "key_i": i3,
+                        "pts": pre + [[i1, p1], [i2, p2], [i3, p3]] + ([[T, B[T]["c"]]] if T > i3 else [])})
         elif t1 == "H" and t3 == "H":            # 雙重頂
             if abs(p1 - p3) / max(p1, p3) > 0.04 or (min(p1, p3) - p2) / min(p1, p3) < 0.08:
                 continue
             if max(B[j]["h"] for j in range(i3, T + 1)) > max(p1, p3) * 1.03:
                 continue
             st, d = _status(B, T, i3, p2, False)
-            out.append({"kind": "雙重頂", "dir": "bear", "status": st, "day": d, "neck": p2,
-                        "pts": [[i1, p1], [i2, p2], [i3, p3]]})
+            pre = [[P[k - 1][0], P[k - 1][1]]] if k > 0 and P[k - 1][2] == "L" else []   # 畫成完整的 M
+            out.append({"kind": "雙重頂", "dir": "bear", "status": st, "day": d, "neck": p2, "key_i": i3,
+                        "pts": pre + [[i1, p1], [i2, p2], [i3, p3]] + ([[T, B[T]["c"]]] if T > i3 else [])})
     return out
 
 
@@ -465,9 +467,13 @@ def detect_geometry(B, T):
     uniq = {}
     for r in res:
         k = r["kind"]
-        last = r["pts"][-1][0]
-        if k not in uniq or last > uniq[k]["pts"][-1][0]:
+        key = lambda x: x.get("key_i", x["pts"][-1][0])
+        if k not in uniq or key(r) > key(uniq[k]):
             uniq[k] = r
+    # 雙重底、雙重頂若用到同一段波段點（W 和 M 疊在一起），只留比較新的那個
+    db, dt = uniq.get("雙重底"), uniq.get("雙重頂")
+    if db and dt and set(map(tuple, db["pts"])) & set(map(tuple, dt["pts"])):
+        uniq.pop("雙重頂" if db["key_i"] >= dt["key_i"] else "雙重底")
     return list(uniq.values())
 
 
