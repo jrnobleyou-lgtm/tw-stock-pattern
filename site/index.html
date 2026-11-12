@@ -1004,7 +1004,12 @@ class Chart{
     let html;
     const ii=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;          // 沒點選時預設顯示畫面最右邊（最新）那根
     if(ii>=0&&ii<B.length){
-      const b=B[ii],prev=ii>0?B[ii-1].c:b.o,chg=(b.c/prev-1)*100;
+      const b=B[ii];let prev=ii>0?B[ii-1].c:b.o;
+      if(s.code==="TXN"&&this.tf==="D"){             // 夜盤的漲跌要跟前一個交易日的日盤收盤比（期交所的算法），不是跟前一晚夜盤比
+        const dB=((D.index||{}).TXD||{}).bars||[];let ref=null;for(const r of dB){if(r[0]<b.d)ref=r[4];else break}
+        if(ref) prev=ref;
+      }
+      const chg=(b.c/prev-1)*100;
       const dl=this.tf==="D"?b.d:this.tf==="W"?`${b.s} ~ ${b.d.slice(5)}`:b.d.slice(0,7);
       html=`<div><span>${lab}</span><b>${dl}</b></div><div><span>開盤</span><b>${fmt(b.o)}</b></div><div><span>最高</span><b>${fmt(b.h)}</b></div><div><span>最低</span><b>${fmt(b.l)}</b></div>`+
         `<div><span>收盤</span><b style="color:${chgColor(chg)}">${fmt(b.c)}</b></div><div><span>漲跌幅</span><b style="color:${chgColor(chg)}">${chg>0?"+":""}${chg.toFixed(2)}%</b></div>`+(hasVol?`<div><span>${vlab}</span><b>${b.v.toLocaleString()}</b></div>`:"");
