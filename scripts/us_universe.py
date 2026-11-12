@@ -39,6 +39,11 @@ def group_of(ind):
     return "傳產/其他"
 
 def clean_name(n):
+    n = re.split(r"\s+\(|\s+Sponsored ADR|\s+American Depositary|\s+ADS\b", n or "")[0]
+    n = clean_name0(n)
+    return n if len(n) <= 32 else n[:31].rstrip() + "…"
+
+def clean_name0(n):
     n = re.sub(r"\s+(Common Stock|Ordinary Shares|Class [A-Z] (Common|Ordinary) (Stock|Shares)|American Depositary Shares?.*|Common Shares|Inc\.?\s*$)", "", n or "").strip(" ,")
     return re.sub(r"\s+(Common Stock|Ordinary Shares).*$", "", n).strip(" ,") or n
 
@@ -55,7 +60,7 @@ for r in rows:
     sym = r["symbol"].strip()
     if not sym or "^" in sym or "/" in sym or sym in seen:
         continue
-    if sym not in mine and re.search(r"Warrants?|\bRights?\b|\bUnits?\b|Preferred|Notes due|Debentures?|Depositary Shares, each representing", r.get("name") or ""):
+    if sym not in mine and re.search(r"Warrants?|\bRights?\b|\bUnits?\b|Preferred|Notes due|Notes Series|Debentures?|Depositary Shares, each representing|\bFund\b|of Beneficial Interest", r.get("name") or ""):
         continue                                     # 權證、權利、單位、特別股、債券不算普通股
     ind = (r.get("industry") or "").strip()
     keep = sym in mine or (num(r["lastsale"]) >= 1 and num(r["marketCap"]) >= 50e6 and ind and ind != "Blank Checks"

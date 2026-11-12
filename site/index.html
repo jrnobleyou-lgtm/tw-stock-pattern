@@ -50,7 +50,7 @@ table{width:100%;border-collapse:collapse;background:transparent;border:1px soli
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line-t);white-space:nowrap}
 th:first-child,td:first-child{text-align:left}
 .ctr th,.ctr td{text-align:center}.ctr th:first-child,.ctr td:first-child{text-align:left}.ctr td .tag{margin:1px 2px}
-.stt th,.stt td{text-align:left}.stt th.cc,.stt td.cc{text-align:center}
+.stt th,.stt td{text-align:left}.stt td:first-child{max-width:260px;white-space:normal;overflow-wrap:anywhere}.stt th.cc,.stt td.cc{text-align:center}
 .stt td.ty{width:96px;min-width:96px}.stt td.ty .badge{display:inline-block;min-width:58px;text-align:center;box-sizing:border-box}
 .stt td.tg{white-space:normal;min-width:180px;padding-left:20px}.stt th.tg{padding-left:20px}.stt td.tg .tag{margin:2px 6px 2px 0}
 th{color:var(--mute);font-weight:500;font-size:12px}
@@ -359,7 +359,7 @@ const FILTERS = [
   {k:"rdy", name:"蓄勢待發／準備突破", f:s=>has(s,/蓄勢待發|準備突破/)},
   {k:"cup", name:"杯柄", f:s=>s.geo.some(g=>g.kind==="杯柄")},
   {k:"rnd", name:"圓弧底", f:s=>s.geo.some(g=>g.kind==="圓弧底")},
-  {k:"bot", name:"底部反轉（雙底・頭肩底・V底）", f:s=>s.geo.some(g=>["雙重底","頭肩底","V形底"].includes(g.kind))},
+  {k:"bot", name:"底部反轉（雙底・頭肩底・V底）", f:s=>s.geo.some(g=>["雙重底","雙重底（不對稱）","頭肩底","V形底"].includes(g.kind))},
   {k:"wdg", name:"下降楔形／三角形", f:s=>s.geo.some(g=>["下降楔形","上升三角形","對稱三角形"].includes(g.kind))},
   {k:"top", name:"頂部反轉（走弱）", f:s=>s.geo.some(g=>["雙重頂","頭肩頂","V形頂","圓弧頂","上升楔形"].includes(g.kind)&&g.status==="confirmed")},
   {k:"pb",  name:"多頭回檔（觀察）", f:s=>s.sub==="多頭回檔"},
@@ -699,7 +699,8 @@ class Chart{
     if(a==="dr-save"){
       const nm=(this.el.querySelector("#dr-name")||{}).value||"", nt=(this.el.querySelector("#dr-note")||{}).value||"";
       if(!nm.trim()){alertBox(this.el,"請輸入型態名稱");return}
-      const d={id:Date.now().toString(36),kind:this.drMode,name:nm.trim(),note:nt.trim(),pts:this.drPts};
+      const pts=this.drPts.filter((p,k,a)=>!k||p[0]!==a[k-1][0]||p[1]!==a[k-1][1]);      // 連點兩下重複的點只留一個
+      const d={id:Date.now().toString(36),kind:this.drMode,name:nm.trim(),note:nt.trim(),pts};
       this.saveDrawings([...this.drawings,d]); this.drMode=null;this.drPts=[];this.drForm=false;return this.build()}
     if(a.startsWith("drdel-")){const id=a.slice(6);this.saveDrawings(this.drawings.filter(d=>d.id!==id));return this.build()}
     if(a.startsWith("cbdel-")){this.cboxes.splice(+a.slice(6),1);saveBoxes(this.s.code,this.cboxes);return this.build()}

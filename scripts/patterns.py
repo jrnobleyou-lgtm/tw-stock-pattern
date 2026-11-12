@@ -109,11 +109,19 @@ def double_bottom_top(B, T, P):
         if k + 2 == len(P) - 1:
             continue                                 # 第二個頂／底還在走（價格還沒從那裡反轉），不能算成形
         if t1 == "L" and t3 == "L":              # 雙重底
-            if abs(p1 - p3) / min(p1, p3) > 0.04 or (p2 - max(p1, p3)) / max(p1, p3) < 0.08:
-                continue
+            gap = abs(p1 - p3) / min(p1, p3)
+            if gap > 0.12 or (p2 - max(p1, p3)) / max(p1, p3) < 0.08:
+                continue                                 # 兩底差 4% 內＝標準雙重底；4–12%＝不對稱（醜一點的 W）
             if min(B[j]["l"] for j in range(i3, T + 1)) < min(p1, p3) * 0.97:
                 continue
             st, d = _status(B, T, i3, p2, True)
+            if gap > 0.04:
+                if st not in ("confirmed", "near"):
+                    continue                             # 不對稱的只在接近或突破頸線時才標，避免太多雜訊
+                pre = [[P[k - 1][0], P[k - 1][1]]] if k > 0 and P[k - 1][2] == "H" else []
+                out.append({"kind": "雙重底（不對稱）", "dir": "bull", "status": st, "day": d, "neck": p2, "key_i": i3,
+                            "pts": pre + [[i1, p1], [i2, p2], [i3, p3]] + ([[T, B[T]["c"]]] if T > i3 else [])})
+                continue
             pre = [[P[k - 1][0], P[k - 1][1]]] if k > 0 and P[k - 1][2] == "H" else []   # 畫成完整的 W：前一個高點 → 底 → 頸 → 底 → 現在
             out.append({"kind": "雙重底", "dir": "bull", "status": st, "day": d, "neck": p2, "key_i": i3,
                         "pts": pre + [[i1, p1], [i2, p2], [i3, p3]] + ([[T, B[T]["c"]]] if T > i3 else [])})
@@ -473,9 +481,11 @@ def detect_geometry(B, T):
         if k not in uniq or key(r) > key(uniq[k]):
             uniq[k] = r
     # 雙重底、雙重頂若用到同一段波段點（W 和 M 疊在一起），只留比較新的那個
-    db, dt = uniq.get("雙重底"), uniq.get("雙重頂")
+    if uniq.get("雙重底") and uniq.get("雙重底（不對稱）"):
+        uniq.pop("雙重底（不對稱）")                     # 有標準的就不要再畫不對稱的
+    db, dt = uniq.get("雙重底") or uniq.get("雙重底（不對稱）"), uniq.get("雙重頂")
     if db and dt and set(map(tuple, db["pts"])) & set(map(tuple, dt["pts"])):
-        uniq.pop("雙重頂" if db["key_i"] >= dt["key_i"] else "雙重底")
+        uniq.pop("雙重頂" if db["key_i"] >= dt["key_i"] else db["kind"])
     return list(uniq.values())
 
 
