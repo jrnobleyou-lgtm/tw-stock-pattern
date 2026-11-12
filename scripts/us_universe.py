@@ -55,6 +55,8 @@ for r in rows:
     sym = r["symbol"].strip()
     if not sym or "^" in sym or "/" in sym or sym in seen:
         continue
+    if sym not in mine and re.search(r"Warrants?|\bRights?\b|\bUnits?\b|Preferred|Notes due|Debentures?|Depositary Shares, each representing", r.get("name") or ""):
+        continue                                     # 權證、權利、單位、特別股、債券不算普通股
     ind = (r.get("industry") or "").strip()
     keep = sym in mine or (num(r["lastsale"]) >= 1 and num(r["marketCap"]) >= 50e6 and ind and ind != "Blank Checks"
                            and not ind.startswith("Trusts Except"))

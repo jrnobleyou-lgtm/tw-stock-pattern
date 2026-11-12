@@ -33,31 +33,59 @@ def post(files, meta=None):
     r = urllib.request.urlopen(urllib.request.Request(API, data=body, method="POST", headers={**headers(), "Content-Type": "application/json"}), timeout=120)
     return json.loads(r.read())
 
+NSH, NST = 256, 8                      # 個股 K 線分成 256 包、歷史資料分成 8 包（KV 每筆上限 25MB、每天寫入 1000 次）
+def shard(code, n):
+    h = 0
+    for ch in code:
+        h = (h * 31 + ord(ch)) % 1000003
+    return h % n
+
 if sys.argv[1:] == ["pull"]:
     os.makedirs(os.path.join(ROOT, "data", "us"), exist_ok=True)
-    g = get("state/groups_us.csv")
-    if g: open(os.path.join(ROOT, "data", "groups_us.csv"), "wb").write(g)
-    h = get("state/hist.csv.gz")
-    if h: open(os.path.join(ROOT, "data", "us", "hist.csv"), "wb").write(gzip.decompress(h))
-    print("下載：族群", bool(g), "；歷史", bool(h))
+    for name in ("groups_us.csv", "groups_us_all.csv"):
+        g = get("state/" + name)
+        if g: open(os.path.join(ROOT, "data", name), "wb").write(g)
+    parts = [get(f"state/hist_{k}.csv.gz") for k in range(NST)]
+    if all(parts):
+        with open(os.path.join(ROOT, "data", "us", "hist.csv"), "wb") as f:
+            for k, b in enumerate(parts):
+                t = gzip.decompress(b)
+                f.write(t if k == 0 else t.split(b"\n", 1)[1])
+    print("下載：歷史", all(parts))
 elif sys.argv[1:] == ["push"]:
     old = json.loads(get("state/manifest.json") or b"{}")
     files, man = {}, {}
-    for p in [os.path.join(ROOT, "site", "us", "index.html"), os.path.join(ROOT, "site", "us", "data.js")] + sorted(glob.glob(os.path.join(ROOT, "site", "us", "s", "*.json"))):
-        k = "site/" + os.path.relpath(p, os.path.join(ROOT, "site", "us")).replace(os.sep, "/")
-        b = open(p, "rb").read(); man[k] = hashlib.md5(b).hexdigest()
+    def add(k, b):
+        man[k] = hashlib.md5(b).hexdigest()
         if old.get(k) != man[k]:
-            files[k] = b                              # 只上傳有變動的檔案（KV 免費額度每天 1000 次寫入）
-    files["state/hist.csv.gz"] = gzip.compress(open(os.path.join(ROOT, "data", "us", "hist.csv"), "rb").read())
-    files["state/groups_us.csv"] = open(os.path.join(ROOT, "data", "groups_us.csv"), "rb").read()
+            files[k] = b                              # 只上傳有變動的
+    for name in ("index.html", "data.js"):
+        add("site/" + name, open(os.path.join(ROOT, "site", "us", name), "rb").read())
+    sh = {}
+    for p in glob.glob(os.path.join(ROOT, "site", "us", "s", "*.json")):
+        code = os.path.basename(p)[:-5]
+        sh.setdefault(shard(code, NSH), {})[code] = json.load(open(p))["bars"]
+    for n, d in sh.items():
+        add(f"site/sh/{n}.json", json.dumps(d, separators=(",", ":")).encode())
+    lines = open(os.path.join(ROOT, "data", "us", "hist.csv"), "rb").read().split(b"\n")
+    head, parts = lines[0], [[] for _ in range(NST)]
+    for ln in lines[1:]:
+        if ln:
+            parts[shard(ln.split(b",", 2)[1].decode(), NST)].append(ln)
+    for k in range(NST):
+        files[f"state/hist_{k}.csv.gz"] = gzip.compress(b"\n".join([head] + parts[k]) + b"\n")
+    for name in ("groups_us.csv", "groups_us_all.csv"):
+        pth = os.path.join(ROOT, "data", name)
+        if os.path.exists(pth): files["state/" + name] = open(pth, "rb").read()
     files["state/manifest.json"] = json.dumps(man).encode()
     D = json.loads(open(os.path.join(ROOT, "site", "us", "data.js"), encoding="utf-8").read()[len("window.DATA="):-1])
-    meta = {"asof": D["asof"], "stocks": len(D["stocks"]), "missing": D.get("missing", []),
+    meta = {"asof": D["asof"], "stocks": len(D["stocks"]), "missing": D.get("missing", [])[:50], "missingN": len(D.get("missing", [])),
             "updated": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M（台灣時間）")}
-    keys, n = list(files), 0
-    for i in range(0, len(keys), 40):
-        part = {k: files[k] for k in keys[i:i + 40]}
-        n += post(part, meta if i + 40 >= len(keys) else None)["n"]
-    print("上傳", n, "個檔案；資料日期", meta["asof"])
+    keys, batch, size, n = sorted(files, key=lambda k: k == "state/manifest.json"), {}, 0, 0
+    for i, k in enumerate(keys):
+        batch[k] = files[k]; size += len(files[k])
+        if size > 5e6 or i == len(keys) - 1:
+            n += post(batch, meta if i == len(keys) - 1 else None)["n"]; batch, size = {}, 0
+    print("上傳", n, "個檔案；資料日期", meta["asof"], "；股票", meta["stocks"])
 else:
     sys.exit("用法：us_sync.py pull|push")
