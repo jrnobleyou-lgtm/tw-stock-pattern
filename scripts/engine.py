@@ -1,25 +1,34 @@
 """盤整區間與四種型態判定引擎（台股 / 美股共用）。
 
-區間規則依照使用者既有網站「波段突破篩選」的說明實作：
-  - 區間先看最近約 63 根 K，找不到再每次往前約 63 根，最遠約 252 根。
-  - 上緣、下緣都要至少「碰到」2 次（波段高/低點），兩次至少隔 5 根，價差在 1.5% 以內；
-    上緣取這幾次裡最高的價，下緣取最低的價；只碰一次的不算邊界。
-  - 區間最少 10 根、高低差不超過 30%、區間內所有收盤都在上下緣之間。
-  - 起點：起點前 20 根收盤比起點收盤低的較多（漲上來）→ 起點取波段高點；
-          較高的較多（跌下來）→ 起點取波段低點。
-  - 突破：當日收盤站上上緣且量達區間均量 1.5 倍 → 訊號（第 1 日）；
-          之後 3 日收盤都守在上緣之上 = 有效突破（壓力轉支撐），否則假突破。
-          訊號日起滿 20 個交易日，舊區間改為「已失效」。
-  - 跌破：收盤跌破下緣；3 日內站回 = 假跌破；連續 3 日收在下緣之下 = 跌破失效。
+區間規則（2026-11 與使用者討論後的版本）：
+  - 長度 10～60 根（約 2 週到 3 個月）。
+  - 上緣、下緣都要至少「碰到」2 次（波段高/低點），兩次至少隔 5 根，價差在 1.5% 以內。
+  - 高低差上限依股性：近 60 日平均每日振幅 ≥ 3%（波動大）→ 25%，否則 20%。
+  - 區間內最高／最低（含影線）不可超出上下緣 5% 以上。
+  - 收盤可小幅越界（3% 內），但不能連續 2 天收在上下緣之外。
+  - 區間不能跨過一次突破或跌破：區間內若有連 3 日收盤站上之前那段的最高價（或跌破最低價），
+    ，就代表股價已經走出新的一段，舊區間到那裡結束。
+  - 上升通道不算盤整：區間內收盤趨勢線漲幅 ≥ 10% 且走得很穩（R² ≥ 0.75）。
+  - 突破：收盤站上上緣且量達區間均量 1.5 倍 → 突破訊號（第 1 日）；3 日內收回上緣之下 = 假突破，區間繼續；
+          連 3 日守在上緣之上 = 突破確認（壓力轉支撐），區間結束，之後跌回也不再接回。
+          沒帶量但收盤離開區間 → 區間結束，標示「無量突破待追蹤」，不算轉強。
+  - 跌破：收盤跌破下緣；3 日內站回 = 假跌破；連續 3 日收在下緣之下 = 區間失效。
+  - 失效的區間以紫色保留 20 個交易日，之後不再畫。
 """
 from __future__ import annotations
 
 SWING_K = 2          # 波段高低點：左右各 2 根內最高/最低
 MIN_BARS = 10
-MAX_RANGE = 0.30
+MAX_RANGE = 0.20       # 波動小的股票
+MAX_RANGE_VOL = 0.25   # 波動大的股票（近 60 日平均每日振幅 ≥ VOL_AMP）
+VOL_AMP = 0.03
+STEP_TOL = 0.0          # 收盤超過之前那段的最高／最低價就算（連 3 日）
+RISE_PCT = 0.10        # 上升通道：區間內趨勢線漲幅 ≥ 10%
+RISE_R2 = 0.75         # 且走得很穩（直線貼合度 R² ≥ 0.75）→ 不算盤整
+STEP_DAYS = 3          # 區間內若有連 3 日收盤站上（或跌破）之前那段的最高價（最低價），代表已經突破／跌破，區間不能跨過去
 TOUCH_TOL = 0.015
 TOUCH_GAP = 5
-WINDOWS = (63, 126, 189, 252)
+WINDOWS = (60,)
 VOL_MULT = 1.5
 CONFIRM_DAYS = 3
 SIGNAL_LIFE = 20     # 訊號日起算天數（訊號日為第 1 日）
@@ -66,19 +75,18 @@ def _edge(B, idxs, is_high):
     return None
 
 
-MAX_WICK = 0.12       # 區間內最高／最低價超出上下緣的容許幅度；超過就不是盤整
+MAX_WICK = float(__import__("os").environ.get("BOX_MAX_WICK", "0.05"))       # 區間內最高／最低價超出上下緣的容許幅度；超過就不是盤整
 OUT_TOL = 0.03       # 收盤越過邊界的容許幅度；超過就視為已脫離區間
-OUT_RUN = 3          # 連續幾根收在邊界外，視為已脫離區間
+OUT_RUN = 2          # 連續幾根收在邊界外，視為已脫離區間
 
 
 def _fail_end(B, i, e, hi):
-    """從帶量突破日 i 起算，SIGNAL_LIFE 日內若連續 3 日收盤跌回上緣之下（突破失效），回傳第 3 日的索引。"""
-    run = 0
-    for k in range(i + 1, min(e, i + SIGNAL_LIFE - 1) + 1):
-        run = run + 1 if B[k]["c"] <= hi else 0
-        if run >= CONFIRM_DAYS:
+    """帶量突破日 i 之後的 2 根（含 i 共 3 日）內若有收盤收回上緣之下 → 假突破，回傳收回那天的索引；
+    連 3 日都守在上緣之上 → 突破確認，回傳 None（區間到此結束）。"""
+    for k in range(i + 1, min(e, i + CONFIRM_DAYS - 1) + 1):
+        if B[k]["c"] <= hi:
             return k
-    return None
+    return None if e >= i + CONFIRM_DAYS - 1 else e     # 還沒滿 3 天：暫時不算結束
 
 
 def _closes_ok(B, s, e, hi, lo):
@@ -94,7 +102,9 @@ def _closes_ok(B, s, e, hi, lo):
             j = _fail_end(B, i, e, hi)
             if j is None:
                 return None
-            i, run = j + 1, 0
+            if j >= e and B[e]["c"] > hi:
+                return None                         # 突破還在進行中，交給 scan_after 判斷
+            i, run = j, 0
             continue
         if c > hi * (1 + OUT_TOL) or c < lo * (1 - OUT_TOL):
             return None
@@ -107,7 +117,46 @@ def _closes_ok(B, s, e, hi, lo):
     return vsum / cnt if cnt else None
 
 
+def _has_step(B, s, e):
+    """區間 [s, e] 內，從第 MIN_BARS 根起，若有連續 STEP_DAYS 日收盤都高於「之前那段」的最高價，
+    或都低於之前那段的最低價，就是中途突破／跌破過。"""
+    hi = max(B[i]["h"] for i in range(s, s + MIN_BARS))
+    lo = min(B[i]["l"] for i in range(s, s + MIN_BARS))
+    up = dn = 0
+    for k in range(s + MIN_BARS, e + 1):
+        c = B[k]["c"]
+        up = up + 1 if c > hi * (1 + STEP_TOL) else 0
+        dn = dn + 1 if c < lo * (1 - STEP_TOL) else 0
+        if up >= STEP_DAYS or dn >= STEP_DAYS:
+            return True
+        if up == 0: hi = max(hi, B[k]["h"])
+        if dn == 0: lo = min(lo, B[k]["l"])
+    return False
+
+
+def _rising_channel(B, s, e):
+    """沿著上升趨勢線穩定往上走（漲幅大且很貼近一條直線）就不算盤整。下降的不在此限，交給跌破規則判斷。"""
+    n = e - s + 1
+    cs = [B[s + k]["c"] for k in range(n)]
+    mx = (n - 1) / 2; my = sum(cs) / n
+    sxx = sum((x - mx) ** 2 for x in range(n)) or 1
+    k = sum((x - mx) * (y - my) for x, y in enumerate(cs)) / sxx
+    ss = sum((y - my) ** 2 for y in cs)
+    if not ss or k <= 0:
+        return False
+    r2 = 1 - sum((y - (my + k * (x - mx))) ** 2 for x, y in enumerate(cs)) / ss
+    return k * (n - 1) / my >= RISE_PCT and r2 >= RISE_R2
+
+
+def _amp(B, e, n=60):
+    """近 n 日平均每日振幅（最高－最低）／前一日收盤。"""
+    a = max(1, e - n + 1)
+    v = [(B[i]["h"] - B[i]["l"]) / B[i - 1]["c"] for i in range(a, e + 1) if B[i - 1]["c"] > 0]
+    return sum(v) / len(v) if v else 0.0
+
+
 def _box_in_window(B, a, e):
+    max_rng = MAX_RANGE_VOL if _amp(B, e) >= VOL_AMP else MAX_RANGE
     sh = _swings(B, a, e, True)
     sl = _swings(B, a, e, False)
     shs, sls = set(sh), set(sl)
@@ -128,10 +177,12 @@ def _box_in_window(B, a, e):
         if not th or not tl:
             continue
         hi, lo = th[0], tl[0]
-        if hi <= lo or (hi - lo) / lo > MAX_RANGE:
+        if hi <= lo or (hi - lo) / lo > max_rng:
             continue
         if max(B[i]["h"] for i in range(s, e + 1)) > hi * (1 + MAX_WICK) or min(B[i]["l"] for i in range(s, e + 1)) < lo * (1 - MAX_WICK):
             continue                                    # 區間內曾大幅衝出上下緣（漲快跌快），不算盤整
+        if _has_step(B, s, e) or _rising_channel(B, s, e):
+            continue                                    # 中途已經突破或跌破過一次，舊區間到那裡就結束，不能和新的一段合成一個框
         avg = _closes_ok(B, s, e, hi, lo)
         if avg is None:
             continue
@@ -195,7 +246,7 @@ def scan_after(B, box, b, T):
     return ev
 
 
-def current_box(B, T, lookback=25):
+def current_box(B, T, lookback=20):
     """回傳 (box, event)。event 為 None 表示價格仍在區間內（整理中）。"""
     box = find_box(B, T)
     if box:
@@ -280,6 +331,8 @@ def classify(B, ma5, ma10, ma20, ma60, T, box, ev):
         tags.append("突破第1根" if ev["day"] == 1 else f"突破第{ev['day']}日")
         if ev["state"] == "confirmed":
             tags.append("壓力轉支撐")
+    if ev and ev.get("dir") == "up" and not ev.get("signal") and ev.get("state") in ("confirming", "confirmed") and not ev.get("expired"):
+        tags.append("無量突破待追蹤")
     if ev and ev.get("state") == "failed":
         tags.append("突破失效")
     if ev and ev.get("state") == "false_breakout":

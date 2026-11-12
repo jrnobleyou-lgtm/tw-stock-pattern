@@ -62,6 +62,14 @@ def main():
         state, tags, sub = E.classify(bars, ma[5], ma[10], ma[20], ma[60], T, box, ev)
         geo = [g for g in PT.detect_geometry(bars, T) if g["status"] in ("confirmed", "near", "forming")]
         state, tags, sub = E.apply_patterns(state, tags, sub, geo)
+        if state == "轉強":                         # 均線還沒排列向上（5>10>20 且三條都往上）之前的轉強＝弱轉強
+            m5, m10, m20 = ma[5], ma[10], ma[20]
+            j = max(T - 3, 0)
+            aligned = all(x[T] is not None and x[j] is not None for x in (m5, m10, m20)) and \
+                m5[T] > m10[T] > m20[T] and m10[T] > m10[j] and m20[T] > m20[j]
+            if not aligned and "多頭回檔後站回5日線" not in tags:     # 多頭回檔後站回：原本就是多頭結構，不算弱轉強
+                sub = "弱轉強"
+                tags.insert(0, "弱轉強")
         candle = PT.candle_patterns(bars, T)
         rb = PT.rebound(bars, T)
         if rb and rb["score"] >= 2:
@@ -129,9 +137,11 @@ def main():
         for gname in st["groups"]:                       # 雙族群的股票，兩個族群都會計入
             g = gl.setdefault(gname, {"name": gname, "n": 0,
                                       "counts": {s: 0 for s in STATES}, "stocks": [], "first": [],
-                                      "weak_pull": 0, "weak_break": 0})
+                                      "weak_pull": 0, "weak_break": 0, "weak_strong": 0})
             g["n"] += 1
             g["counts"][st["state"]] += 1
+            if st["sub"] == "弱轉強":
+                g["weak_strong"] = g.get("weak_strong", 0) + 1
             if st["sub"] == "回檔走弱":
                 g["weak_pull"] += 1
             elif st["sub"] == "破底走弱":

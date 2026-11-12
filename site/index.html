@@ -227,7 +227,7 @@ function home(){
     const small = g.n < 5;
     const rb = g.stocks.filter(c=>D.stocks[c].rebound).length;
     h += `<tr class="row" data-g="${g.name}"><td>${g.name}${small?'<span class="tag">樣本少</span>':""}</td><td>${g.n}</td>` +
-      STATES.map(s=>`<td class="c-${CLS[s]}">${g.counts[s]}${small?"":`<span class="mute" style="font-size:11px"> ${pct(g.counts[s],g.n)}</span>`}${s==="走弱"&&g.counts[s]?`<div class="mute" style="font-size:11px">回檔${g.weak_pull}・<span style="color:#fb7185">破底${g.weak_break}</span></div>`:""}</td>`).join("") +
+      STATES.map(s=>`<td class="c-${CLS[s]}">${g.counts[s]}${small?"":`<span class="mute" style="font-size:11px"> ${pct(g.counts[s],g.n)}</span>`}${s==="走弱"&&g.counts[s]?`<div class="mute" style="font-size:11px">回檔${g.weak_pull}・<span style="color:#fb7185">破底${g.weak_break}</span></div>`:""}${s==="轉強"&&g.counts[s]?`<div class="mute" style="font-size:11px">弱轉強${g.weak_strong||0}</div>`:""}</td>`).join("") +
       `<td class="hide-s"><div class="bar">` + STATES.map(s=>`<i class="b-${CLS[s]}" style="width:${g.counts[s]/g.n*100}%"></i>`).join("") + `</div></td>` +
       `<td>${g.first.length? g.first.map(c=>`<span class="tag hot">${D.stocks[c].name}</span>`).join(""):'<span class="mute">-</span>'}</td>` +
       `<td>${rb? rb : '<span class="mute">-</span>'}</td></tr>`;
@@ -309,7 +309,8 @@ const FILTERS = [
   {k:"rb3", name:"強勢止跌反彈", f:s=>s.rebound&&s.rebound.tier==="強"},
   {k:"rb",  name:"止跌反彈（全部）", f:s=>!!s.rebound},
   {k:"b1",  name:"突破第1根", f:s=>has(s,/突破第1根/)},
-  {k:"up",  name:"轉強", f:s=>s.state==="轉強"},
+  {k:"up",  name:"轉強（均線已排列向上）", f:s=>s.state==="轉強"&&s.sub!=="弱轉強"},
+  {k:"wup", name:"弱轉強（均線尚未排列）", f:s=>s.sub==="弱轉強"},
   {k:"rdy", name:"蓄勢待發／準備突破", f:s=>has(s,/蓄勢待發|準備突破/)},
   {k:"cup", name:"杯柄", f:s=>s.geo.some(g=>g.kind==="杯柄")},
   {k:"rnd", name:"圓弧底", f:s=>s.geo.some(g=>g.kind==="圓弧底")},
