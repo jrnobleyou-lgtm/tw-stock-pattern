@@ -193,10 +193,45 @@ function fmt(v){return v==null?"-":(v>=1000?v.toFixed(0):v>=100?v.toFixed(1):v.t
 function stockBars(s){return s.bars.map(r=>({d:typeof r[0]==="string"?r[0]:D.dates[r[0]],o:r[1],h:r[2],l:r[3],c:r[4],v:r[5],f:r[6]==null?1:r[6]}))}
 
 /* ───────── 右上角：台股大盤 ───────── */
+/* ───────── 台指期：交易時段與即時資料 ───────── */
+function twNow(){const p=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Taipei",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});return {wd:p.weekday,m:(+p.hour%24)*60+ +p.minute,date:`${p.year}-${p.month}-${p.day}`}}
+function txSession(){            // "day" 日盤 08:45–13:45、"night" 夜盤 15:00–隔天 05:00、null 休息
+  const t=twNow(),wk=!/Sat|Sun/.test(t.wd);
+  if(wk&&t.m>=525&&t.m<=825) return "day";
+  if((wk&&t.m>=900)||(t.m<300&&!/Sun|Mon/.test(t.wd))) return "night";
+  return null;
+}
+function nextWeekday(d){const t=new Date(d+"T00:00:00Z");do{t.setUTCDate(t.getUTCDate()+1)}while([0,6].includes(t.getUTCDay()));return t.toISOString().slice(0,10)}
+const ymd=x=>x&&x.length===8?`${x.slice(0,4)}-${x.slice(4,6)}-${x.slice(6)}`:null;
+const hms=x=>x&&x.length>=6?`${x.slice(0,2)}:${x.slice(2,4)}:${x.slice(4,6)}`:"";
+let txLive=null;                  // 最近一次 /api/tx 的結果
+async function fetchTX(){try{const r=await fetch("/api/tx",{cache:"no-store"});if(!r.ok)return null;const j=await r.json();if(j&&j.day)txLive=j;return txLive}catch(_){return null}}
+function txBar(j,dayOnly){        // 由即時資料組今天（交易日）的 K 棒；全盤＝夜盤＋日盤
+  const d=j.day,n=j.night,ok=q=>q&&q.o>0&&q.h>0&&q.l>0&&q.c>0;
+  const dd=ok(d)?ymd(d.date):null, nd=ok(n)?nextWeekday(ymd(n.date)):null;     // 夜盤算在下一個交易日
+  if(dayOnly){ if(!dd) return null; const nv=nd===dd?n.v:0; return {d:dd,o:d.o,h:d.h,l:d.l,c:d.c,v:Math.max(0,d.v-nv),f:1} }
+  if(nd&&(!dd||nd>dd)) return {d:nd,o:n.o,h:n.h,l:n.l,c:n.c,v:n.v,f:1};
+  if(dd){ if(nd===dd) return {d:dd,o:n.o,h:Math.max(n.h,d.h),l:Math.min(n.l,d.l),c:d.c,v:d.v,f:1}; return {d:dd,o:d.o,h:d.h,l:d.l,c:d.c,v:d.v,f:1} }
+  return null;
+}
+function txQuote(j){              // 標籤用：目前時段的最新價、漲跌與價差
+  const ses=txSession(), useN=ses==="night"||(!ses&&j.night&&j.night.c>0&&twNow().m<525), q=useN?j.night:j.day;
+  if(!q||!(q.c>0)) return null;
+  const spot=useN?(j.spotNight&&j.spotNight.ref):(j.spot&&(j.spot.c||j.spot.ref));
+  return {c:q.c,ref:q.ref,ses:useN?"夜盤":"日盤",time:hms(q.time),basis:spot?q.c-spot:null,id:q.id};
+}
 const liveIdx={};   // 即時行情（證交所）：{TWII:{...},OTC:{...}}
 function renderIdx(){
   const ix=D.index||{}, el=$("#idx"); if(!el) return;
-  el.innerHTML=["TWII","OTC"].filter(k=>ix[k]&&ix[k].bars.length>1).map(k=>{
+  let txh="";
+  if(ix.TX&&ix.TX.bars.length>1){
+    const b=ix.TX.bars,l=b[b.length-1],q=txLive&&txQuote(txLive);
+    const price=q?q.c:l[4], ref=q&&q.ref?q.ref:b[b.length-2][4], ch=price-ref, pc=ch/ref*100;
+    const basis=q&&q.basis!=null?`<span class="mute" style="font-size:11px">　價差 ${q.basis>0?"+":""}${q.basis.toFixed(0)}</span>`:"";
+    const lv=q?` <small style="color:#f0d34a">${txSession()?q.ses:"收盤"}</small>`:"";
+    txh=`<button class="ichip" data-i="TX" title="${q?q.ses+" "+q.time:l[0]}"><span class="mute">台指期</span> <b>${price.toLocaleString(undefined,{maximumFractionDigits:0})}</b>${lv}<br><span style="color:${chgColor(ch)}">${ch>0?"▲":ch<0?"▼":""}${Math.abs(ch).toFixed(0)}（${pc>0?"+":""}${pc.toFixed(2)}%）</span>${basis}</button>`;
+  }
+  el.innerHTML=txh+["TWII","OTC"].filter(k=>ix[k]&&ix[k].bars.length>1).map(k=>{
     const b=ix[k].bars,l=b[b.length-1],p=b[b.length-2],q=liveIdx[k];
     let price=l[4],ch=l[4]-p[4],base=p[4],tip=l[0],lv="";
     if(q&&q.date>=l[0]){ price=q.c; base=q.date>l[0]?l[4]:(q.prev||p[4]); ch=price-base; tip=q.date+" "+(q.hms||""); lv=` <small style="color:#f0d34a">${twMarketOpen()?"盤中":"即時"}</small>`}
@@ -212,11 +247,12 @@ async function pollIdx(){
     try{const r=await fetch("/api/quote?s="+encodeURIComponent(sym),{cache:"no-store"});if(!r.ok)return;const q=await r.json();
       const b=ix[k].bars,l=b[b.length-1]; if(q&&q.date&&q.c>0&&q.date>=l[0]&&(q.date>l[0]||twMarketOpen())) liveIdx[k]=q}catch(_){}
   }));
+  if(ix.TX) await fetchTX();
   renderIdx();
   const t=Object.values(liveIdx).map(q=>q.t).filter(Boolean).sort().pop(), q0=liveIdx.TWII||liveIdx.OTC;
   const base=D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 "+D.asof;
   $("#asof").innerHTML=base+(q0?`<span style="color:#f0d34a">　${twMarketOpen()?"盤中":"即時"} ${q0.date.slice(5)} ${q0.hms||""}</span>`:"");
-  idxTimer=setTimeout(pollIdx,twMarketOpen()?10000:120000);
+  idxTimer=setTimeout(pollIdx,(twMarketOpen()||txSession())?10000:120000);
 }
 /* ───────── 首頁：族群統計 ───────── */
 function home(){
@@ -397,6 +433,24 @@ function startLive(c,sym,isIndex){
   };
   run();
 }
+function startLiveTX(c,dayOnly){
+  clearTimeout(liveTimer);
+  const run=async()=>{
+    if(chart!==c) return;
+    const j=await fetchTX();
+    if(chart===c&&j){
+      const bar=txBar(j,dayOnly), last=c.raw[c.raw.length-1], ses=txSession();
+      if(bar&&bar.h>=bar.l&&!(last&&(bar.d<last.d||(bar.d===last.d&&(dayOnly?ses!=="day":!ses))))){   // 同一天：日盤只在日盤時段更新，全盤在任何交易時段更新
+        c.setLive(bar);
+        const q=txQuote(j),t=modalEl&&modalEl.querySelector("#livetag");
+        if(t&&q){t.style.display="";t.textContent=(ses?q.ses+" ":"即時 ")+q.time+(q.basis!=null?`　價差 ${q.basis>0?"+":""}${q.basis.toFixed(0)}`:"")}
+      }
+      renderIdx();
+    }
+    if(chart===c&&txSession()) liveTimer=setTimeout(run,10000);
+  };
+  run();
+}
 function openStock(code){
   const s = D.stocks[code]; if(!s) return;
   if(!s.bars){   // 全市場版：K 線資料點開才載入
@@ -412,6 +466,13 @@ function openStock(code){
 }
 function openIndex(key){
   const ix=(D.index||{})[key]; if(!ix) return;
+  if(key==="TX"||key==="TXD"){
+    const s={code:key,name:"台指期",group:"台指期",industry:"",bars:ix.bars,geo:[],tags:[],defInd:ix.defInd||{}};
+    const sw=`<span class="chip2" style="margin-left:6px"><button class="btn ${key==="TX"?"on":""}" onclick="location.hash='i-TX'">全盤</button><button class="btn ${key==="TXD"?"on":""}" onclick="location.hash='i-TXD'">日盤</button></span>`;
+    mountModal(s,`<div class="mtitle"><b>台指期</b> <span class="mute"> 大台近月</span>${sw}</div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span></div>`,
+      {notes:`<p>台指期（大台 TX）近月連續日 K，資料來自期交所。全盤＝前一晚 15:00 夜盤＋當天日盤（夜盤算在下一個交易日）；日盤＝08:45–13:45。結算日當天日盤仍是舊月份，15:00 夜盤起換到下個月，所以換月那天前後會有價差跳動。成交量單位為口。</p>`});
+    startLiveTX(chart,key==="TXD"); return;
+  }
   const s={code:key,name:ix.name,group:"台股大盤",industry:"",bars:ix.bars,geo:[],tags:[],defInd:ix.defInd||{}};
   mountModal(s, `<div class="mtitle"><b>${ix.name}</b> <span class="mute"> 台股大盤</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span></div>`, {notes:`<p>${ix.name}日 K。成交值單位為億元，${key==="TWII"?"為證交所官方統計。":"本月起為櫃買中心官方統計，更早的月份是依個股成交資料估算（趨勢參考）。"}</p>`});
   startLive(chart, key==="TWII"?"^TWII":"^TWOII", true);
@@ -890,7 +951,7 @@ class Chart{
     }
     cv.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="position:absolute;inset:0;display:block" draggable="false">${o}</svg>`;
     // ── 資料列（上方一排）
-    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月", vlab=(s.code==="TWII"||s.code==="OTC")?"成交值(億)":"成交量(張)";
+    const lab=this.tf==="D"?"日期":this.tf==="W"?"週":"月", vlab=(s.code==="TWII"||s.code==="OTC")?"成交值(億)":(s.code==="TX"||s.code==="TXD")?"成交量(口)":"成交量(張)";
     let html;
     const ii=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;          // 沒點選時預設顯示畫面最右邊（最新）那根
     if(ii>=0&&ii<B.length){

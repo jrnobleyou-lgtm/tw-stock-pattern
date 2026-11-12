@@ -153,8 +153,8 @@ def main():
 
     total = {s: sum(1 for st in stocks.values() if st["state"] == s) for s in STATES}      # 雙族群不重複計算
     index = {}
-    for key, name, defind in (("TWII", "加權指數", {}), ("OTC", "櫃買指數", {"macd": 1})):
-        fp = os.path.join(ROOT, "data", f"index_{key}.json")
+    for key, name, defind in (("TX", "台指期", {}), ("TXD", "台指期（日盤）", {}), ("TWII", "加權指數", {}), ("OTC", "櫃買指數", {"macd": 1})):
+        fp = os.path.join(ROOT, "data", "index_TX_day.json" if key == "TXD" else f"index_{key}.json")
         if os.path.exists(fp):
             index[key] = {"name": name, "bars": json.load(open(fp)), "defInd": defind}
     live = None

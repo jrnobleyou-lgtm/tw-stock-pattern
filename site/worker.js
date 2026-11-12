@@ -90,9 +90,38 @@ async function misBatch(ex) {
   return null;
 }
 
+// ── 台指期（大台近月）即時：期交所行情網站，日盤（MarketType 0）與夜盤（MarketType 1）
+async function taifexList(mt) {
+  const body = JSON.stringify({ MarketType: String(mt), SymbolType: "F", KindID: "1", CID: "TXF", ExpireMonth: "", RowSize: "全部", PageNo: "", SortColumn: "", AscDesc: "A" });
+  const r = await fetch("https://mis.taifex.com.tw/futures/api/getQuoteList", { method: "POST", body, headers: { "content-type": "application/json", "user-agent": "Mozilla/5.0" } });
+  if (!r.ok) return null;
+  const j = await r.json();
+  return (j && j.RtData && j.RtData.QuoteList) || null;
+}
+function txPick(list) {
+  if (!list) return { fut: null, spot: null };
+  const spot = list.find(q => /^TXF-[SP]$/.test(q.SymbolID)) || null;
+  const fut = list.find(q => /^TXF[A-L]\d-[FM]$/.test(q.SymbolID)) || null;      // 清單依到期月份排序，第一個就是近月
+  const f = q => q && {
+    id: q.SymbolID, name: q.DispCName, date: q.CDate, time: q.CTime,
+    o: num(q.COpenPrice), h: num(q.CHighPrice), l: num(q.CLowPrice), c: num(q.CLastPrice), ref: num(q.CRefPrice),
+    v: num(q.CTotalVolume) || 0, oi: num(q.OpenInterest),
+  };
+  return { fut: f(fut), spot: f(spot) };
+}
+
 export default {
   async fetch(req) {
     const u = new URL(req.url);
+    if (u.pathname === "/api/tx") {
+      try {
+        const [d, n] = await Promise.all([taifexList(0), taifexList(1)]);
+        const day = txPick(d), night = txPick(n);
+        return new Response(JSON.stringify({ day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: "unavailable" }), { status: 502, headers: { "content-type": "application/json" } });
+      }
+    }
     if (u.pathname === "/api/misraw") {      // 除錯用：只允許證交所即時行情網站的 stock/data、stock/api 路徑
       const path = u.searchParams.get("p") || "";
       if (!/^stock\/(data|api)\/[A-Za-z_]+\.jsp(\?[A-Za-z0-9_=&.|%]*)?$/.test(path)) return new Response("bad path", { status: 400 });
