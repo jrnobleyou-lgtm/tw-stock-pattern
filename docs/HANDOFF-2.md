@@ -80,4 +80,4 @@
 - **上班模式涵蓋所有頁面**：主頁（`index.html` 開頭的 inline script 先加 `html.work`）＋ Worker 產生的登入頁／設定頁（`worker.js` 的 `page()` 同樣讀 localStorage `work`）。改外觀時兩邊都要改、都要檢查。
 - **部署看門狗**（11/14 凌晨上線）：Worker cron 每 10 分比對 GitHub `deploy` 最新 commit 時間與 Cloudflare 最後一次建置時間，deploy 較新且超過 4 分鐘沒動作就觸發建置。Worker secret `CF_BUILD_TOKEN`（使用者建，帳戶層級：Workers Builds Configuration 編輯、Workers Scripts 讀取、Account Settings 讀取）。權限自檢結果在 KV `deploy/check`（目前「正常」），補部署紀錄 `deploy/last`，設定頁都看得到。
 - 美股個股 K 線 `/admin/s/<代號>.json`：不再 JSON.parse 整包（約 400KB，會超過免費方案 10ms CPU → ARM、APH 打不開），改成文字搜尋切出該檔。
-- 電腦版 K 線視窗：一般模式寬 93%、高 90%（四周留空白好點關閉）；手機版維持原樣（使用者要求）；上班模式維持 78%×72%。
+- 電腦版 K 線視窗：一般模式寬 96%、高 97%（使用者選定，左右留空白好點關閉）；手機版維持原樣（使用者要求）；上班模式維持 78%×72%。
