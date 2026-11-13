@@ -60,3 +60,12 @@
 - 美股頁面存在 KV，前端改了要等下一次美股上傳（`us_sync.py push`）才會換新版；額度用完的日子不要手動推。
 - **難題找 Opus 顧問**、**context 70% 提醒壓縮**：規則寫在 CLAUDE.md。
 - 待辦（11/14）：08:40 自動檢查（已排程）→ 方案 B（美股 KV 底包＋近期補丁，平日寫入 30–60 次；push 前寫入筆數上限約 400）＋ `site/.assetsignore` 加 `us`（使用者已同意）。
+
+## 族群改由使用者的 Google 試算表維護（2026-11-13 起）
+- 試算表（使用者雲端硬碟「各國股市成值排行表」資料夾，由本連接工具建立，所以讀得到）：
+  台股 `Claude_網站分類_台股`（ID `1wvK-q5yX7jhtqMkZc-Qg4mQphJghomKsUA21am7NKwc`）、美股 `Claude_網站分類_美股`（ID `1Hhj5ZJ4sui-bI2lT7WzGbW4upBFqUPh_6Y2UZfdO7YM`），欄位「代號,名稱,產業別,主族群」，多族群用「+」。
+- 雲端硬碟連接工具**只看得到自己建立的檔案**；使用者自己上傳的 CSV、別的程式刪掉重建的檔都看不到，所以改用試算表（可原地改內容，ID 不變）。
+- `scripts/apply_groups.py tw|us <json>`：試算表列到的股票以試算表為準，沒列到的維持自動分類。台股改 `data/groups_tw_all.csv`（主族群＋副族群用「+」）；美股 `--upload` 用 Cloudflare API 直接寫 KV `state/groups_us.csv`、`state/groups_us_all.csv`（2 筆，不進 GitHub）。
+- `analyze.py` 的 `gl_of()`：主族群／副族群都可用「+」或「、」列多個，股票會出現在每個族群。
+- 排程：每週六 14:53（台灣）觸發本對話（trigger `trig_01Tw3nYRzoNq1ub2k47ZHXTP`）讀試算表 → 套用 → 回報變動。
+- 11/13 已套用台股（13 檔變動，含資安 9 檔拿掉原本我加的副族群、長榮航／華航改航運/造船）；美股因當天 KV 額度用完，等 11/14 排程套用（22 檔變動，含特斯拉三族群）。
