@@ -42,7 +42,8 @@ nav a{color:var(--fg);text-decoration:none;padding:4px 12px;border:1px solid var
 nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 .mute{color:var(--mute)}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}
-.sum{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.sum{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;position:sticky;top:var(--hh,0px);z-index:25;padding:8px 0;background:rgba(9,5,26,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+@media(max-width:640px){.sum{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:10px -10px;padding:6px 10px}.sum::-webkit-scrollbar{display:none}.sum .chip{flex:0 0 auto}}
 .chip.click{cursor:pointer}.chip.click:hover{border-color:var(--mute)}
 .chip{padding:6px 12px;border-radius:8px;background:transparent;border:1px solid var(--line-t)}
 .chip b{font-size:18px;margin-left:6px}
@@ -1154,6 +1155,7 @@ function route(){
   apply();
 })();
 
+(function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
 let stuckNow=false;
 function setStuck(v){stuckNow=v;document.documentElement.classList.toggle("stuck",v)}
 (function(){const f=()=>{const y=window.scrollY;if(!stuckNow&&y>60)setStuck(true);else if(stuckNow&&y<20)setStuck(false)};addEventListener("scroll",f,{passive:true});f()})();
