@@ -235,7 +235,7 @@ async function usIngest(req, env, u) {          // 每日更新程式用：上�
   if (req.method === "PUT") {                       // 一次一個檔案、原始內容直接寫入（不解析，避免超過 Worker 的 CPU 上限）
     const k = u.searchParams.get("key") || "";
     if (!/^(site|state)\/[\w\-./]+$/.test(k) && k !== "meta") return new Response("bad key", { status: 400 });
-    await env.US.put(k, req.body);
+    await env.US.put(k, await req.arrayBuffer());
     return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
   }
   const j = await req.json();
