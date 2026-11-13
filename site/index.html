@@ -343,7 +343,7 @@ function finder(q){
   const US=D.market==="US", canOther=US||/(?:^|;\s*)adm=1/.test(document.cookie);
   const other=q=>US?"/#find-"+encodeURIComponent(q):"/admin/?q="+encodeURIComponent(q);
   if(miss.length&&!seen.size&&canOther){ location.href=other(miss.join(" ")); return }
-  if(miss.length) h+=`<p class="note">找不到「${miss.join("、")}」。${canOther?`<a href="${other(miss.join(" "))}">到${US?"台股":"管理者專區"}找 →</a>`:"（目前只收台股上市櫃）"}</p>`;
+  if(miss.length) h+=`<p class="note">找不到「${miss.join("、")}」。${canOther?`<a href="${other(miss.join(" "))}">到${US?"台股":"美股"}找 →</a>`:"（目前只收台股上市櫃）"}</p>`;
   $("#app").innerHTML=h; bindRows();
   $("#app").insertAdjacentHTML("beforeend",`<div style="height:75vh"></div>`);   // 讓最後面的結果也能捲到最上方
   scrollToFirstRow();
@@ -1173,6 +1173,7 @@ if(D.market==="US"){                 // 美股版：同一套頁面，換標題�
   $("#asof").textContent="資料日期 "+D.asof+"（美東）";
   const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; nm.insertAdjacentHTML("afterend",'<a href="/admin/settings">設定</a>');
 }
+if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textContent="美股"}   // 登入後顯示「美股」，登入前才顯示「管理者專區」
 renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
