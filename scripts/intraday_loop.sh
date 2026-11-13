@@ -13,6 +13,8 @@ while [ "$(date +%s)" -lt "$end" ]; do
   if [ "$now" -lt "$open" ]; then sleep $((open - now)); continue; fi
   cycle=$((cycle + 1))
   echo "=== 第 $cycle 輪 $(date +%T) ==="
+  # 每輪先取最新的網頁與程式（避免長時間運行的舊版覆蓋掉之後的修改）；不更新本檔案自己
+  git fetch -q origin main 2>/dev/null && git checkout -q origin/main -- site/index.html site/worker.js site/wrangler.jsonc site/.assetsignore $(git ls-tree -r --name-only origin/main scripts | grep '\.py$') 2>/dev/null
   if python3 scripts/intraday.py; then
     python3 scripts/build_prices.py && python3 scripts/analyze.py all && {
       rm -rf /tmp/pub && mkdir /tmp/pub && cp -r site/. /tmp/pub/
