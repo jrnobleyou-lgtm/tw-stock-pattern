@@ -325,7 +325,15 @@ export default {
     if (u.pathname === "/api/draw-list") return new Response(JSON.stringify(env.US ? await drawList(env) : {}), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     if (u.pathname === "/api/draw") return drawRoute(req, env, u);
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
-    if (u.pathname.startsWith("/admin/")) return usRoute(req, env, u);
+    if (u.pathname.startsWith("/admin/")) {
+      const r = await usRoute(req, env, u);
+      // 早先登入的裝置沒有 adm 標記：只要帶著有效登入進入管理者專區，就補上（台股頁靠它把右上角改成「美股」）
+      if (r.status === 200 && !/(?:^|;\s*)adm=1/.test(req.headers.get("cookie") || "") && (await usAuthed(req, env))) {
+        const h = new Headers(r.headers); h.append("set-cookie", "adm=1; Path=/; Max-Age=2592000; Secure; SameSite=Lax");
+        return new Response(r.body, { status: 200, headers: h });
+      }
+      return r;
+    }
     if (u.pathname === "/api/us-ingest") return usIngest(req, env, u);
     if (u.pathname === "/api/tx") {
       try {
