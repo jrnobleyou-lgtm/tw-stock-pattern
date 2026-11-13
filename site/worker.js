@@ -190,8 +190,8 @@ async function usRoute(req, env, u) {
     if (u.searchParams.get("ok")) msg = `<div class="m" style="color:#7ee0a1">密碼已更新，其他裝置需要重新登入。</div>`;
     const meta = (await env.US.get("meta", "json")) || {};
     const cl = (await env.US.get("cron/last", "json")) || null;
-    const dl = (await env.US.get("deploy/last", "json")) || null;
-    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
+    const dl = (await env.US.get("deploy/last", "json")) || null, dc = await env.US.get("deploy/check");
+    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
     return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
@@ -305,10 +305,15 @@ async function deployWatchdog(env) {
   const gh = await fetch(`https://api.github.com/repos/${REPO}/commits/deploy`, {
     headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-cron" } }).then(r => r.json());
   const head = Date.parse(gh?.commit?.committer?.date || "");
+  // 權限自我檢查：各步驟結果有變才寫 KV（deploy/check），省寫入額度
+  const chk = async (txt) => { if (env.US && (await env.US.get("deploy/check")) !== txt) await env.US.put("deploy/check", txt); };
+  const acc = (await cf("/accounts")).result?.[0]?.id; if (!acc) return chk("讀不到帳戶（缺 Account Settings 讀取權限？）");
+  const tag = (await cf(`/accounts/${acc}/workers/scripts`)).result?.find(x => x.id === "news-findstockpattern-swing-breakout")?.tag; if (!tag) return chk("讀不到 Workers 指令碼（缺 Workers Scripts 讀取權限？）");
+  const bl = await cf(`/accounts/${acc}/builds/workers/${tag}/builds?per_page=5`);
+  if (!bl.success) return chk("讀不到部署紀錄（缺 Workers Builds Configuration 權限？）");
+  await chk("正常");
   if (!head || Date.now() - head < 4 * 60000) return;                   // 剛推的先等 Cloudflare 自己處理
-  const acc = (await cf("/accounts")).result?.[0]?.id; if (!acc) return;
-  const tag = (await cf(`/accounts/${acc}/workers/scripts`)).result?.find(x => x.id === "news-findstockpattern-swing-breakout")?.tag; if (!tag) return;
-  const builds = (await cf(`/accounts/${acc}/builds/workers/${tag}/builds?per_page=5`)).result || [];
+  const builds = bl.result || [];
   if (builds.some(b => b.status !== "stopped")) return;                  // 正在部署
   const last = Math.max(0, ...builds.map(b => Date.parse(b.created_on) || 0));
   if (last >= head) return;                                              // 已經部署過這一版
