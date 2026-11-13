@@ -18,3 +18,7 @@
 - 美股族群清單（`data/groups_us*.csv`）、美股歷史資料都不進版控（.gitignore 已排除）。
 - 主程式：`scripts/analyze.py`（台股 `all`、美股 `us`）、`scripts/engine.py`（盤整區間與五種型態）、`scripts/patterns.py`（幾何形態）、`site/index.html`（整個前端，台股與管理者專區共用）。
 - 推到 `main` 會觸發 `.github/workflows/update.yml` 重建並推到 `deploy`；Cloudflare 偶爾沒自動部署，可用 Cloudflare API 觸發建置（見 HANDOFF）。
+
+## 對話管理
+- 背景資訊（context）用量到 **70%** 時，主動提醒使用者壓縮，並先把本次變更寫進 `docs/HANDOFF-N.md`（最新那份；快滿 200 行就開下一份並在上方加 `@docs/HANDOFF-N.md` 引用）再請他壓縮。
+- 壓縮後使用者會說「先讀 CLAUDE.md 和交接文件再繼續」，就照做，不必開新對話。
