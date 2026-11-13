@@ -14,7 +14,7 @@
 |---|---|---|
 | `update.yml` | 上櫃 15:10–17:40、上市隔天 06:00–07:30；push 到 main 也會跑 | 抓官方日 K（`daily_update.py`：證交所 OpenAPI、櫃買 OpenAPI、指數、成交值、台指期歷史）→ 盤中暫時價 → `build_prices.py` → `analyze.py all` → 推 `deploy` |
 | `intraday.yml` | 08:50 啟動，一個工作內循環到 13:50（09:25 備援） | `intraday_loop.sh`：每輪向 `/api/mis` 取全市場現價 → 重算型態 → 推 `deploy` |
-| `us.yml` | 06:20 週二～週六 | 美股：`us_sync.py pull` → `us_fetch.py`（Yahoo）→ `analyze.py us` → `make_us_page.py` → `us_sync.py push`（用 GitHub OIDC 身分上傳到 KV，不存金鑰） |
+| `us.yml` | 08:10 週二～週六（KV 寫入額度 08:00 重置） | 美股：`us_sync.py pull` → `us_fetch.py`（Yahoo）→ `analyze.py us` → `make_us_page.py` → `us_sync.py push`（用 GitHub OIDC 身分上傳到 KV，不存金鑰） |
 | `weekly-adjust.yml` | 週日 05:00 | Yahoo 重新檢查除權息還原 |
 
 GitHub 的高頻排程常被延遲或略過，所以盤中改成單一長工作循環。

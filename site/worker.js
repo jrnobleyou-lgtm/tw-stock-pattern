@@ -291,7 +291,7 @@ function jobsAt(t) {                                       // t 為 UTC 時間�
   if (wk && hm === 50) jobs.push("intraday.yml");                                   // 台灣 08:50 盤中循環
   if (wk && hm >= 430 && hm <= 580 && hm % 30 === 10) jobs.push("update.yml");      // 台灣 15:10–17:40 上櫃收盤資料
   if (wk && hm >= 1320 && hm <= 1410 && hm % 30 === 0) jobs.push("update.yml");     // 台灣 隔天 06:00–07:30 上市收盤資料
-  if (wk && hm === 1340) jobs.push("us.yml");                                       // 台灣 06:20 美股
+  if (d >= 2 && d <= 6 && hm === 10) jobs.push("us.yml");                          // 台灣 08:10 美股（等 KV 每日寫入額度在台灣 08:00 重置後）
   if (d === 6 && hm === 1260) jobs.push("weekly-adjust.yml");                       // 台灣 週日 05:00 除權息檢查
   return jobs;
 }

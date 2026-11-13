@@ -33,3 +33,6 @@
 
 ## 交接檔規則
 - `CLAUDE.md` 保持精簡；細節寫在 `docs/HANDOFF.md`、`docs/HANDOFF-2.md`……每份約 200 行內，滿了開下一個數字，並在 `CLAUDE.md` 用 `@docs/HANDOFF-N.md` 引用。
+
+## KV 寫入額度
+- 免費方案每天 1000 次寫入（台灣 08:00 重置）。美股每天上傳約 270 次；失敗重跑會重複消耗，一天內不要重傳超過 2～3 次。超過時 Worker 寫入會出錯（Cloudflare 錯誤 1101）。
