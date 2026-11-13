@@ -145,7 +145,8 @@ async function usAuthed(req, env) {
   return (await hmac(auth.hash, m[1])) === m[2];               // 改密碼後舊的登入自動失效
 }
 const page = (title, body) => new Response(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="icon" href="/favicon.ico">
-<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#100c1f url(/bg.jpg) center/cover;font:15px/1.6 -apple-system,"Noto Sans TC","PingFang TC",sans-serif;color:#ece8f5}
+<script>try{if(localStorage.getItem("work")==="1"){document.documentElement.classList.add("work");document.querySelector("link[rel=icon]").href="/icon-work-32.png"}}catch(_){}</script>
+<style>html.work body{background:#07060d url(/bg-work.jpg) center/cover}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#100c1f url(/bg.jpg) center/cover;font:15px/1.6 -apple-system,"Noto Sans TC","PingFang TC",sans-serif;color:#ece8f5}
 .box{background:rgba(20,16,32,.92);border:1px solid #3a3450;border-radius:12px;padding:24px;width:min(92vw,380px);display:flex;flex-direction:column;gap:12px}
 h1{font-size:19px;margin:0}input{font:inherit;padding:9px 11px;border-radius:8px;border:1px solid #3a3450;background:#0c0a16;color:#ece8f5}
 button{font:inherit;padding:9px;border-radius:8px;border:0;background:#f0d34a;color:#241c00;font-weight:700;cursor:pointer}.m{color:#9a93ad;font-size:13px}.e{color:#fb7185;font-size:13px}a{color:#c9b6ff}
