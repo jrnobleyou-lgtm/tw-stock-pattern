@@ -81,3 +81,6 @@
 - **部署看門狗**（11/14 凌晨上線）：Worker cron 每 10 分比對 GitHub `deploy` 最新 commit 時間與 Cloudflare 最後一次建置時間，deploy 較新且超過 4 分鐘沒動作就觸發建置。Worker secret `CF_BUILD_TOKEN`（使用者建，帳戶層級：Workers Builds Configuration 編輯、Workers Scripts 讀取、Account Settings 讀取）。權限自檢結果在 KV `deploy/check`（目前「正常」），補部署紀錄 `deploy/last`，設定頁都看得到。
 - 美股個股 K 線 `/admin/s/<代號>.json`：不再 JSON.parse 整包（約 400KB，會超過免費方案 10ms CPU → ARM、APH 打不開），改成文字搜尋切出該檔。
 - 電腦版 K 線視窗：一般模式寬 96%、高 97%（使用者選定，左右留空白好點關閉）；手機版維持原樣（使用者要求）；上班模式維持 78%×72%。
+- 美股 K 線日期顯示 undefined（APH、ARM）：11/13 上傳只成功一半，`site/sh` 分包多一根（索引 551），`site/data.js` 的 dates 只到 11/12（551 筆）。前端已加保險：日期對不上的 K 棒不顯示；11/14 08:10 完整上傳後應一致。
+- 工程技能在 `.claude/skills/`（mattpocock/skills 8 個），使用時機寫在 CLAUDE.md，由我主動啟動。
+- **11/14 早上 08:40 自動檢查**（本對話的提醒）：排程、美股更新、美股頁新版、看門狗 → 方案 B ＋ `.assetsignore` 加 `us` → 14:53 族群同步結果 → 寫交接 → 請使用者開新對話。
