@@ -9,6 +9,16 @@ CHART_BARS = 520
 STATES = ["轉強", "弱轉強", "型態好", "盤整", "走弱"]
 
 
+
+def gl_of(g):
+    """族群清單：主族群、副族群都可以用「+」或「、」列多個（例如 汽車+電池/能源+機器人/自動化），第一個是主族群。"""
+    out = []
+    for x in ((g.get("主族群") or "") + "+" + (g.get("副族群") or "")).replace("、", "+").split("+"):
+        x = x.strip()
+        if x and x not in out:
+            out.append(x)
+    return out or ["其他"]
+
 def load_prices(path):
     by = collections.defaultdict(dict)
     mk = {}
@@ -110,7 +120,7 @@ def main():
         if run_lo >= 3:
             tags.append("KD低檔鈍化")
         st = {
-            "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": g["主族群"], "groups": [g["主族群"]] + ([g["副族群"]] if g.get("副族群") and g["副族群"] != g["主族群"] else []),
+            "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
             "market": mk.get(code), "state": state, "sub": sub, "tags": tags,
             "close": raw[T]["c"],
