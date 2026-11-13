@@ -28,6 +28,17 @@ def get(key):
             return None
         raise
 
+def put(key, data):
+    import time
+    for i in range(4):
+        try:
+            urllib.request.urlopen(urllib.request.Request(API + "?key=" + key, data=data, method="PUT",
+                                   headers={**headers(), "Content-Type": "application/octet-stream"}), timeout=120).read()
+            return
+        except urllib.error.HTTPError as e:
+            if e.code < 500 or i == 3: raise
+            time.sleep(3 * (i + 1))
+
 def post(files, meta=None):
     body = json.dumps({"files": {k: base64.b64encode(v).decode() for k, v in files.items()}, **({"meta": meta} if meta else {})}).encode()
     r = urllib.request.urlopen(urllib.request.Request(API, data=body, method="POST", headers={**headers(), "Content-Type": "application/json"}), timeout=120)
@@ -81,11 +92,13 @@ elif sys.argv[1:] == ["push"]:
     D = json.loads(open(os.path.join(ROOT, "site", "us", "data.js"), encoding="utf-8").read()[len("window.DATA="):-1])
     meta = {"asof": D["asof"], "stocks": len(D["stocks"]), "missing": D.get("missing", [])[:50], "missingN": len(D.get("missing", [])),
             "updated": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M（台灣時間）")}
-    keys, batch, size, n = sorted(files, key=lambda k: k == "state/manifest.json"), {}, 0, 0
-    for i, k in enumerate(keys):
-        batch[k] = files[k]; size += len(files[k])
-        if size > 5e6 or i == len(keys) - 1:
-            n += post(batch, meta if i == len(keys) - 1 else None)["n"]; batch, size = {}, 0
+    H = headers()                                    # 取一次身分（GitHub OIDC 有效期約 5 分鐘以上，足夠）
+    headers = lambda: H
+    keys = sorted(files, key=lambda k: k == "state/manifest.json")   # manifest 最後寫，中途失敗下次會重傳
+    for k in keys:
+        put(k, files[k])
+    put("meta", json.dumps(meta, ensure_ascii=False).encode())
+    n = len(keys)
     print("上傳", n, "個檔案；資料日期", meta["asof"], "；股票", meta["stocks"])
 else:
     sys.exit("用法：us_sync.py pull|push")

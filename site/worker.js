@@ -232,6 +232,12 @@ async function usIngest(req, env, u) {          // 每日更新程式用：上�
     const v = await env.US.get(u.searchParams.get("key") || "", "arrayBuffer");
     return v ? new Response(v) : new Response("not found", { status: 404 });
   }
+  if (req.method === "PUT") {                       // 一次一個檔案、原始內容直接寫入（不解析，避免超過 Worker 的 CPU 上限）
+    const k = u.searchParams.get("key") || "";
+    if (!/^(site|state)\/[\w\-./]+$/.test(k) && k !== "meta") return new Response("bad key", { status: 400 });
+    await env.US.put(k, req.body);
+    return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+  }
   const j = await req.json();
   for (const [k, b64] of Object.entries(j.files || {})) {
     if (!/^(site|state)\//.test(k)) continue;
