@@ -104,9 +104,17 @@ def double_bottom_top(B, T, P):
     out = []
     for k in range(len(P) - 2):
         (i1, p1, t1), (i2, p2, t2), (i3, p3, t3) = P[k], P[k + 1], P[k + 2]
+        last = k + 2
+        if t1 == "L" and t3 == "L" and min(B[j]["l"] for j in range(i3, T + 1)) < min(p1, p3) * 0.97:
+            # 原本的 W 會因為之後又破更低而失敗時：若中間小反彈沒碰到頸線就又破底，第二個底改用這段最低點（例：3374 的 11/04→11/06）
+            j = k + 2
+            while j + 2 < len(P) and P[j + 1][1] < p2 * 0.97 and P[j + 2][2] == "L":
+                j += 2
+                if P[j][1] < p3:
+                    i3, p3, last = P[j][0], P[j][1], j
         if i3 < T - 45 or i3 - i1 < 10:
             continue
-        if k + 2 == len(P) - 1:
+        if last == len(P) - 1:
             continue                                 # 第二個頂／底還在走（價格還沒從那裡反轉），不能算成形
         if t1 == "L" and t3 == "L":              # 雙重底
             gap = abs(p1 - p3) / min(p1, p3)
@@ -115,6 +123,8 @@ def double_bottom_top(B, T, P):
             if min(B[j]["l"] for j in range(i3, T + 1)) < min(p1, p3) * 0.97:
                 continue
             st, d = _status(B, T, i3, p2, True)
+            if last != k + 2 and st not in ("confirmed", "near"):
+                continue                                 # 用延伸後的第二個底：只在接近或突破頸線時才標（避免雜訊）
             if gap > 0.04:
                 if st not in ("confirmed", "near"):
                     continue                             # 不對稱的只在接近或突破頸線時才標，避免太多雜訊

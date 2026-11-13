@@ -310,11 +310,11 @@ async function runSchedule(env, when) {
 }
 
 // ── 管理者畫線清單（台股，公開）：分析程式用來以管理者的判斷取代系統的形態
-async function drawList(env, m = "TW") {
+async function drawList(env, m = "TW", span = false) {
   const out = {}; let cursor; const pre = `draw/${m}/`;
   do {
     const r = await env.US.list({ prefix: pre, cursor }); cursor = r.list_complete ? null : r.cursor;
-    for (const k of r.keys) { const v = await env.US.get(k.name, "json"); if (Array.isArray(v) && v.length) out[k.name.slice(pre.length)] = v.map(d => d.name); }
+    for (const k of r.keys) { const v = await env.US.get(k.name, "json"); if (Array.isArray(v) && v.length) out[k.name.slice(pre.length)] = v.map(d => span ? { name: d.name, kind: d.kind, d0: (d.pts || []).map(p => p[0]).sort()[0] || "", d1: (d.pts || []).map(p => p[0]).sort().pop() || "" } : d.name); }
   } while (cursor);
   return out;
 }
@@ -326,7 +326,7 @@ export default {
     if (u.pathname === "/api/draw-list") {
       // 預設：台股（公開，分析程式用）；?all=1：管理者的「我的畫線」，台股＋美股（美股要登入）
       const all = u.searchParams.get("all") === "1" && env.US && (await usAuthed(req, env));
-      const body = !env.US ? {} : all ? { TW: await drawList(env, "TW"), US: await drawList(env, "US") } : await drawList(env, "TW");
+      const body = !env.US ? {} : all ? { TW: await drawList(env, "TW"), US: await drawList(env, "US") } : await drawList(env, "TW", u.searchParams.get("span") === "1");   // ?span=1：附每條線的起訖日期（分析程式比對系統形態用）
       return new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     }
     if (u.pathname === "/api/draw") return drawRoute(req, env, u);

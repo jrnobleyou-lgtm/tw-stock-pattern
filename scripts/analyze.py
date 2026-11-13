@@ -10,6 +10,33 @@ STATES = ["轉強", "弱轉強", "型態好", "盤整", "走弱"]
 
 
 
+
+def filter_by_drawings(geo, bars, drawings):
+    """管理者畫線 vs 系統形態（時間範圍比對）：
+       沒有重疊 → 兩個都留；重疊但系統的沒有比畫線更往後 → 以管理者為準，系統的拿掉；
+       重疊且系統的延伸到畫線之後（例如畫了 V，系統認出完整的 W）→ 系統的留著，並回報「型態已更新」。"""
+    spans = [(d.get("d0"), d.get("d1"), d.get("name") or "") for d in drawings
+             if isinstance(d, dict) and d.get("kind") != "hline" and d.get("d0")]
+    if any(not isinstance(d, dict) for d in drawings):
+        return [], []                                # 舊格式（只有名稱）：維持全部以管理者為準
+    import bisect
+    ds = [b["d"] for b in bars]
+    back10 = lambda d: ds[max(0, bisect.bisect_left(ds, d) - 10)]        # 畫線起點往前 10 根
+    keep, upd = [], []
+    for g in geo:
+        idx = [i for i, _ in g["pts"]] + (list(g["rect"][:2]) if g.get("rect") else [])
+        if not idx:
+            keep.append(g); continue
+        s0, s1 = bars[min(idx)]["d"], bars[max(idx)]["d"]
+        hit = [(a, b, n) for a, b, n in spans if s0 <= b and s1 >= a]
+        if not hit:
+            keep.append(g)                           # 沒有蓋到：兩個都顯示
+        elif all(back10(a) <= s0 < b and s1 > b for a, b, n in hit):
+            keep.append(g)                           # 系統從畫線範圍內開始、往後補完了（例：畫 V，系統認出 W）
+            upd += [n for a, b, n in hit if n not in upd]
+        # 其他重疊：以管理者的畫線為準，系統的不顯示
+    return keep, upd
+
 def gl_of(g):
     """族群清單：主族群、副族群都可以用「+」或「、」列多個（例如 汽車+電池/能源+機器人/自動化），第一個是主族群。"""
     out = []
@@ -63,7 +90,7 @@ def main():
         try:
             import urllib.request
             site = os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev").rstrip("/")
-            adm = json.loads(urllib.request.urlopen(urllib.request.Request(site + "/api/draw-list", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
+            adm = json.loads(urllib.request.urlopen(urllib.request.Request(site + "/api/draw-list?span=1", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
         except Exception as e:
             print("讀不到管理者畫線（略過）", repr(e)[:80])
     stocks, missing = {}, []
@@ -83,8 +110,9 @@ def main():
         box, ev = E.current_box(bars, T)
         state, tags, sub = E.classify(bars, ma[5], ma[10], ma[20], ma[60], T, box, ev)
         geo = [g for g in PT.detect_geometry(bars, T) if g["status"] in ("confirmed", "near", "forming")]
-        if code in adm:
-            geo = []                                   # 管理者畫過：不用系統判斷的幾何形態
+        draw_upd = []
+        if code in adm:                                # 管理者畫過：比對時間範圍
+            geo, draw_upd = filter_by_drawings(geo, bars, adm[code])
         state, tags, sub = E.apply_patterns(state, tags, sub, geo)
         if state == "轉強":                         # 均線還沒排列向上（5>10>20 且三條都往上）之前的轉強＝弱轉強
             m5, m10, m20 = ma[5], ma[10], ma[20]
@@ -102,8 +130,8 @@ def main():
             rb = None
         for n, d in candle:
             tags.append(n)
-        for nm in adm.get(code, []):
-            tags.append("✏️" + nm)                      # 管理者標註
+        for dw in adm.get(code, []):
+            tags.append("✏️" + (dw["name"] if isinstance(dw, dict) else dw))   # 管理者標註
         # KD(9,3,3) 高低檔鈍化：K 值連續 ≥3 日在 80 以上／20 以下（以還原價計算）
         k_, d_ = 50.0, 50.0
         run_hi = run_lo = 0
@@ -127,6 +155,8 @@ def main():
             "chg": r2((raw[T]["c"] / raw[T - 1]["c"] - 1) * 100) if T else 0,
             "vol": round(raw[T]["v"] / 1000),
         }
+        if draw_upd:
+            st["drawUpd"] = draw_upd                     # 系統的形態已經把管理者的線往後補完（「我的畫線」顯示「型態已更新！」）
         d_T = bars[T]["d"]
         st["geo"] = [{"kind": g["kind"], "dir": g["dir"], "status": g["status"], "day": g["day"],
                       "neck": r2(R(g["neck"], d_T)) if g["neck"] else None, "neckA": r2(g["neck"]) if g["neck"] else None,

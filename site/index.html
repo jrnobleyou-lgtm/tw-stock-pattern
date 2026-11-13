@@ -1107,7 +1107,7 @@ async function myDraw(){
   if(location.hash!=="#mydraw") return;
   if(!all||!all.TW){ $("#app").innerHTML=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2>我的畫線✏️</h2><p class="note">請先登入管理者專區。</p>`; return }
   const here=D.market==="US"?"US":"TW", order=[here, here==="US"?"TW":"US"];
-  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note" style="margin-top:0">管理者畫過型態線的股票，點股票看 K 線圖（另一個市場的會換頁打開）。</p>`;
+  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note" style="margin-top:0">管理者畫過型態線的股票，點股票看 K 線圖（另一個市場的會換頁打開）。標「型態已更新！」的：系統已經把你畫的型態往後補完，確認後可以刪掉自己的線。</p>`;
   for(const m of order){
     const codes=Object.keys(all[m]||{}), nm=m==="US"?"美股":"台股";
     h+=`<h3 style="margin:18px 0 6px">${nm}　<span class="mute">${codes.length} 檔</span></h3>`;
@@ -1116,7 +1116,7 @@ async function myDraw(){
     h+=`<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="tg">我畫的型態</th><th class="cc">型態</th><th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
     for(const x of list){
       const href=sameMkt?"":(m==="US"?"/admin/#s-":"/#s-")+encodeURIComponent(x.c), s=x.s;
-      h+=`<tr class="row" ${sameMkt?`data-c="${x.c}"`:`data-href="${href}"`}><td class="sn1"><b>${x.c}</b> <span class="sn">${s?s.name:""}</span></td><td class="tg">${x.names.map(n=>`<span class="tag" style="color:#f472b6;border-color:#f472b688">✏️${n||"未命名"}</span>`).join("")}</td>`+
+      h+=`<tr class="row" ${sameMkt?`data-c="${x.c}"`:`data-href="${href}"`}><td class="sn1"><b>${x.c}</b> <span class="sn">${s?s.name:""}</span></td><td class="tg">${x.names.map(n=>`<span class="tag" style="color:#f472b6;border-color:#f472b688">✏️${n||"未命名"}</span>`).join("")}${s&&s.drawUpd&&s.drawUpd.length?`<span class="tag hot" title="系統已經把這段型態往後補完，可以點進去確認後刪掉自己畫的線">型態已更新！</span>`:""}</td>`+
         (s?`<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td>`:`<td class="cc mute" colspan="3">點開看（${nm}頁）</td>`)+`</tr>`;
     }
     h+=`</tbody></table></div>`;
