@@ -204,8 +204,20 @@ def v_shape(B, T):
     if lo_i < T:
         s = max(0, lo_i - 15)
         top_i = max(range(s, lo_i + 1), key=lambda i: B[i]["h"])
+        rb = lambda t: (B[T]["c"] - B[lo_i]["l"]) / (B[t]["h"] - B[lo_i]["l"]) if B[t]["h"] > B[lo_i]["l"] else 0
+        if not (lo_i - top_i <= 12 and rb(top_i) >= 0.5):
+            # 原本的高點太遠或反彈不到一半：往回找「之後到低點都沒有更高」的高點，從最遠的試起，
+            # 第一個跌幅 ≥15%、反彈過半、左腳 ≥3 根的就當 V 的起點（例：2454、2313 的 10 月下旬急跌）
+            run, cand = -1, []
+            for i in range(lo_i - 1, max(0, lo_i - 12) - 1, -1):
+                if B[i]["h"] > run:
+                    run = B[i]["h"]; cand.append(i)
+            for i in reversed(cand):
+                if lo_i - i >= 3 and (B[i]["h"] - B[lo_i]["l"]) / B[i]["h"] >= 0.15 and rb(i) >= 0.5:
+                    top_i = i
+                    break
         drop = (B[top_i]["h"] - B[lo_i]["l"]) / B[top_i]["h"]
-        reb = (B[T]["c"] - B[lo_i]["l"]) / (B[top_i]["h"] - B[lo_i]["l"]) if B[top_i]["h"] > B[lo_i]["l"] else 0
+        reb = rb(top_i)
         if drop >= 0.15 and lo_i - top_i <= 12 and reb >= 0.5 and T - lo_i <= 15:
             out.append({"kind": "V形底", "dir": "bull", "status": "confirmed" if reb >= 0.5 and T - lo_i <= 5 else "old",
                         "day": T - lo_i + 1, "neck": None,

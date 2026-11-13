@@ -31,8 +31,8 @@ def filter_by_drawings(geo, bars, drawings):
         hit = [(a, b, n) for a, b, n in spans if s0 <= b and s1 >= a]
         if not hit:
             keep.append(g)                           # 沒有蓋到：兩個都顯示
-        elif all(back10(a) <= s0 < b and s1 > b for a, b, n in hit):
-            keep.append(g)                           # 系統從畫線範圍內開始、往後補完了（例：畫 V，系統認出 W）
+        elif all(back10(a) <= s0 < b and s1 >= b for a, b, n in hit):
+            keep.append(g)                           # 系統從畫線範圍內開始、畫到跟畫線一樣遠或更遠（系統認得了／往後補完，例：畫 V，系統認出 W）
             upd += [n for a, b, n in hit if n not in upd]
         # 其他重疊：以管理者的畫線為準，系統的不顯示
     return keep, upd
