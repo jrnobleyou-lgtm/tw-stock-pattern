@@ -188,7 +188,8 @@ async function usRoute(req, env, u) {
     }
     if (u.searchParams.get("ok")) msg = `<div class="m" style="color:#7ee0a1">密碼已更新，其他裝置需要重新登入。</div>`;
     const meta = (await env.US.get("meta", "json")) || {};
-    const rows = [["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
+    const cl = (await env.US.get("cron/last", "json")) || null;
+    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
     return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
@@ -277,9 +278,45 @@ async function drawRoute(req, env, u) {
   return new Response(JSON.stringify({ ok: true, n: clean.length }), { headers: { "content-type": "application/json" } });
 }
 
+// ── 排程：GitHub 自己的排程常常不準時或被略過，改由 Cloudflare 每 10 分鐘檢查一次、到點就叫 GitHub 開工（需要 Worker secret GH_TOKEN）
+const REPO = "jrnobleyou-lgtm/tw-stock-pattern";
+function jobsAt(t) {                                       // t 為 UTC 時間；回傳這個時間點要啟動的工作流程
+  const d = t.getUTCDay(), hm = t.getUTCHours() * 60 + t.getUTCMinutes(), wk = d >= 1 && d <= 5, jobs = [];
+  if (wk && hm === 50) jobs.push("intraday.yml");                                   // 台灣 08:50 盤中循環
+  if (wk && hm >= 430 && hm <= 580 && hm % 30 === 10) jobs.push("update.yml");      // 台灣 15:10–17:40 上櫃收盤資料
+  if (wk && hm >= 1320 && hm <= 1410 && hm % 30 === 0) jobs.push("update.yml");     // 台灣 隔天 06:00–07:30 上市收盤資料
+  if (wk && hm === 1340) jobs.push("us.yml");                                       // 台灣 06:20 美股
+  if (d === 6 && hm === 1260) jobs.push("weekly-adjust.yml");                       // 台灣 週日 05:00 除權息檢查
+  return jobs;
+}
+async function runSchedule(env, when) {
+  const t = new Date(Math.round(when / 600000) * 600000), jobs = jobsAt(t);
+  if (!jobs.length || !env.GH_TOKEN) return;
+  const res = [];
+  for (const wf of jobs) {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, { method: "POST",
+      headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-cron", "content-type": "application/json" },
+      body: JSON.stringify({ ref: "main" }) });
+    res.push(`${wf} ${r.status}`);
+  }
+  if (env.US) await env.US.put("cron/last", JSON.stringify({ at: new Date(when).toISOString(), res }));
+}
+
+// ── 管理者畫線清單（台股，公開）：分析程式用來以管理者的判斷取代系統的形態
+async function drawList(env) {
+  const out = {}; let cursor;
+  do {
+    const r = await env.US.list({ prefix: "draw/TW/", cursor }); cursor = r.list_complete ? null : r.cursor;
+    for (const k of r.keys) { const v = await env.US.get(k.name, "json"); if (Array.isArray(v) && v.length) out[k.name.slice(8)] = v.map(d => d.name); }
+  } while (cursor);
+  return out;
+}
+
 export default {
+  async scheduled(ev, env, ctx) { ctx.waitUntil(runSchedule(env, ev.scheduledTime)); },
   async fetch(req, env, ctx) {
     const u = new URL(req.url);
+    if (u.pathname === "/api/draw-list") return new Response(JSON.stringify(env.US ? await drawList(env) : {}), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     if (u.pathname === "/api/draw") return drawRoute(req, env, u);
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
     if (u.pathname.startsWith("/admin/")) return usRoute(req, env, u);

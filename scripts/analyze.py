@@ -47,6 +47,15 @@ def main():
         os.makedirs(os.path.join(OUT, "s"), exist_ok=True)
 
     di = {d: i for i, d in enumerate(all_dates)}
+    # 管理者自己畫的型態（台股）：有畫的股票，以管理者的判斷取代系統的幾何形態
+    adm = {}
+    if full and not us:
+        try:
+            import urllib.request
+            site = os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev").rstrip("/")
+            adm = json.loads(urllib.request.urlopen(urllib.request.Request(site + "/api/draw-list", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
+        except Exception as e:
+            print("讀不到管理者畫線（略過）", repr(e)[:80])
     stocks, missing = {}, []
     for g in groups:
         code = g["代號"]
@@ -64,6 +73,8 @@ def main():
         box, ev = E.current_box(bars, T)
         state, tags, sub = E.classify(bars, ma[5], ma[10], ma[20], ma[60], T, box, ev)
         geo = [g for g in PT.detect_geometry(bars, T) if g["status"] in ("confirmed", "near", "forming")]
+        if code in adm:
+            geo = []                                   # 管理者畫過：不用系統判斷的幾何形態
         state, tags, sub = E.apply_patterns(state, tags, sub, geo)
         if state == "轉強":                         # 均線還沒排列向上（5>10>20 且三條都往上）之前的轉強＝弱轉強
             m5, m10, m20 = ma[5], ma[10], ma[20]
@@ -81,6 +92,8 @@ def main():
             rb = None
         for n, d in candle:
             tags.append(n)
+        for nm in adm.get(code, []):
+            tags.append("✏️" + nm)                      # 管理者標註
         # KD(9,3,3) 高低檔鈍化：K 值連續 ≥3 日在 80 以上／20 以下（以還原價計算）
         k_, d_ = 50.0, 50.0
         run_hi = run_lo = 0
