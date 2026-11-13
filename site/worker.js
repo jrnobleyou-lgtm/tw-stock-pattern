@@ -201,9 +201,17 @@ async function usRoute(req, env, u) {
   const sm = p.match(/^\/admin\/s\/([A-Za-z0-9.\-^]+)\.json$/);          // 個股 K 線：從分包裡取出那一檔
   if (sm) {
     let h = 0; for (const ch of sm[1]) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
-    const pack = await env.US.get("site/sh/" + (h % 256) + ".json", "json");
-    const bars = pack && pack[sm[1]];
-    return bars ? new Response(JSON.stringify({ bars }), { headers: { "content-type": "application/json", "cache-control": "private, max-age=300" } }) : new Response("找不到", { status: 404 });
+    // 不解析整包（免費方案 CPU 只有約 10 毫秒，大包會超時）：直接從文字切出那一檔的陣列
+    const txt = await env.US.get("site/sh/" + (h % 256) + ".json");
+    const i = txt ? txt.indexOf(JSON.stringify(sm[1]) + ":[") : -1;
+    let bars = null;
+    if (i >= 0) {
+      let j = i + JSON.stringify(sm[1]).length + 1, depth = 0;
+      const st = j;
+      for (; j < txt.length; j++) { const c = txt.charCodeAt(j); if (c === 91) depth++; else if (c === 93 && --depth === 0) break; }
+      bars = txt.slice(st, j + 1);
+    }
+    return bars ? new Response('{"bars":' + bars + "}", { headers: { "content-type": "application/json", "cache-control": "private, max-age=300" } }) : new Response("找不到", { status: 404 });
   }
   let key = "site/" + (p.slice(7) || "index.html");
   if (key.endsWith("/")) key += "index.html";
