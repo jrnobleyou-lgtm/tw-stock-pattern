@@ -167,7 +167,7 @@ svg text{fill:var(--fg);font-size:11px}
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">篩選</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
@@ -1099,22 +1099,50 @@ class Chart{
   }
 }
 
+
+/* ───────── 我的畫線（管理者）：台股＋美股所有畫過線的股票，目前市場的排前面 ───────── */
+async function myDraw(){
+  $("#app").innerHTML=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note">讀取中…</p>`;
+  let all=null; try{ const r=await fetch("/api/draw-list?all=1",{cache:"no-store"}); all=await r.json() }catch(_){}
+  if(location.hash!=="#mydraw") return;
+  if(!all||!all.TW){ $("#app").innerHTML=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2>我的畫線✏️</h2><p class="note">請先登入管理者專區。</p>`; return }
+  const here=D.market==="US"?"US":"TW", order=[here, here==="US"?"TW":"US"];
+  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note" style="margin-top:0">管理者畫過型態線的股票，點股票看 K 線圖（另一個市場的會換頁打開）。</p>`;
+  for(const m of order){
+    const codes=Object.keys(all[m]||{}), nm=m==="US"?"美股":"台股";
+    h+=`<h3 style="margin:18px 0 6px">${nm}　<span class="mute">${codes.length} 檔</span></h3>`;
+    if(!codes.length){ h+=`<p class="note">還沒有畫線。</p>`; continue }
+    const sameMkt=m===here, list=codes.map(c=>({c,s:sameMkt?D.stocks[c]:null,names:all[m][c]})).sort((a,b)=>((b.s?b.s.close*b.s.vol:0)-(a.s?a.s.close*a.s.vol:0))||a.c.localeCompare(b.c));
+    h+=`<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="tg">我畫的型態</th><th class="cc">型態</th><th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
+    for(const x of list){
+      const href=sameMkt?"":(m==="US"?"/admin/#s-":"/#s-")+encodeURIComponent(x.c), s=x.s;
+      h+=`<tr class="row" ${sameMkt?`data-c="${x.c}"`:`data-href="${href}"`}><td class="sn1"><b>${x.c}</b> <span class="sn">${s?s.name:""}</span></td><td class="tg">${x.names.map(n=>`<span class="tag" style="color:#f472b6;border-color:#f472b688">✏️${n||"未命名"}</span>`).join("")}</td>`+
+        (s?`<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td>`:`<td class="cc mute" colspan="3">點開看（${nm}頁）</td>`)+`</tr>`;
+    }
+    h+=`</tbody></table></div>`;
+  }
+  $("#app").innerHTML=h; bindRows();
+  document.querySelectorAll("tr.row[data-href]").forEach(r=>r.onclick=()=>{location.href=r.dataset.href});
+}
+
 /* ───────── 路由 ───────── */
 let baseRaw=null;                 // 目前底層頁面的 hash（列表頁）
 function renderBase(h){
   baseRaw=h;
-  $("#n-home").classList.toggle("on", !h.startsWith("scr"));
+  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&h!=="mydraw");
   $("#n-scr").classList.toggle("on", h.startsWith("scr"));
+  $("#n-draw").classList.toggle("on", h==="mydraw");
   if(h.startsWith("g-")) group((D.groups[+h.slice(2)]||{}).name);
   else if(h.startsWith("find-")) finder(h.slice(5));
   else if(h.startsWith("st-")) stateList(h.slice(3));
   else if(h.startsWith("scr")) screener(h.slice(4));
+  else if(h==="mydraw") myDraw();
   else home();
 }
 function goBack(){
   const h = decodeURIComponent(location.hash.slice(1));
   if(h.startsWith("s-")||h.startsWith("i-")) location.hash = baseRaw || "";
-  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-")) location.hash = "";
+  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw") location.hash = "";
 }
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
@@ -1156,6 +1184,7 @@ function route(){
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
+if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
 let stuckNow=false;
 function setStuck(v){stuckNow=v;document.documentElement.classList.toggle("stuck",v)}
 (function(){const f=()=>{const y=window.scrollY;if(!stuckNow&&y>60)setStuck(true);else if(stuckNow&&y<20)setStuck(false)};addEventListener("scroll",f,{passive:true});f()})();
