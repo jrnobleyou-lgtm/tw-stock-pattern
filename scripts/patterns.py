@@ -155,6 +155,10 @@ def head_shoulders(B, T, P):
         (i1, p1, t1), (i2, p2, _), (i3, p3, _), (i4, p4, _), (i5, p5, _) = seg
         if i5 < T - 50 or i5 - i1 < 20:
             continue
+        if k + 4 == len(P) - 1:
+            continue                                 # 右肩還在走（今天這根不能當右肩）
+        if not 0.5 <= (i3 - i1) / max(1, i5 - i3) <= 2:
+            continue                                 # 左肩到頭、頭到右肩的時間相差超過 2 倍：不對稱
         # 頸線：兩個反向波段點連線，外推到 T
         slope = (p4 - p2) / (i4 - i2)
         neck_T = p4 + slope * (T - i4)
@@ -508,7 +512,36 @@ def detect_geometry(B, T):
     db, dt = uniq.get("雙重底") or uniq.get("雙重底（不對稱）"), uniq.get("雙重頂")
     if db and dt and set(map(tuple, db["pts"])) & set(map(tuple, dt["pts"])):
         uniq.pop("雙重頂" if db["key_i"] >= dt["key_i"] else db["kind"])
-    return list(uniq.values())
+    return resolve_conflicts(list(uniq.values()), T)
+
+
+RANK = {"confirmed": 0, "near": 1, "forming": 2, "old": 3, "failed": 4}
+
+
+def resolve_conflicts(gs, T):
+    """不同形態打架時只留一個（11/14 使用者定）：
+    兩個形態最多共用 1 個轉折點（前一個的結尾＝後一個的開頭）就都留；共用 2 個以上、或時間重疊超過較短者的一半 → 只留較重要的。
+    重要性：已突破 > 接近突破 > 成形中 > 舊的／失敗；同級留比較完整的、再來比較新的。回傳依重要性排序。"""
+    def piv(g):
+        return {i for i, _ in g["pts"] if i != T}
+    def span(g):
+        idx = [i for i, _ in g["pts"]] + (list(g["rect"][:2]) if g.get("rect") else [])
+        return min(idx), max(idx)
+    # 同級：比較完整的（轉折點多，例：W 包含後半段的 V）優先，再來比較新的
+    order = sorted(gs, key=lambda g: (RANK.get(g["status"], 5), -len(piv(g)), -g.get("key_i", max(i for i, _ in g["pts"]))))
+    keep = []
+    for g in order:
+        a0, a1 = span(g)
+        ok = True
+        for h in keep:
+            b0, b1 = span(h)
+            ov = max(0, min(a1, b1) - max(a0, b0))
+            if len(piv(g) & piv(h)) > 1 or ov > 0.5 * max(1, min(a1 - a0, b1 - b0)):
+                ok = False
+                break
+        if ok:
+            keep.append(g)
+    return keep
 
 
 # ───────────────────────── K 線短線反轉 ─────────────────────────
