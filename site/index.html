@@ -381,8 +381,9 @@ function screener(key){
   const all = Object.values(D.stocks);
   let h = `<div class="filters">` + FILTERS.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`).join("") + `</div>`;
   let list = all.filter(cur.f);
-  if(cur.k==="rb3"||cur.k==="rb") list.sort((a,b)=>b.rebound.score-a.rebound.score || b.rebound.bounce-a.rebound.bounce);
-  else list.sort((a,b)=>b.chg-a.chg);
+  const tv=s=>s.close*s.vol;            // 成交值（收盤×成交張數）
+  if(cur.k==="rb3"||cur.k==="rb") list.sort((a,b)=>b.rebound.score-a.rebound.score || tv(b)-tv(a));
+  else list.sort((a,b)=>tv(b)-tv(a));            // 各種形態篩選一律依成交值由大到小（使用者要求）
   if(cur.k==="rb3"||cur.k==="rb"){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
     h += `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
