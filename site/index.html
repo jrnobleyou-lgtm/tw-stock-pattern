@@ -225,7 +225,8 @@ function txBar(j,mode){           // 由即時資料組今天（交易日）的 
   return null;
 }
 function txQuote(j){              // 標籤用：目前時段的最新價、漲跌與價差
-  const ses=txSession(), useN=ses==="night"||(!ses&&j.night&&j.night.c>0&&twNow().m<525), q=useN?j.night:j.day;
+  const ses=txSession(), nOk=j.night&&j.night.c>0&&j.night.date, nNewer=nOk&&(!j.day||!j.day.date||j.night.date>=j.day.date);      // 休市時：夜盤比日盤新（例：週五夜盤收在週六凌晨 5 點）就顯示夜盤收盤
+  const useN=ses==="night"||(!ses&&nNewer), q=useN?j.night:j.day;
   if(!q||!(q.c>0)) return null;
   const spot=useN?(j.spotNight&&j.spotNight.ref):(j.spot&&(j.spot.c||j.spot.ref));
   return {c:q.c,ref:q.ref,ses:useN?"夜盤":"日盤",time:hms(q.time),basis:spot?q.c-spot:null,id:q.id};
@@ -238,7 +239,7 @@ function renderIdx(){
     const b=ix.TX.bars,l=b[b.length-1],q=txLive&&txQuote(txLive);
     const price=q?q.c:l[4], ref=q&&q.ref?q.ref:b[b.length-2][4], ch=price-ref, pc=ch/ref*100;
     const basis=q&&q.basis!=null?`<span class="mute" style="font-size:11px">　價差 ${q.basis>0?"+":""}${q.basis.toFixed(0)}</span>`:"";
-    const lv=q?` <small style="color:#f0d34a">${txSession()?q.ses:"收盤"}</small>`:"";
+    const lv=q?` <small style="color:#f0d34a">${txSession()?q.ses:q.ses+"收盤"}</small>`:"";
     txh=`<button class="ichip" data-i="TX" title="${q?q.ses+" "+q.time:l[0]}"><span class="mute">台指期</span> <b>${price.toLocaleString(undefined,{maximumFractionDigits:0})}</b>${lv}<br><span style="color:${chgColor(ch)}">${ch>0?"▲":ch<0?"▼":""}${Math.abs(ch).toFixed(0)}（${pc>0?"+":""}${pc.toFixed(2)}%）</span>${basis}</button>`;
   }
   el.innerHTML=txh+["TWII","OTC"].filter(k=>ix[k]&&ix[k].bars.length>1).map(k=>{
