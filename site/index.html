@@ -358,6 +358,7 @@ function finder(q){
 const has = (s,re)=>s.tags.some(t=>re.test(t));
 const FILTERS = [
   {k:"rb3", name:"強勢止跌反彈", f:s=>s.rebound&&s.rebound.tier==="強"},
+  {k:"str", name:"近日反彈強勁（近10日低點起漲30%以上）", f:s=>has(s,/近日反彈強勁/)},
   {k:"rb",  name:"止跌反彈（全部）", f:s=>!!s.rebound},
   {k:"b1",  name:"突破第1根", f:s=>has(s,/突破第1根/)},
   {k:"up",  name:"轉強", f:s=>s.state==="轉強"},

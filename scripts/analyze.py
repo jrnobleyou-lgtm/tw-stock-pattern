@@ -152,6 +152,10 @@ def main():
             tags.append("KD高檔鈍化")
         if run_lo >= 1:                              # K 一跌到 20 以下就算低檔鈍化
             tags.append("KD低檔鈍化")
+        if len(bars) >= 10:                          # 11/14 使用者：近 10 個交易日最低點到現價漲 ≥30%＝近日反彈強勁（額外標籤，不改變原有型態／標籤）
+            lo10 = min(b["l"] for b in bars[-10:])
+            if lo10 > 0 and bars[-1]["c"] / lo10 - 1 >= 0.30:
+                tags.append("近日反彈強勁")
         st = {
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
