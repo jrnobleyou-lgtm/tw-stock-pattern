@@ -418,7 +418,7 @@ def _hugs_recent(B, T, up_T, lo_T):
     return up_T <= hi10 * 1.10 and lo_T >= lo10 * 0.90
 
 
-def triangles(B, T):
+def _triangles_core(B, T):
     """形態的有無、種類沿用舊判斷（最小平方擬合，使用者確認過的案例不變）；
     畫出來的上下兩條線改成「貼著影線尖端」的人手畫法，並用這兩條線重新判斷接近／突破狀態；
     找不到合格的貼邊線時，保留舊線。"""
@@ -470,6 +470,16 @@ def triangles(B, T):
     # 11/14 使用者同意：接近／突破狀態改用畫出來的這兩條線判斷（圖和字要一致）
     g.update(fit="edge", status=st, day=day, dir=d,
              lines=[[ua[0], mh * ua[0] + bh, T, up_T], [la[0], ml * la[0] + bl, T, lo_T]])
+    return r
+
+
+def triangles(B, T):
+    r = _triangles_core(B, T)
+    if r and r[0]["kind"] == "上升楔形":
+        g = r[0]
+        start_mid = (g["lines"][0][1] + g["lines"][1][1]) / 2     # 兩線起點的中間價
+        if B[T]["c"] <= start_mid:                                  # 11/14 使用者（1201）：整體往右上才算上升楔形
+            return []
     return r
 
 
