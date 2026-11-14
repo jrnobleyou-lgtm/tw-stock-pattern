@@ -1082,16 +1082,18 @@ class Chart{
         for(const [pp,qq] of [[-dx,x1-r.x],[dx,r.x+r.w-x1],[-dy,y1-r.y],[dy,r.y+r.h-y1]]){
           if(pp===0){if(qq<0)return false}else{const t=qq/pp;if(pp<0){if(t>t1)return false;if(t>t0)t0=t}else{if(t<t0)return false;if(t<t1)t1=t}}}
         return true};
-      const lastR={x:xc-cw*.35-5,y:Math.min(y(B[ve-1].o),y(B[ve-1].c),y(B[ve-1].h))-5,w:cw*.7+10,h:y(B[ve-1].l)-y(B[ve-1].h)+10};
+      const LB=B[ve-1],bT=Math.min(y(LB.o),y(LB.c)),bB=Math.max(y(LB.o),y(LB.c));
+      const lastRs=[{x:xc-cw*.35-4,y:bT-4,w:cw*.7+8,h:bB-bT+8},{x:xc-2.2-4,y:y(LB.h)-4,w:8.4,h:y(LB.l)-y(LB.h)+8}];      // 最新 K 棒的實體與影線（各留 4px）
+      const inLast=(px,py)=>lastRs.some(q=>px>=q.x&&px<=q.x+q.w&&py>=q.y&&py<=q.y+q.h);
       let best=null;
       for(let gx=pl+4;gx<=W-pr-wd-4;gx+=12)for(let gy=pt+4;gy<=priceBot-ht-4;gy+=10){
         const r={x:gx,y:gy,w:wd,h:ht}; if(hit(r)) continue;
         const cx=gx+wd/2,cy=gy+ht/2,L0=Math.hypot(ax-cx,ay-cy),ux=(ax-cx)/L0,uy=(ay-cy)/L0;
         let sx=cx,sy=cy; while(sx>=gx-3&&sx<=gx+wd+3&&sy>=gy-3&&sy<=gy+ht+3){sx+=ux;sy+=uy}                 // 起點：文字框邊緣
-        let tx=ax,ty=ay; for(let i=0;i<40&&tx>=lastR.x&&tx<=lastR.x+lastR.w&&ty>=lastR.y&&ty<=lastR.y+lastR.h;i++){tx-=ux;ty-=uy}   // 箭頭尖：停在最新 K 棒外 5px，不碰到
+        let tx=ax,ty=ay; for(let i=0;i<60&&inLast(tx,ty);i++){tx-=ux;ty-=uy}   // 箭頭尖：停在最新 K 棒外 5px，不碰到
         if((tx-sx)*ux+(ty-sy)*uy<8) continue;
         if(cr.some(q=>seg(sx,sy,tx,ty,q))||labOcc.some(q=>seg(sx,sy,tx,ty,{x:q.x-2,y:q.y-2,w:q.w+4,h:q.h+4}))) continue;
-        let cost=Math.hypot(tx-sx,ty-sy)+40*ma.filter(q=>seg(sx,sy,tx,ty,q)).length;
+        let cost=Math.hypot(tx-sx,ty-sy)+40*ma.filter(q=>seg(sx,sy,tx,ty,q)).length+((ty<bT-8||ty>bB+8)?500:0);      // 箭頭尖要對準 K 棒實體的高度，不要只指到影線尖端
         if(!best||cost<best.cost) best={cost,r,sx,sy,tx,ty,ux,uy};
       }
       if(best){
