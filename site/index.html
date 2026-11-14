@@ -888,7 +888,11 @@ class Chart{
       }
       if(!best) best={x:Math.min(Math.max(pl,ax-wd/2),W-pr-wd),y:Math.min(Math.max(pt,ay-ht),priceBot-ht),w:wd,h:ht,d:0};
       occ.push(best);
-      if(best.d>6) o+=`<line x1="${ax}" y1="${ay}" x2="${best.x+best.w/2}" y2="${best.y+best.h/2}" stroke="${op.color||"#ece8f5"}" stroke-opacity=".35" stroke-dasharray="2 2"/>`;
+      if(op.arrow){                       // 實線＋箭頭：從標籤指向錨點
+        const tx=best.x+best.w/2,ty=best.y+best.h/2,ang=Math.atan2(ay-ty,ax-tx),L=8,c=op.color||"#ece8f5";
+        const bx2=ax-Math.cos(ang)*L,by2=ay-Math.sin(ang)*L;
+        o+=`<line x1="${tx}" y1="${ty}" x2="${bx2}" y2="${by2}" stroke="${c}" stroke-width="1.4"/><polygon points="${ax},${ay} ${bx2+Math.sin(ang)*4},${by2-Math.cos(ang)*4} ${bx2-Math.sin(ang)*4},${by2+Math.cos(ang)*4}" fill="${c}"/>`;
+      } else if(best.d>6) o+=`<line x1="${ax}" y1="${ay}" x2="${best.x+best.w/2}" y2="${best.y+best.h/2}" stroke="${op.color||"#ece8f5"}" stroke-opacity=".35" stroke-dasharray="2 2"/>`;
       o+=`<text x="${best.x}" y="${best.y+fs}" style="fill:${op.color||"#ece8f5"};${op.weight?"font-weight:"+op.weight:""};font-size:${fs}px">${text}</text>`;
     };
     for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;o+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#2e2a3d"/><text x="${W-pr+4}" y="${y(v)+4}">${fmt(v)}</text>`}
@@ -1012,11 +1016,12 @@ class Chart{
           if(H/S0>=1.1) for(const r of [0.382,0.5,0.618]){
             const pv=H-(H-S0)*r,yy=y(pv);
             o+=`<line x1="${xa}" x2="${xb}" y1="${yy}" y2="${yy}" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="2 4" opacity=".9"/>`;
-            labels.push([`${r}  ${fmt(pv)}`,xa+60,yy,{color:"#c4b5fd",weight:600,prefer:["up","down"]}]);
+            const clash=[0,1,2,3,4].some(k=>Math.abs(y(lo+(hi-lo)*k/4)-yy)<13), tx=xb+(clash?32:4);      // 跟右邊價格刻度撞到就往右挪
+            o+=`<text x="${tx}" y="${yy-3}" style="fill:#c4b5fd;font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${r}</text><text x="${tx}" y="${yy+10}" style="fill:#c4b5fd;font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${fmt(pv)}</text>`;
           }
         }
-        labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-8,yL,{color:col,weight:700,prefer:["up","left"]}]);
-        labels.push([Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe-8,yC-12,{color:"#fbbf24",weight:700,prefer:["left"]}]);
+        labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-60,yL,{color:col,weight:700,prefer:["down"]}]);      // 寫在紅色虛線下方
+        labels.push([Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe,yC,{color:"#fbbf24",weight:700,arrow:true,prefer:["down","up","left"]}]);   // 箭頭指向現價，標籤放在圖上有空白的地方
       }
     }
     // 管理者畫的型態線（粉紅色，和系統畫的線區分）
