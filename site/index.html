@@ -88,7 +88,7 @@ svg text{fill:var(--fg);font-size:11px}
 .sect{margin:18px 0 6px;font-size:13px;color:var(--mute)}
 
 .modal{position:fixed;inset:0;z-index:50;background:rgba(6,3,20,.55);display:flex;align-items:center;justify-content:center;padding:8px}
-.mpanel{width:min(96vw,1840px);height:min(97vh,1040px);background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-shadow:none;display:flex;flex-direction:column;overflow:hidden}
+.mpanel{width:min(96vw,1840px);height:min(97vh,1040px);background:#000;border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-shadow:none;display:flex;flex-direction:column;overflow:hidden}
 .mhead{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
 .mhead .mtitle{font-size:16px}.mhead .mtags{flex:1;min-width:0}
 #chart{flex:1;min-height:0}
@@ -609,7 +609,7 @@ function loadBoxes(code){try{return JSON.parse(localStorage.getItem("cb:"+code)|
 function saveBoxes(code,v){try{localStorage.setItem("cb:"+code,JSON.stringify(v))}catch(_){}}
 function loadRanges(code){try{return JSON.parse(localStorage.getItem("cr:"+code)||"[]")}catch(_){return[]}}
 function saveRanges(code,v){try{localStorage.setItem("cr:"+code,JSON.stringify(v))}catch(_){}}
-const MA_COL={5:"#facc15",10:"#38bdf8",20:"#c084fc",60:"#e5e7eb",120:"#fb923c",250:"#f472b6"};
+const MA_COL={5:"#facc15",10:"#7FDBFF",20:"#AF73E8",60:"#e5e7eb",120:"#FF9D70",250:"#FFA300"};
 const MA_ALL=[5,10,20,60,120,250];
 const MD=d=>d.slice(5);
 const textW=(t,fs)=>{let w=0;for(const ch of String(t))w+=/[⺀-鿿＀-￯]/.test(ch)?fs:fs*0.58;return w};
@@ -925,16 +925,16 @@ class Chart{
     if(this.ind.boll){
       const bb=this.get("boll");let du="",dl="",dm="";
       for(let i=vs;i<ve;i++){const v=bb[i];if(!v)continue;const c=x(i);du+=(du?"L":"M")+c+","+y(v.u);dl+=(dl?"L":"M")+c+","+y(v.l);dm+=(dm?"L":"M")+c+","+y(v.m)}
-      if(du)o+=`<path d="${du}" fill="none" stroke="#a78bfa" stroke-width="1.2"/><path d="${dl}" fill="none" stroke="#a78bfa" stroke-width="1.2"/><path d="${dm}" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3 3"/>`;
+      if(du)o+=`<path d="${du}" fill="none" stroke="#209A43" stroke-width="1.2"/><path d="${dl}" fill="none" stroke="#209A43" stroke-width="1.2"/><path d="${dm}" fill="none" stroke="#209A43" stroke-width="1" stroke-dasharray="3 3"/>`;
     }
     // 成交量
     if(hasVol){
       const vmax=Math.max(...vis.map(b=>b.v))||1,vb=priceBot+6+VH;
-      vis.forEach((b,k)=>{const up=b.c>=b.o,col=up?"#ef4444":"#22c55e",vh=b.v/vmax*VH;o+=`<rect x="${x(vs+k)-cw*.36}" y="${vb-vh}" width="${cw*.72}" height="${vh}" fill="${col}" fill-opacity=".55"/>`});
+      vis.forEach((b,k)=>{const up=b.c>=b.o,col=up?"#ef4444":"#2DEB73",vh=b.v/vmax*VH;o+=`<rect x="${x(vs+k)-cw*.36}" y="${vb-vh}" width="${cw*.72}" height="${vh}" fill="${col}"/>`});
     }
     // K 棒
     vis.forEach((b,k)=>{
-      const i=vs+k,up=b.c>=b.o,col=up?"#ef4444":"#22c55e",xc=x(i);
+      const i=vs+k,up=b.c>=b.o,col=up?"#ef4444":"#2DEB73",xc=x(i);
       o+=`<line x1="${xc}" x2="${xc}" y1="${y(b.h)}" y2="${y(b.l)}" stroke="${col}"/>`;
       o+=`<rect x="${xc-cw*.36}" y="${y(Math.max(b.o,b.c))}" width="${cw*.72}" height="${Math.max(1,Math.abs(y(b.o)-y(b.c)))}" fill="${col}"/>`;
     });
@@ -956,14 +956,14 @@ class Chart{
       const ad=this.adjOn;
       for(const gm of (s.geo||[]).slice(0,2)){                                // 同時最多畫 2 個形態（已依重要性排序）
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
-        const isV=gm.kind.startsWith("V形");                                  // V 形用咖啡色虛線（使用者選定，避免和 10 日線的藍色混淆）
-        const ZC=isV?"#c8915a":"#e5e7eb", LC=col;                             // 鋸齒折線白色、趨勢線與頸線依多空紅綠
+        const isV=gm.kind.startsWith("V形");                                  // V 形用鈷藍色粗圓角虛線（使用者 11/14 選定）
+        const ZC=isV?"#4D7CFF":"#e5e7eb", LC=col;                             // 鋸齒折線白色、趨勢線與頸線依多空紅綠
         const pts=gm.pts.map(q=>[idxOf(B,q[0]),ad&&q[2]!=null?q[2]:q[1]]).filter(([i])=>i>=0);
         if(!pts.length||pts[pts.length-1][0]<vs) continue;
         if(gm.rect){const R=gm.rect,a=idxOf(B,R[0]),b=idxOf(B,R[1]),h1=ad&&R[4]!=null?R[4]:R[2],l1=ad&&R[5]!=null?R[5]:R[3];
           if(a>=0&&b>=0)o+=`<rect x="${x(a)-cw/2-2}" y="${y(h1)-3}" width="${(b-a+1)*cw+4}" height="${y(l1)-y(h1)+6}" rx="6" fill="#7dd3fc" fill-opacity=".08" stroke="#7dd3fc" stroke-dasharray="4 3"/>`}
         else{
-          o+=`<path d="${pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("")}" fill="none" stroke="${ZC}" stroke-width="1.5" stroke-opacity=".85"${isV?' stroke-dasharray="5 3"':""}/>`;
+          o+=`<path d="${pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("")}" fill="none" stroke="${ZC}" stroke-width="${isV?2.7:1.5}" stroke-opacity="${isV?1:.85}"${isV?' stroke-dasharray="8 5" stroke-linecap="round"':""}/>`;
           if(gm.dir==="bull"||gm.dir==="bear"){                                // 折線最後加箭頭：看漲朝上、看跌朝下
             const [li,lp]=pts[pts.length-1],x0=x(li),y0=y(lp),up=gm.dir==="bull",len=Math.max(18,Math.min(46,cw*4)),x1=x0+len*.6,y1=y0+(up?-len:len);
             const ang=Math.atan2(y1-y0,x1-x0),hl=8,a1=ang+2.6,a2=ang-2.6;
@@ -1022,15 +1022,19 @@ class Chart{
       const path=(arr,col,w=1.3)=>{let d="";for(let i=vs;i<ve;i++){const v=arr[i];if(v!=null)d+=(d?"L":"M")+x(i)+","+yy(v)}return d?`<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}"/>`:""};
       if(k==="kd"){
         const K=this.get("kd");yy=v=>bot-(v/100)*SH;
-        const segs=kdRuns(K.K), seg=segs.find(g=>cur>=g.a&&cur<=g.b);
+        const segs=kdRuns(K.K,1), seg=segs.find(g=>cur>=g.a&&cur<=g.b);
         head=[["KD(9,3,3)","#9a93ad"],[`K ${f2(K.K[cur])}`,"#facc15"],[`D ${f2(K.D[cur])}`,"#38bdf8"]];
         if(seg) head.push([`${seg.t==="hi"?"高檔鈍化":"低檔鈍化"} ${cur-seg.a+1}天`,seg.t==="hi"?"#ef4444":"#22c55e"]);
+        let lastLab=-1e9;
         for(const g of segs){                                   // 鈍化區段：K 線與 80／20 線之間填色
           const A=Math.max(g.a,vs),Z=Math.min(g.b,ve-1); if(Z<A) continue;
           const th=g.t==="hi"?80:20; let d=`M${x(A)},${yy(th)}`;
-          for(let i=A;i<=Z;i++) d+=`L${x(i)},${yy(K.K[i])}`;
+          for(let i=A;i<=Z;i++){const v=g.t==="hi"?Math.max(K.K[i],K.D[i]??K.K[i]):Math.min(K.K[i],K.D[i]??K.K[i]),yk=yy(v),y0=yy(th);d+=`L${x(i)},${g.t==="hi"?Math.min(yk,y0-5):Math.max(yk,y0+5)}`}   // 仿三竹：K、D 取外側那條到 80／20 之間填滿（至少 5px）
           d+=`L${x(Z)},${yy(th)}Z`;
-          body+=`<path d="${d}" fill="${g.t==="hi"?"#ef4444":"#22c55e"}" fill-opacity=".38"/>`;
+          body+=`<path d="${d}" fill="${g.t==="hi"?"#9b1c1c":"#1f7a34"}" fill-opacity=".9"/>`;   // 深紅／深綠實色
+          const hi=g.t==="hi",n=g.b-g.a+1,tx=Math.min(Math.max((x(A)+x(Z))/2,pl+300),W-pr-40);   // 標在 KD 標題列（不壓到 K、D 線）；避開左邊的 KD 數值   // 每段鈍化都標字（11/14 使用者要求）
+          if(tx-lastLab<110) continue; lastLab=tx;                 // 跟前一個字太近就不標字（色塊照畫）
+          body+=`<text x="${tx}" y="${top-5}" text-anchor="middle" style="fill:${hi?"#ef4444":"#2DEB73"};font-size:11px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:3px">${hi?"高檔鈍化":"低檔鈍化"} ${n}天</text>`;
         }
         for(const lv of [20,80])body+=`<line x1="${pl}" x2="${W-pr}" y1="${yy(lv)}" y2="${yy(lv)}" stroke="#2e2a3d" stroke-dasharray="3 3"/><text x="${W-pr+4}" y="${yy(lv)+4}">${lv}</text>`;
         body+=path(K.K,"#facc15")+path(K.D,"#38bdf8"); dots=[[K.K,"#facc15"],[K.D,"#38bdf8"]];
@@ -1104,7 +1108,7 @@ class Chart{
       ${st.swing!=null?`<div>前波低 <b>${fmt(B[st.swing].l)}</b>（${MD(B[st.swing].d)}）</div>`:""}${this.supRes?`<div style="color:#38bdf8">預期支撐 <b>${fmt(this.supRes.L)}</b>（觸及 ${this.supRes.touches} 次）</div>`:this.sup?`<div class="mute">尚無已確認支撐</div>`:""}`:"";
     // 右側：均線數值（隨選取的 K 棒）
     const lv=MA_ALL.filter(n=>this.maOn[n]).map(n=>`<span style="color:${MA_COL[n]}">${n}日 <b>${f2(this.ma[n][cur])}</b></span>`);
-    if(this.ind.boll){const bb=this.get("boll")[cur];if(bb)lv.push(`<span style="color:#a78bfa">布林 上 <b>${f2(bb.u)}</b> 中 <b>${f2(bb.m)}</b> 下 <b>${f2(bb.l)}</b></span>`)}
+    if(this.ind.boll){const bb=this.get("boll")[cur];if(bb)lv.push(`<span style="color:#209A43">布林 上 <b>${f2(bb.u)}</b> 中 <b>${f2(bb.m)}</b> 下 <b>${f2(bb.l)}</b></span>`)}
     this.el.querySelector("#legendv").innerHTML=lv.join("");
   }
 }
