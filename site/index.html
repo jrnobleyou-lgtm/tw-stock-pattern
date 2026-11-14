@@ -1003,22 +1003,20 @@ class Chart{
       if(hI<ve-1){
         let lI=hI+1; for(let i=hI+1;i<ve;i++) if(B[i].l<=B[lI].l) lI=i;
         const H=B[hI].h,Lo=B[lI].l,C=B[ve-1].c,dd=(Lo/H-1)*100,cur=(C/H-1)*100;
-        const xh=x(hI),xl=x(lI),xe=x(ve-1)+cw/2,yH=y(H),yL=y(Lo),yC=y(C),col="#ff8a8a";
-        o+=`<line x1="${xh}" x2="${xe}" y1="${yH}" y2="${yH}" stroke="#ffffff" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>`
-          +`<line x1="${xl}" x2="${xe}" y1="${yL}" y2="${yL}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>`
-          +`<line x1="${xe}" x2="${xe}" y1="${yH}" y2="${yL}" stroke="${col}" stroke-width="1.6"/>`;
-        if(hI>vs){                // 黃金分割回檔線：以前一波（畫面內最高點之前的最低點→最高點）的漲幅，0.382／0.5／0.618 水平虛線
+        const xe=x(ve-1)+cw/2,yH=y(H),yL=y(Lo),yC=y(C),col="#ff8a8a",xa=pl,xb=W-pr;        // 水平虛線橫跨整張圖
+        o+=`<line x1="${xa}" x2="${xb}" y1="${yH}" y2="${yH}" stroke="#ffffff" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>`
+          +`<line x1="${xa}" x2="${xb}" y1="${yL}" y2="${yL}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>`;
+        if(hI>vs){                // 黃金分割回檔線：以前一波（畫面內最高點之前的最低點→最高點）的漲幅，0.382／0.5／0.618
           let sI=vs; for(let i=vs;i<hI;i++) if(B[i].l<=B[sI].l) sI=i;
           const S0=B[sI].l;
           if(H/S0>=1.1) for(const r of [0.382,0.5,0.618]){
             const pv=H-(H-S0)*r,yy=y(pv);
-            o+=`<line x1="${xh}" x2="${xe}" y1="${yy}" y2="${yy}" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="2 4" opacity=".9"/>`;
-            labels.push([`${r}  ${fmt(pv)}`,xh+46,yy,{color:"#c4b5fd",weight:600,prefer:["up","down"]}]);
+            o+=`<line x1="${xa}" x2="${xb}" y1="${yy}" y2="${yy}" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="2 4" opacity=".9"/>`;
+            labels.push([`${r}  ${fmt(pv)}`,xa+60,yy,{color:"#c4b5fd",weight:600,prefer:["up","down"]}]);
           }
         }
-        labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-8,(yH+yL)/2-10,{color:col,weight:700,prefer:["left"]}]);
-        if(Math.abs(cur-dd)>=0.05) labels.push([`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`,xe-8,yC-12,{color:"#fbbf24",weight:700,prefer:["left"]}]);
-        else labels.push(["目前＝最低點",xe-8,yC-12,{color:"#fbbf24",weight:700,prefer:["left"]}]);
+        labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-8,yL,{color:col,weight:700,prefer:["up","left"]}]);
+        labels.push([Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe-8,yC-12,{color:"#fbbf24",weight:700,prefer:["left"]}]);
       }
     }
     // 管理者畫的型態線（粉紅色，和系統畫的線區分）
