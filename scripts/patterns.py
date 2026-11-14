@@ -377,7 +377,78 @@ def _line(pts):
     return m, (sy - m * sx) / n
 
 
+def _edge_line(B, piv, T, side, want=0, tol=1):
+    """人手畫法：上線連兩個高點、下線連兩個低點（用 K 棒影線尖端），其餘同側轉折點都在線的外側（最多超出 1%），
+    影線最多 2 根超出 ≤2%、收盤最多超出 1.5%；優先選「碰到的轉折點多、延伸到最新轉折點（貼著右邊價格）、跨距長」的那一條。
+    回傳 (a, b, brk, slope, base)：brk 為第一次收盤明顯站出線外的位置；找不到回傳 None。"""
+    sgn = 1 if side == "H" else -1
+    px = "h" if side == "H" else "l"
+    best = None
+    for ai in range(len(piv)):
+        for bi in range(ai + 1, len(piv)):
+            (i1, _), (i2, _) = piv[ai], piv[bi]
+            p1, p2 = B[i1][px], B[i2][px]
+            if i2 - i1 < 5:
+                continue
+            m = (p2 - p1) / (i2 - i1)
+            if want and m * want < 0:
+                continue                                     # 斜率方向要和原本判斷的形態一致（避免畫成反方向）
+            f = lambda x: p1 + m * (x - i1)
+            if any(sgn * (B[ii][px] - f(ii)) > 0.01 * tol * f(ii) for ii, _ in piv if ii >= i1):
+                continue
+            over = [x for x in range(i1, T + 1) if sgn * (B[x][px] - f(x)) > 0.0005 * f(x)]
+            if len(over) > 2 * tol or any(sgn * (B[x][px] - f(x)) > 0.02 * tol * f(x) for x in over):
+                continue
+            brk = next((x for x in range(i2 + 1, T + 1) if sgn * (B[x]["c"] - f(x)) > 0.015 * f(x)), None)
+            if any(sgn * (B[x]["c"] - f(x)) > 0.015 * tol * f(x) for x in range(i1, (brk if brk is not None else T + 1)) ):
+                continue
+            touches = sum(1 for ii, _ in piv if ii >= i1 and abs(B[ii][px] - f(ii)) <= 0.015 * f(ii))
+            score = (touches, i2, i2 - i1)
+            if best is None or score > best[0]:
+                best = (score, (i1, p1), (i2, p2), brk, m, p1 - m * i1)
+    if best is None:
+        return None
+    return best[1], best[2], best[3], best[4], best[5]
+
+
 def triangles(B, T):
+    """形態的有無、種類沿用舊判斷（最小平方擬合，使用者確認過的案例不變）；
+    畫出來的上下兩條線改成「貼著影線尖端」的人手畫法，並用這兩條線重新判斷接近／突破狀態；
+    找不到合格的貼邊線時，保留舊線。"""
+    r = triangles_old(B, T)
+    if not r:
+        return r
+    g = r[0]
+    a = max(0, T - 70)
+    P = zigzag(B, a, T, 0.04)
+    H = [(i, p) for i, p, t in P if t == "H" and i >= T - 60][-4:]
+    L = [(i, p) for i, p, t in P if t == "L" and i >= T - 60][-4:]
+    ol = g["lines"]
+    sg = lambda ln: 0 if abs(ln[3] - ln[1]) < 1e-9 else (1 if ln[3] > ln[1] else -1)
+    up = lo = None
+    for tol in (1, 2, 3):                                    # 先用嚴格條件；找不到再逐步放寬（價格走勢不規則時）
+        up = _edge_line(B, H, T, "H", sg(ol[0]), tol)
+        lo = _edge_line(B, L, T, "L", sg(ol[1]), tol)
+        if up and lo:
+            break
+    if not up or not lo:
+        g["fit"] = "ls"
+        return r
+    (ua, ub, ubrk, mh, bh), (la, lb, lbrk, ml, bl) = up, lo
+    i0 = max(ua[0], la[0])
+    gap0 = (mh * i0 + bh) - (ml * i0 + bl)
+    gapT = (mh * T + bh) - (ml * T + bl)
+    if gap0 <= 0 or gapT <= 0:                              # 兩線交叉：不合理，保留舊線
+        g["fit"] = "ls"
+        return r
+    up_T, lo_T = mh * T + bh, ml * T + bl
+    # 11/14：只換畫出來的線；成立／接近／突破等狀態仍沿用舊判斷，避免連動改變五種型態（使用者要的是線貼著價格）
+    g.update(fit="edge",
+             lines=[[ua[0], mh * ua[0] + bh, T, up_T], [la[0], ml * la[0] + bl, T, lo_T]])
+    return r
+
+
+def triangles_old(B, T):
     a = max(0, T - 70)
     P = zigzag(B, a, T, 0.04)
     H = [(i, p) for i, p, t in P if t == "H" and i >= T - 60]
