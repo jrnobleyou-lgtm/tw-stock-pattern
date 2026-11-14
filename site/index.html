@@ -954,18 +954,27 @@ class Chart{
     }
     if(this.geo&&this.tf!=="M"){
       const ad=this.adjOn;
-      for(const gm of s.geo||[]){
+      for(const gm of (s.geo||[]).slice(0,2)){                                // 同時最多畫 2 個形態（已依重要性排序）
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
+        const isV=gm.kind.startsWith("V形");                                  // V 形維持原本淺藍色虛線（使用者選定）
+        const ZC=isV?"#7dd3fc":"#e5e7eb", LC=col;                             // 鋸齒折線白色、趨勢線與頸線依多空紅綠
         const pts=gm.pts.map(q=>[idxOf(B,q[0]),ad&&q[2]!=null?q[2]:q[1]]).filter(([i])=>i>=0);
         if(!pts.length||pts[pts.length-1][0]<vs) continue;
         if(gm.rect){const R=gm.rect,a=idxOf(B,R[0]),b=idxOf(B,R[1]),h1=ad&&R[4]!=null?R[4]:R[2],l1=ad&&R[5]!=null?R[5]:R[3];
           if(a>=0&&b>=0)o+=`<rect x="${x(a)-cw/2-2}" y="${y(h1)-3}" width="${(b-a+1)*cw+4}" height="${y(l1)-y(h1)+6}" rx="6" fill="#7dd3fc" fill-opacity=".08" stroke="#7dd3fc" stroke-dasharray="4 3"/>`}
-        else o+=`<path d="${pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("")}" fill="none" stroke="#7dd3fc" stroke-width="1.6" stroke-dasharray="5 3"/>`;
+        else{
+          o+=`<path d="${pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("")}" fill="none" stroke="${ZC}" stroke-width="1.5" stroke-opacity=".85"${isV?' stroke-dasharray="5 3"':""}/>`;
+          if(gm.dir==="bull"||gm.dir==="bear"){                                // 折線最後加箭頭：看漲朝上、看跌朝下
+            const [li,lp]=pts[pts.length-1],x0=x(li),y0=y(lp),up=gm.dir==="bull",len=Math.max(18,Math.min(46,cw*4)),x1=x0+len*.6,y1=y0+(up?-len:len);
+            const ang=Math.atan2(y1-y0,x1-x0),hl=8,a1=ang+2.6,a2=ang-2.6;
+            o+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${ZC}" stroke-width="2" ${gm.status==="confirmed"?"":'stroke-dasharray="4 3"'}/>`+
+               `<path d="M${x1},${y1}L${x1+hl*Math.cos(a1)},${y1+hl*Math.sin(a1)}L${x1+hl*Math.cos(a2)},${y1+hl*Math.sin(a2)}Z" fill="${ZC}"/>`}
+        }
         if(gm.rect&&gm.stop){const sp=ad&&gm.stopA!=null?gm.stopA:gm.stop,a0=idxOf(B,gm.rect[0]);
           if(a0>=0){o+=`<line x1="${x(Math.max(vs,a0))}" x2="${W-pr}" y1="${y(sp)}" y2="${y(sp)}" stroke="#fb7185" stroke-opacity=".6" stroke-dasharray="3 3"/>`;labels.push([`停損 ${sp}`,x(Math.max(vs,a0))+20,y(sp),{color:"#fb7185",prefer:gm.dir==="bear"?["up","right"]:["down","right"]}])}}
-        (gm.lines||[]).forEach(L=>{const [d0,p0,d1,p1]=[L[0],ad&&L[4]!=null?L[4]:L[1],L[2],ad&&L[5]!=null?L[5]:L[3]];if(d0)o+=`<line x1="${x(idxOf(B,d0))}" y1="${y(p0)}" x2="${x(idxOf(B,d1))}" y2="${y(p1)}" stroke="#7dd3fc" stroke-width="1" stroke-opacity=".7"/>`});
+        (gm.lines||[]).forEach(L=>{const [d0,p0,d1,p1]=[L[0],ad&&L[4]!=null?L[4]:L[1],L[2],ad&&L[5]!=null?L[5]:L[3]];if(d0)o+=`<line x1="${x(idxOf(B,d0))}" y1="${y(p0)}" x2="${x(idxOf(B,d1))}" y2="${y(p1)}" stroke="${LC}" stroke-width="1.4" stroke-opacity=".9"/>`});
         const nk=ad&&gm.neckA!=null?gm.neckA:gm.neck;
-        if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="#7dd3fc" stroke-dasharray="2 3" stroke-opacity=".8"/>`}
+        if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="${LC}" stroke-dasharray="2 3" stroke-opacity=".8"/>`}
         const [li,lp]=pts.reduce((a,b)=>b[1]>a[1]?b:a);
         labels.push([gm.kind,x(li),y(lp),{color:col,weight:700}]);
       }
