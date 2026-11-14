@@ -301,10 +301,10 @@ const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["stat
 function sortList(list){
   const tv=s=>s.close*s.vol;
   const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
-    state:(a,b)=>STATES.indexOf(a.state)-STATES.indexOf(b.state)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
+    state:(a,b)=>STATES.indexOf(a.state)-STATES.indexOf(b.state)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
   return list.sort(f);
 }
-function sortBar(){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select></div>`}
+function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select></div>`}
 function stockTable(list,withGroup,showVal){
   let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
   for(const s of list){
@@ -394,12 +394,11 @@ function screener(key){
   let h = `<div class="filters">` + FILTERS.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`).join("") + `</div>`;
   let list = all.filter(cur.f);
   const tv=s=>s.close*s.vol;            // 成交值（收盤×成交張數）
-  if(cur.k==="rb3"||cur.k==="rb") list.sort((a,b)=>b.rebound.score-a.rebound.score || tv(b)-tv(a));
-  else sortList(list);            // 預設依成交值由大到小，右上角可改排序
+  sortList(list);            // 預設依成交值由大到小，右上角可改排序
   if(cur.k==="rb3"||cur.k==="rb"){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
-    h += `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
-      list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
+    h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
+      list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${turnover(s)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else h += sortBar()+stockTable(list,false,true);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
