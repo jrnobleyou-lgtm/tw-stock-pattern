@@ -288,9 +288,9 @@ function home(){
 function group(name){
   const g = D.groups.find(x=>x.name===name); if(!g) return home();
   const order = {"轉強":0,"弱轉強":1,"型態好":2,"盤整":3,"走弱":4};
-  const list = g.stocks.map(c=>D.stocks[c]).sort((a,b)=>order[a.state]-order[b.state] || b.chg-a.chg);
+  const list = sortList(g.stocks.map(c=>D.stocks[c]));            // 預設成交值，右上角可改排序
   let h = `<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 10px">${g.name}</h2>`;
-  h += stockTable(list);
+  h += sortBar()+stockTable(list,false,true);
   $("#app").innerHTML = h; bindRows();
 }
 const gtxt=s=>(s.groups||[s.group]).join("、");
@@ -342,6 +342,7 @@ function findStocks(token){
 function finder(q){
   const tokens=q.split(/[\s,，、;；]+/).filter(Boolean);
   let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">自訂搜尋：${tokens.join("　")}</h2>`;
+  if(tokens.length) h+=sortBar();
   if(!tokens.length) h+=`<p class="note">輸入股票代號或名稱（可一次輸入多檔，用空格分開），會把它排在第一個並顯示目前型態，再帶出同族群的公司。</p>`;
   const seen=new Set(), miss=[];
   for(const tk of tokens){
@@ -350,10 +351,10 @@ function finder(q){
     for(const s of found){
       seen.add(s.code);
       const mset=[...new Set((s.groups||[s.group]).flatMap(n=>{const g=D.groups.find(x=>x.name===n);return g?g.stocks:[]}))], mates=mset.filter(c=>c!==s.code).map(c=>D.stocks[c]);
-      mates.sort((a,b)=>b.close*b.vol-a.close*a.vol);   // 依成交值（收盤×成交張數）由大到小
-      const list=[s,...mates.slice(0,FIND_MAX-1)];
-      h+=`<div class="sect">${s.code} ${s.name}　${badge(s.state,s.sub)}　<span class="mute">${gtxt(s)}（同族群共 ${mates.length+1} 檔，列出前 ${list.length} 檔；搜尋的那檔排第一，其餘依成交值由大到小）</span></div>`;
-      h+=stockTable(list).replace(`<tr class="row" data-c="${s.code}">`,`<tr class="row" data-c="${s.code}" style="background:rgba(240,211,74,.12)">`);
+      mates.sort((a,b)=>b.close*b.vol-a.close*a.vol);   // 先依成交值挑出前幾檔
+      const list=[s,...sortList(mates.slice(0,FIND_MAX-1))];      // 搜尋的那檔排第一，其餘依右上角排序
+      h+=`<div class="sect">${s.code} ${s.name}　${badge(s.state,s.sub)}　<span class="mute">${gtxt(s)}（同族群共 ${mates.length+1} 檔，列出前 ${list.length} 檔；搜尋的那檔排第一，其餘預設依成交值，可用上方排序改）</span></div>`;
+      h+=stockTable(list,false,true).replace(`<tr class="row" data-c="${s.code}">`,`<tr class="row" data-c="${s.code}" style="background:rgba(240,211,74,.12)">`);
     }
   }
   // 這邊找不到的，到另一個市場找：台股頁 → 管理者專區（美股，需登入）；管理者專區 → 台股
