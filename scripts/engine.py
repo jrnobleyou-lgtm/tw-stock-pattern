@@ -241,6 +241,15 @@ def scan_after(B, box, b, T):
             ev["state"] = "breakdown_confirmed"           # 連 3 日收在下緣之下＝區間失效
         else:
             ev["state"] = "breakdown_pending"
+        # 11/14 使用者（金像電 2368）：假跌破之後又再度連續收在下緣之下，區間已失效，不能還標「假跌破」
+        trail = 0
+        for i in range(T, b - 1, -1):
+            if B[i]["c"] < lo:
+                trail += 1
+            else:
+                break
+        if ev["state"] == "false_breakdown" and trail >= 1:
+            ev["state"] = "breakdown_confirmed" if trail >= CONFIRM_DAYS else "breakdown_pending"
         if ev["day"] > SIGNAL_LIFE:
             ev["expired"] = True
     else:
