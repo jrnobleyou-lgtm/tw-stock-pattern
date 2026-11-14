@@ -871,6 +871,13 @@ class Chart{
     for(const n of MA_ALL) if(this.maOn[n]) for(let i=vs;i<ve;i++){const v=this.ma[n][i];if(v!=null)occ.push({x:x(i)-cw/2,y:y(v)-2,w:cw,h:4})}
     const hit=r=>occ.some(q=>r.x<q.x+q.w+pad2&&r.x+r.w+pad2>q.x&&r.y<q.y+q.h+pad2&&r.y+r.h+pad2>q.y);
     const inb=r=>r.x>=pl&&r.x+r.w<=W-pr&&r.y>=pt&&r.y+r.h<=priceBot;
+    const labOcc=[];
+    const arrowCross=(ax,ay,r)=>{                 // 箭頭從標籤中心連到錨點，不能穿過已放好的文字
+      const tx=r.x+r.w/2,ty=r.y+r.h/2,len=Math.hypot(ax-tx,ay-ty);
+      for(let t=0;t<=len;t+=3){const px=tx+(ax-tx)*t/len,py=ty+(ay-ty)*t/len;
+        if(labOcc.some(q=>px>=q.x-2&&px<=q.x+q.w+2&&py>=q.y-2&&py<=q.y+q.h+2)) return true}
+      return false;
+    };
     const put=(text,ax,ay,op={})=>{
       const fs=op.fs||11,wd=textW(text,fs),ht=fs+4,prefer=op.prefer||["up","down","right","left"];
       let best=null;
@@ -881,13 +888,13 @@ class Chart{
             const r=side==="up"?{x:ax-wd/2+dx,y:ay-d-ht,w:wd,h:ht}:side==="down"?{x:ax-wd/2+dx,y:ay+d,w:wd,h:ht}:side==="right"?{x:ax+d,y:ay-ht/2,w:wd,h:ht}:{x:ax-d-wd,y:ay-ht/2,w:wd,h:ht};
             r.d=d;
             if(!inb(r)) {if(!best)best=r;continue}
-            if(!hit(r)){best=r;break outer}
+            if(!hit(r)&&!(op.arrow&&(r.x+r.w>W-pr-6||arrowCross(ax,ay,r)))){best=r;break outer}
           }
         }
         if(d>260) break;
       }
       if(!best) best={x:Math.min(Math.max(pl,ax-wd/2),W-pr-wd),y:Math.min(Math.max(pt,ay-ht),priceBot-ht),w:wd,h:ht,d:0};
-      occ.push(best);
+      occ.push(best); labOcc.push(best);
       if(op.arrow){                       // 實線＋箭頭：從標籤指向錨點
         const tx=best.x+best.w/2,ty=best.y+best.h/2,ang=Math.atan2(ay-ty,ax-tx),L=8,c=op.color||"#ece8f5";
         const bx2=ax-Math.cos(ang)*L,by2=ay-Math.sin(ang)*L;
@@ -1007,29 +1014,39 @@ class Chart{
       if(hI<ve-1){
         let lI=hI+1; for(let i=hI+1;i<ve;i++) if(B[i].l<=B[lI].l) lI=i;
         const H=B[hI].h,Lo=B[lI].l,C=B[ve-1].c,dd=(Lo/H-1)*100,cur=(C/H-1)*100;
-        const xe=x(ve-1)+cw/2,yH=y(H),yL=y(Lo),yC=y(C),col="#ff8a8a",GC="#9AA3B2",xa=pl,xb=W-pr,DW=1.8,DA="8 5";        // 水平虛線橫跨整張圖
+        const xe=x(ve-1)+cw/2,yH=y(H),yL=y(Lo),yC=y(C),col="#ff8a8a",GC="#9AA3B2",xa=pl,xb=W-pr,DW=1.8,DA="8 5",blk=[];        // 水平虛線橫跨整張圖
         o+=`<line x1="${xa}" x2="${xb}" y1="${yH}" y2="${yH}" stroke="#ffffff" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".9"/>`
           +`<line x1="${xa}" x2="${xb}" y1="${yL}" y2="${yL}" stroke="${col}" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".9"/>`;
         if(hI>vs){                // 黃金分割回檔線：以前一波（畫面內最高點之前的最低點→最高點）的漲幅，0.382／0.5／0.618
           let sI=vs; for(let i=vs;i<hI;i++) if(B[i].l<=B[sI].l) sI=i;
-          const S0=B[sI].l, blk=[];
+          const S0=B[sI].l;
           if(H/S0>=1.1){
             for(const r of [0.382,0.5,0.618]){
               const pv=H-(H-S0)*r,yy=y(pv);
               o+=`<line x1="${xa}" x2="${xb}" y1="${yy}" y2="${yy}" stroke="${GC}" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".95"/>`;
-              blk.push({r,pv,yy,top:yy-12});
-            }
-            // 右邊圖外的倍數／價格：兩行一組，彼此不重疊；撞到價格刻度就往右挪
-            const ticks=[0,1,2,3,4].map(k=>y(lo+(hi-lo)*k/4));
-            for(let k=1;k<blk.length;k++) if(blk[k].top<blk[k-1].top+24) blk[k].top=blk[k-1].top+24;
-            for(const b of blk){
-              const clash=ticks.some(ty=>ty>b.top-8&&ty<b.top+26), tx=xb+(clash?32:4);
-              o+=`<text x="${tx}" y="${b.top+9}" style="fill:${GC};font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${b.r}</text><text x="${tx}" y="${b.top+21}" style="fill:${GC};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${fmt(b.pv)}</text>`;
-              if(Math.abs(b.top+12-b.yy)>4) o+=`<line x1="${xb}" x2="${tx-1}" y1="${b.yy}" y2="${b.top+12}" stroke="${GC}" stroke-width="1"/>`;
+              blk.push({t1:String(r),t2:fmt(pv),yy,top:yy-12,c:GC});
             }
           }
         }
-        labels.push([`回檔起點 ${fmt(H)}`,xe-70,yH,{color:"#ffffff",weight:700,prefer:["up","right","left","down"]}]);
+        {                         // 前波低（畫面內最高點之前最近一個還沒被跌破的波段低點）
+          const st2=calcStats(B,vs,ve-1);
+          if(st2&&st2.swing!=null){
+            const sv=B[st2.swing].l,ys=y(sv);
+            if(ys>pt&&ys<priceBot){o+=`<line x1="${xa}" x2="${xb}" y1="${ys}" y2="${ys}" stroke="#67e8f9" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".95"/>`;
+              blk.push({t1:"前波低",t2:fmt(sv),yy:ys,top:ys-12,c:"#67e8f9"})}
+          }
+        }
+        blk.push({t1:"回檔起點",t2:fmt(H),yy:yH,top:yH-12,c:"#ffffff"});
+        {                         // 右邊圖外的文字：兩行一組，彼此不重疊；撞到價格刻度就往右挪
+          const ticks=[0,1,2,3,4].map(k=>y(lo+(hi-lo)*k/4));
+          blk.sort((p,q)=>p.yy-q.yy);
+          for(let k=1;k<blk.length;k++) if(blk[k].top<blk[k-1].top+24) blk[k].top=blk[k-1].top+24;
+          for(const b of blk){
+            const clash=ticks.some(ty=>ty>b.top-8&&ty<b.top+26), tx=xb+(clash?32:4);
+            o+=`<text x="${tx}" y="${b.top+9}" style="fill:${b.c};font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${b.t1}</text><text x="${tx}" y="${b.top+21}" style="fill:${b.c};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b.t2}</text>`;
+            if(Math.abs(b.top+12-b.yy)>4) o+=`<line x1="${xb}" x2="${tx-1}" y1="${b.yy}" y2="${b.top+12}" stroke="${b.c}" stroke-width="1"/>`;
+          }
+        }
         labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-60,yL,{color:col,weight:700,prefer:["down","left","right"]}]);      // 寫在紅色虛線下方
         labels.push([Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe,yC,{color:"#fbbf24",weight:700,arrow:true,prefer:["down","up","left"]}]);   // 箭頭指向現價，標籤放在圖上有空白的地方
       }
