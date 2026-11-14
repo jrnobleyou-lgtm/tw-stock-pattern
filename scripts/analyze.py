@@ -143,9 +143,9 @@ def main():
             d_ = 2 / 3 * d_ + k_ / 3
             run_hi = run_hi + 1 if k_ >= 80 else 0
             run_lo = run_lo + 1 if k_ <= 20 else 0
-        if run_hi >= 3:
+        if run_hi >= 1:                              # 11/14 使用者：K 一碰到 80 以上就算高檔鈍化（不用連 3 天）
             tags.append("KD高檔鈍化")
-        if run_lo >= 3:
+        if run_lo >= 1:                              # K 一跌到 20 以下就算低檔鈍化
             tags.append("KD低檔鈍化")
         st = {
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
