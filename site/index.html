@@ -997,23 +997,28 @@ class Chart{
         labels.push([`預期支撐 ${fmt(sr.L)}（觸及 ${sr.touches} 次）`,Math.max(xa+10,x(ve-1)-110),yy2,{color:"#38bdf8",weight:600,prefer:["down","up","left","right"]}]);
       }
     }
-    // 回檔%：目前畫面最高點 → 最新一根收盤，跌了幾 %（按鈕開關，預設關）
+    // 回檔%（按鈕開關，預設關）：目前畫面最高點 → 最高點之後的最低點＝最大回檔幾 %；同時標出最新收盤目前回檔幾 %
     if(this.pb&&ve-vs>=2){
       let hI=vs; for(let i=vs;i<ve;i++) if(B[i].h>=B[hI].h) hI=i;
-      const H=B[hI].h,C=B[ve-1].c,pct=(C/H-1)*100,xe=x(ve-1)+cw/2,xh=x(hI),yH=y(H),yC=y(C),PS=window.PBSTYLE||new URLSearchParams(location.search).get("pb")||"1";
-      const txt=`距高 ${pct>=0?"+":""}${pct.toFixed(1)}%`,col=pct<0?"#ff8a8a":"#8affb0";
       if(hI<ve-1){
-        if(PS==="1"){          // 方案 1：最高點拉一條白色虛線到最新一根，尾端垂直連到現價，旁邊標 %
-          o+=`<line x1="${xh}" x2="${xe}" y1="${yH}" y2="${yH}" stroke="#ffffff" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/><line x1="${xe}" x2="${xe}" y1="${yH}" y2="${yC}" stroke="${col}" stroke-width="1.6"/>`;
-          labels.push([txt,xe-60,(yH+yC)/2,{color:col,weight:700,prefer:["left","right"]}]);
-        }else if(PS==="2"){    // 方案 2：不畫水平線，只在最新一根右側畫括弧，標 %
-          const bx=Math.min(xe+6,W-pr-4);
-          o+=`<path d="M${bx-4},${yH}L${bx},${yH}L${bx},${yC}L${bx-4},${yC}" fill="none" stroke="${col}" stroke-width="1.5"/>`;
-          labels.push([txt,bx-8,(yH+yC)/2,{color:col,weight:700,prefer:["left"]}]);
-        }else{                 // 方案 3：高點與現價各一條線，中間淡色填滿，百分比標在中間
-          o+=`<rect x="${xh}" y="${Math.min(yH,yC)}" width="${xe-xh}" height="${Math.abs(yC-yH)}" fill="${col}" fill-opacity=".10"/><line x1="${xh}" x2="${xe}" y1="${yH}" y2="${yH}" stroke="${col}" stroke-width="1" opacity=".8"/><line x1="${xh}" x2="${xe}" y1="${yC}" y2="${yC}" stroke="${col}" stroke-width="1" stroke-dasharray="3 3" opacity=".8"/>`;
-          labels.push([txt,(xh+xe)/2,(yH+yC)/2,{color:col,weight:700,prefer:["up","down"]}]);
+        let lI=hI+1; for(let i=hI+1;i<ve;i++) if(B[i].l<=B[lI].l) lI=i;
+        const H=B[hI].h,Lo=B[lI].l,C=B[ve-1].c,dd=(Lo/H-1)*100,cur=(C/H-1)*100;
+        const xh=x(hI),xl=x(lI),xe=x(ve-1)+cw/2,yH=y(H),yL=y(Lo),yC=y(C),col="#ff8a8a";
+        o+=`<line x1="${xh}" x2="${xe}" y1="${yH}" y2="${yH}" stroke="#ffffff" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>`
+          +`<line x1="${xl}" x2="${xe}" y1="${yL}" y2="${yL}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>`
+          +`<line x1="${xe}" x2="${xe}" y1="${yH}" y2="${yL}" stroke="${col}" stroke-width="1.6"/>`;
+        if(hI>vs){                // 黃金分割回檔線：以前一波（畫面內最高點之前的最低點→最高點）的漲幅，0.382／0.5／0.618 水平虛線
+          let sI=vs; for(let i=vs;i<hI;i++) if(B[i].l<=B[sI].l) sI=i;
+          const S0=B[sI].l;
+          if(H/S0>=1.1) for(const r of [0.382,0.5,0.618]){
+            const pv=H-(H-S0)*r,yy=y(pv);
+            o+=`<line x1="${xh}" x2="${xe}" y1="${yy}" y2="${yy}" stroke="#c4b5fd" stroke-width="1" stroke-dasharray="2 4" opacity=".9"/>`;
+            labels.push([`${r}  ${fmt(pv)}`,xh+46,yy,{color:"#c4b5fd",weight:600,prefer:["up","down"]}]);
+          }
         }
+        labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-8,(yH+yL)/2-10,{color:col,weight:700,prefer:["left"]}]);
+        if(Math.abs(cur-dd)>=0.05) labels.push([`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`,xe-8,yC-12,{color:"#fbbf24",weight:700,prefer:["left"]}]);
+        else labels.push(["目前＝最低點",xe-8,yC-12,{color:"#fbbf24",weight:700,prefer:["left"]}]);
       }
     }
     // 管理者畫的型態線（粉紅色，和系統畫的線區分）
