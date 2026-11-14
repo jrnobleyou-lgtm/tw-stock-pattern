@@ -246,6 +246,8 @@ async function usIngest(req, env, u) {          // 每日更新程式用：上�
   const ok = (env.US_INGEST_KEY && req.headers.get("x-ingest-key") === env.US_INGEST_KEY) || (bearer && await githubOidcOk(bearer));
   if (!env.US || !ok) return new Response("forbidden", { status: 403 });
   if (req.method === "GET") {
+    if (u.searchParams.get("key") === "draw-list/US")          // 分析程式讀美股畫線（只讀取、不寫入 KV）
+      return new Response(JSON.stringify(await drawList(env, "US", true)), { headers: { "content-type": "application/json" } });
     const v = await env.US.get(u.searchParams.get("key") || "", "arrayBuffer");
     return v ? new Response(v) : new Response("not found", { status: 404 });
   }

@@ -56,6 +56,11 @@ if sys.argv[1:] == ["pull"]:
     for name in ("groups_us.csv", "groups_us_all.csv"):
         g = get("state/" + name)
         if g: open(os.path.join(ROOT, "data", name), "wb").write(g)
+    try:                                             # 管理者在美股畫的線（分析時比對系統形態用）
+        dl = get("draw-list/US")
+        if dl: open(os.path.join(ROOT, "data", "us", "draw.json"), "wb").write(dl)
+    except Exception as e:
+        print("讀不到美股畫線（略過）", repr(e)[:80])
     parts = [get(f"state/hist_{k}.csv.gz") for k in range(NST)]
     if all(parts):
         with open(os.path.join(ROOT, "data", "us", "hist.csv"), "wb") as f:

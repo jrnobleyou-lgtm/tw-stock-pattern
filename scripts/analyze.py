@@ -93,6 +93,11 @@ def main():
             adm = json.loads(urllib.request.urlopen(urllib.request.Request(site + "/api/draw-list?span=1", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
         except Exception as e:
             print("讀不到管理者畫線（略過）", repr(e)[:80])
+    if us:
+        try:
+            adm = json.load(open(os.path.join(ROOT, "data", "us", "draw.json"), encoding="utf-8"))
+        except Exception:
+            pass
     stocks, missing = {}, []
     for g in groups:
         code = g["代號"]
