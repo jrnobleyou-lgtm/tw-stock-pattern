@@ -224,6 +224,8 @@ def scan_after(B, box, b, T):
             run = run + 1 if B[i]["c"] <= hi else 0
             if run >= CONFIRM_DAYS and ev["state"] != "false_breakout":
                 ev["state"] = "failed"
+        if ev["state"] == "false_breakout" and B[T]["c"] < lo:        # 11/14 使用者同意：假突破之後整個跌到區間下緣之下，區間／突破已失效
+            ev["state"] = "failed"
         if ev["day"] > SIGNAL_LIFE:
             ev["expired"] = True
     elif c < lo:
