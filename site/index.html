@@ -110,6 +110,7 @@ svg text{fill:var(--fg);font-size:11px}
 .ichip:hover{border-color:var(--mute)}
 .ichip b{font-variant-numeric:tabular-nums;font-size:14px}
 .swhint{display:none}
+.stt .tvm{display:none}
 @media(max-width:900px){
   .modal{align-items:stretch;overflow:hidden;padding:6px;touch-action:pan-x pan-y}
   .mpanel{width:min(99vw,1840px);height:100%;max-height:none;overflow:hidden;padding:8px 8px 6px}
@@ -160,6 +161,7 @@ svg text{fill:var(--fg);font-size:11px}
 @media(max-width:640px){th,td{padding:7px 6px}.hide-s{display:none}nav{margin-left:0}
   header{padding:8px 10px;gap:4px 8px}header h1{font-size:16px}header>p{display:none}
   html.stuck header h1,html.stuck #asof,html.stuck #idx{display:none}
+  .stt .tvm{display:block;font-size:11px;color:#a5b4fc;margin-top:1px}
   .stt td.sn1{white-space:nowrap;overflow-wrap:normal;max-width:none}.stt td.sn1 .sn{display:inline-block;max-width:7.5em;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
   .stt td.tg{min-width:170px;padding-left:10px}.stt th.tg{padding-left:10px}.stt .tag{white-space:nowrap}
   .hr{width:100%;margin-left:0;gap:6px}.sf{flex:1 1 100%}.sf input{width:auto;flex:1;max-width:none}.fz{flex-basis:auto;margin-left:auto}}
@@ -296,7 +298,7 @@ function turnover(s){const v=s.close*s.vol*1000;return D.market==="US"?fmtUSD(v)
 function stockTable(list,withGroup,showVal){
   let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th><th class="cc">收盤</th><th class="cc">漲跌%</th>${showVal?'<th class="cc">成交值</th>':""}</tr></thead><tbody>`;
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}</tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}</tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -388,7 +390,7 @@ function screener(key){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
     h += `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
-  } else h += stockTable(list);
+  } else h += `<p class="note" style="margin-top:0">依成交值由大到小排列。</p>`+stockTable(list,false,true);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
   document.querySelectorAll(".filters .btn").forEach(b=>b.onclick=()=>{location.hash="scr-"+b.dataset.k});
