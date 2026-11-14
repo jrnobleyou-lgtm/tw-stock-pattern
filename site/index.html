@@ -744,7 +744,7 @@ class Chart{
     this.active=this.custom[this.custom.length-1];this.range=null;this.listOpen=true;this.build();
   }
   clear(){ if(this.cancelScissor()) return; if(this.sel!=null){this.sel=null;this.draw()} }
-  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/n}}
+  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=this.rb?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/n}}
   rect(){const s=this.cv.querySelector("svg");return (s||this.cv).getBoundingClientRect()}
   indexAtX(cx){const g=this.geom(),r=this.rect(),x=(cx-r.left)/r.width*g.W;return Math.min(this.end-1,Math.max(g.vs,g.vs+Math.floor((x-g.pl)/g.cw)))}
   indexAt(e){return this.indexAtX(e.clientX)}
@@ -1104,7 +1104,7 @@ class Chart{
         for(let rep=0;rep<6;rep++){const t=ticks.find(ty=>ty>rbk[k].top-9&&ty<rbk[k].top+25); if(t==null)break; rbk[k].top=t+10; if(k>0&&rbk[k].top<rbk[k-1].top+24) rbk[k].top=rbk[k-1].top+24}
       }
       for(const b2 of rbk){
-        if(b2.pill) o+=`<rect x="${W-pr+2}" y="${b2.top}" width="${pr-4}" height="12.5" rx="3" fill="${b2.pill}"/><text x="${W-pr+4}" y="${b2.top+9.5}" style="fill:#000;font-size:10px;font-weight:700">${b2.t1}</text><text x="${W-pr+4}" y="${b2.top+22}" style="fill:${b2.pill};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t2}</text>`;
+        if(b2.pill) o+=`<rect x="${W-pr+2}" y="${b2.top}" width="${pr-4}" height="12.5" rx="3" fill="${b2.pill}"/><text x="${W-pr+4}" y="${b2.top+9.5}" style="fill:#000;font-size:10px;font-weight:700">${b2.t1}</text><path d="M${W-14},${b2.top+6.5} l2.6,3 l4.6,-6" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><text x="${W-pr+4}" y="${b2.top+22}" style="fill:${b2.pill};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t2}</text>`;
         else o+=`<text x="${W-pr+4}" y="${b2.top+9}" style="fill:${b2.c};font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t1}</text><text x="${W-pr+4}" y="${b2.top+21}" style="fill:${b2.c};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t2}</text>`;
         if(Math.abs(b2.top+12-b2.yy)>4) o+=`<line x1="${W-pr}" x2="${W-pr+3}" y1="${b2.yy}" y2="${b2.top+12}" stroke="${b2.c}" stroke-width="1"/>`;
       }
@@ -1160,6 +1160,7 @@ class Chart{
         let cost=Math.hypot(tx-sx,ty-sy)+40*ma.filter(q=>seg(sx,sy,tx,ty,q)).length+(fromTop?0:60);      // 偏好從上方指過去
         if(!best||cost<best.cost) best={cost,r,sx,sy,tx,ty,ux,uy};
       }
+      if(pass===0&&best&&best.cost>170) best=null;            // 兩行的位置太遠（箭頭拉很長）就不要，改試一行
       }
       if(best){
         const {r,sx,sy,tx,ty,ux,uy}=best,hl=7,cs=Math.cos(.5),sn=Math.sin(.5);
