@@ -989,8 +989,8 @@ class Chart{
         else{
           const pd=pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("");
           const cf=gm.status==="confirmed",DSH=cf?"":`stroke-dasharray="8 5"`;            // 已突破（剛成立）＝實線，還沒突破（接近／成形中／舊）＝虛線
-          if(isV) o+=`<path d="${pd}" fill="none" stroke="${ZC}" stroke-width="${cf?2.7:3.4}" ${DSH} stroke-linecap="round"/>`;
-          else o+=`<path d="${pd}" fill="none" stroke="#000" stroke-width="${cf?5.4:6.6}" stroke-opacity=".6" ${DSH} stroke-linejoin="round"/><path d="${pd}" fill="none" stroke="${ZC}" stroke-width="${cf?2.4:3.2}" stroke-opacity=".6" ${DSH} stroke-linejoin="round"/>`;      // 加粗＋黑色外框
+          if(isV) o+=`<path d="${pd}" fill="none" stroke="${ZC}" stroke-width="${cf?3.3:4}" ${DSH} stroke-linecap="round"/>`;
+          else o+=`<path d="${pd}" fill="none" stroke="#000" stroke-width="${cf?6.4:7.8}" stroke-opacity=".6" ${DSH} stroke-linejoin="round"/><path d="${pd}" fill="none" stroke="${ZC}" stroke-width="${cf?3:3.8}" stroke-opacity=".6" ${DSH} stroke-linejoin="round"/>`;      // 加粗＋黑色外框
           if(gm.dir==="bull"||gm.dir==="bear"){                                // 折線最後加箭頭：看漲朝上、看跌朝下
             const [li,lp]=pts[pts.length-1],x0=x(li),y0=y(lp),up=gm.dir==="bull",len=Math.max(18,Math.min(46,cw*4)),x1=x0+len*.6,y1=y0+(up?-len:len);
             const ang=Math.atan2(y1-y0,x1-x0),hl=8,a1=ang+2.6,a2=ang-2.6;
