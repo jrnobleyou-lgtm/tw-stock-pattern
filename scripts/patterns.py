@@ -119,13 +119,13 @@ def double_bottom_top(B, T, P):
         if t1 == "L" and t3 == "L":              # 雙重底
             gap = abs(p1 - p3) / min(p1, p3)
             if gap > 0.12 or (p2 - max(p1, p3)) / max(p1, p3) < 0.08:
-                continue                                 # 兩底差 4% 內＝標準雙重底；4–12%＝不對稱（醜一點的 W）
+                continue                                 # 兩底差 8% 內＝標準雙重底（11/14 使用者由 4% 放寬到 8%）；8–12%＝不對稱（醜一點的 W）
             if min(B[j]["l"] for j in range(i3, T + 1)) < min(p1, p3) * 0.97:
                 continue
             st, d = _status(B, T, i3, p2, True)
             if last != k + 2 and st not in ("confirmed", "near"):
                 continue                                 # 用延伸後的第二個底：只在接近或突破頸線時才標（避免雜訊）
-            if gap > 0.04:
+            if gap > 0.08:
                 if st not in ("confirmed", "near"):
                     continue                             # 不對稱的只在接近或突破頸線時才標，避免太多雜訊
                 pre = [[P[k - 1][0], P[k - 1][1]]] if k > 0 and P[k - 1][2] == "H" else []
