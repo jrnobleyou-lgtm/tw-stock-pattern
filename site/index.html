@@ -620,7 +620,7 @@ const textW=(t,fs)=>{let w=0;for(const ch of String(t))w+=/[⺀-鿿＀-￯]/.tes
 class Chart{
   constructor(el, s, opts){
     this.el=el; this.s=s; this.opts=opts||{}; this.raw=stockBars(s);
-    this.tf="D"; this.geo=true; this.sup=true; this.pb=false; this.adjOn=false;
+    this.tf="D"; this.geo=true; this.sup=true; this.pb=false; this.rb=false; this.adjOn=false;
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
@@ -656,7 +656,7 @@ class Chart{
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
       this.btn("geo","形態",this.geo,`style="color:${this.geo?"#1E40AF":"#4D7CFF"};font-weight:700"`);      // 開啟（黃底）用深藍、關閉（黑底）用亮一點的藍才看得清楚
     const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
-    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb);
+    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb)+this.btn("rb","反彈%",this.rb);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
     const allOn=MA_ALL.every(n=>this.maOn[n]);
     const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"✓ 全選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${this.maOn[n]?"✓ ":""}${n}日</button>`).join("")}</div>`:"";
@@ -697,6 +697,7 @@ class Chart{
     if(a==="geo"){this.geo=!this.geo;return this.build()}
     if(a==="sup"){this.sup=!this.sup;return this.build()}
     if(a==="pb"){this.pb=!this.pb;return this.build()}
+    if(a==="rb"){this.rb=!this.rb;return this.build()}
     if(a==="list"){this.listOpen=!this.listOpen;return this.build()}
     if(a==="scissor"){this.scMode=this.scMode?null:"menu";this.range=null;return this.build()}
     if(a==="sc-box"||a==="sc-zoom"){this.scMode=a==="sc-box"?"box":"zoom";this.range=null;return this.build()}
@@ -1057,6 +1058,38 @@ class Chart{
         labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-60,yL,{color:col,weight:700,prefer:["down","left","right"]}]);      // 寫在紅色虛線下方
         for(const yv of [yH,yL,...blk.map(b=>b.yy)]) occ.push({x:pl,y:yv-2,w:xb-pl,h:4});          // 水平虛線登記為占位，文字不壓在線上
         arrowJob=[Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe,yC,"#fbbf24",x(ve-1)];   // 最後才找位置：箭頭不碰任何 K 棒／影線，可以拉長到遠處空白
+      }
+    }
+    // 反彈%（按鈕開關，預設關）：目前畫面最高點 → 最高點之後的最低點＝一段跌幅；用黃金分割 0.236～0.786 畫「漲回去會卡在哪」的水平虛線；已回補幾成、從低點漲幾 % 直接寫在圖上
+    if(this.rb&&ve-vs>=2){
+      let hI=vs; for(let i=vs;i<ve;i++) if(B[i].h>=B[hI].h) hI=i;
+      if(hI<ve-1){
+        let lI=hI+1; for(let i=hI+1;i<ve;i++) if(B[i].l<=B[lI].l) lI=i;
+        const H=B[hI].h,Lo=B[lI].l,C=B[ve-1].c,D=H-Lo,rec=D>0?(C-Lo)/D*100:0,up=(C/Lo-1)*100,RV=window.RBV||1;
+        const xa=pl,xb=W-pr,yH=y(H),yL=y(Lo),yC=y(C),GC="#9AA3B2",AM="#fbbf24",DW=1.8,DA="8 5",blk=[];
+        if(D>0&&H/Lo>=1.03){
+          if(RV>=2&&C>Lo) o+=`<rect x="${xa}" y="${yC}" width="${xb-xa}" height="${yL-yC}" fill="${AM}" fill-opacity=".10"/>`;   // 已經反彈的那一段（低點到現價）淡黃底
+          o+=`<line x1="${xa}" x2="${xb}" y1="${yL}" y2="${yL}" stroke="#ff8a8a" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".9"/>`;
+          if(!this.pb) o+=`<line x1="${xa}" x2="${xb}" y1="${yH}" y2="${yH}" stroke="#ffffff" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".9"/>`;
+          for(const r of [0.236,0.382,0.5,0.618,0.786]){
+            const pv=Lo+D*r,yy=y(pv),passed=C>=pv;
+            o+=`<line x1="${xa}" x2="${xb}" y1="${yy}" y2="${yy}" stroke="${passed&&RV>=2?AM:GC}" stroke-width="${DW}" ${passed&&RV>=2?"":`stroke-dasharray="${DA}"`} opacity=".95"/>`;
+            blk.push({t1:"反彈 "+r+(passed?" ✓已過":""),t2:fmt(pv),yy,top:yy-12,c:passed&&RV>=2?AM:GC});
+          }
+          blk.push({t1:"反彈起點",t2:fmt(Lo),yy:yL,top:yL-12,c:"#ff8a8a"});
+          if(!this.pb) blk.push({t1:"回檔起點",t2:fmt(H),yy:yH,top:yH-12,c:"#ffffff"});
+          rbk.push(...blk);
+          for(const yv of [yH,yL,...blk.map(b=>b.yy)]) occ.push({x:pl,y:yv-2,w:xb-pl,h:4});
+          const txt=C<=Lo?"還在創低，尚無反彈":`反彈 +${up.toFixed(1)}%｜已回補跌幅 ${rec.toFixed(0)}%`;
+          if(RV===3){            // 右側「尺」：低點到高點一條細長條，刻度＝黃金分割，三角標記＝現價位置
+            const bx=xb-14;
+            o+=`<rect x="${bx}" y="${yH}" width="7" height="${yL-yH}" fill="#000" fill-opacity=".55" stroke="#9AA3B2" stroke-width="1"/><rect x="${bx}" y="${yC}" width="7" height="${yL-yC}" fill="${AM}" fill-opacity=".85"/>`;
+            for(const r of [0.236,0.382,0.5,0.618,0.786]){const yy=y(Lo+D*r);o+=`<line x1="${bx-3}" x2="${bx+10}" y1="${yy}" y2="${yy}" stroke="#fff" stroke-width="1"/>`}
+            o+=`<path d="M${bx-2},${yC} l-8,-5 v10 z" fill="${AM}"/>`;
+            labels.push([txt,bx-12,yC,{color:AM,weight:700,prefer:["left","up","down"]}]);
+          } else if(!arrowJob) arrowJob=[txt,x(ve-1)+cw/2,yC,AM,x(ve-1)];
+          else labels.push([txt,x(ve-1),yC,{color:AM,weight:700,prefer:["up","left","down"]}]);
+        }
       }
     }
     if(rbk.length){            // 右邊圖外的文字：名稱＋價格兩行一組，依價位由上往下排，彼此不重疊、避開價格刻度與現價框
