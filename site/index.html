@@ -986,7 +986,7 @@ class Chart{
         else{
           const pd=pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("");
           if(isV) o+=`<path d="${pd}" fill="none" stroke="${ZC}" stroke-width="2.7" stroke-dasharray="8 5" stroke-linecap="round"/>`;
-          else o+=`<path d="${pd}" fill="none" stroke="#000" stroke-width="4.4" stroke-opacity=".6" stroke-linejoin="round"/><path d="${pd}" fill="none" stroke="${ZC}" stroke-width="2" stroke-opacity=".8" stroke-linejoin="round"/>`;      // 加粗＋黑色外框
+          else o+=`<path d="${pd}" fill="none" stroke="#000" stroke-width="4.4" stroke-opacity=".6" stroke-linejoin="round"/><path d="${pd}" fill="none" stroke="${ZC}" stroke-width="2" stroke-opacity=".6" stroke-linejoin="round"/>`;      // 加粗＋黑色外框
           if(gm.dir==="bull"||gm.dir==="bear"){                                // 折線最後加箭頭：看漲朝上、看跌朝下
             const [li,lp]=pts[pts.length-1],x0=x(li),y0=y(lp),up=gm.dir==="bull",len=Math.max(18,Math.min(46,cw*4)),x1=x0+len*.6,y1=y0+(up?-len:len);
             const ang=Math.atan2(y1-y0,x1-x0),hl=8,a1=ang+2.6,a2=ang-2.6;
