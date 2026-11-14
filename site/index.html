@@ -1037,10 +1037,10 @@ class Chart{
         }
         {                         // 前波低（畫面內最高點之前最近一個還沒被跌破的波段低點）
           const st2=calcStats(B,vs,ve-1);
-          if(st2&&st2.swing!=null){
+          if(st2&&st2.swing!=null&&!this.supRes){        // 已經畫了「前低支撐」就不再重複畫前低
             const sv=B[st2.swing].l,ys=y(sv);
             if(ys>pt&&ys<priceBot){o+=`<line x1="${xa}" x2="${xb}" y1="${ys}" y2="${ys}" stroke="#67e8f9" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".95"/>`;
-              blk.push({t1:"前波低",t2:fmt(sv),yy:ys,top:ys-12,c:"#67e8f9"})}
+              blk.push({t1:"前低",t2:fmt(sv),yy:ys,top:ys-12,c:"#67e8f9"})}
           }
         }
         blk.push({t1:"回檔起點",t2:fmt(H),yy:yH,top:yH-12,c:"#ffffff"});
@@ -1088,12 +1088,13 @@ class Chart{
       let best=null;
       for(let gx=pl+4;gx<=W-pr-wd-4;gx+=12)for(let gy=pt+4;gy<=priceBot-ht-4;gy+=10){
         const r={x:gx,y:gy,w:wd,h:ht}; if(hit(r)) continue;
-        const cx=gx+wd/2,cy=gy+ht/2,L0=Math.hypot(ax-cx,ay-cy),ux=(ax-cx)/L0,uy=(ay-cy)/L0;
+        const cx=gx+wd/2,cy=gy+ht/2,fromTop=cy<ay,TX=xc,TY=fromTop?y(LB.h):y(LB.l);        // 從上方來就指 K 棒頂端（含影線），從下方來指底端
+        const L0=Math.hypot(TX-cx,TY-cy),ux=(TX-cx)/L0,uy=(TY-cy)/L0;
         let sx=cx,sy=cy; while(sx>=gx-3&&sx<=gx+wd+3&&sy>=gy-3&&sy<=gy+ht+3){sx+=ux;sy+=uy}                 // 起點：文字框邊緣
-        let tx=ax,ty=ay; for(let i=0;i<60&&inLast(tx,ty);i++){tx-=ux;ty-=uy}   // 箭頭尖：停在最新 K 棒外 5px，不碰到
+        let tx=TX,ty=TY; for(let i=0;i<60&&inLast(tx,ty);i++){tx-=ux;ty-=uy}   // 箭頭尖：停在最新 K 棒外 5px，不碰到
         if((tx-sx)*ux+(ty-sy)*uy<8) continue;
         if(cr.some(q=>seg(sx,sy,tx,ty,q))||labOcc.some(q=>seg(sx,sy,tx,ty,{x:q.x-2,y:q.y-2,w:q.w+4,h:q.h+4}))) continue;
-        let cost=Math.hypot(tx-sx,ty-sy)+40*ma.filter(q=>seg(sx,sy,tx,ty,q)).length+((ty<bT-8||ty>bB+8)?500:0);      // 箭頭尖要對準 K 棒實體的高度，不要只指到影線尖端
+        let cost=Math.hypot(tx-sx,ty-sy)+40*ma.filter(q=>seg(sx,sy,tx,ty,q)).length+(fromTop?0:60);      // 偏好從上方指過去
         if(!best||cost<best.cost) best={cost,r,sx,sy,tx,ty,ux,uy};
       }
       if(best){
