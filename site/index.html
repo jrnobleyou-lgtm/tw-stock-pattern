@@ -1074,11 +1074,7 @@ class Chart{
           for(const r of [0.236,0.382,0.5,0.618,0.786]){
             const pv=Lo+D*r,yy=y(pv),passed=C>=pv;
             o+=`<line x1="${xa}" x2="${xb}" y1="${yy}" y2="${yy}" stroke="${passed&&RV>=2?AM:GC}" stroke-width="${DW}" ${passed&&RV>=2?"":`stroke-dasharray="${DA}"`} opacity=".95"/>`;
-            if(passed&&RV>=2){            // 已過：在圖最右邊的邊線上蓋黃色圓章 ✓
-              const cx=xb-8;            // 統一蓋在圖最右邊的邊線上，不擋 K 棒
-              o+=`<circle cx="${cx}" cy="${yy}" r="7" fill="${AM}" stroke="#000" stroke-width="1.5"/><path d="M${cx-3.5},${yy} l2.8,3.2 l4.4,-6.4" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>`;
-            }
-            blk.push({t1:"反彈"+r+"",t2:fmt(pv),yy,top:yy-12,c:passed&&RV>=2?AM:GC});
+            blk.push({t1:"反彈"+r,t2:fmt(pv),yy,top:yy-12,c:passed&&RV>=2?"#000":GC,pill:passed&&RV>=2?AM:null});
           }
           {            // 下一關：第一條還沒漲過的線，直接標在線上「還差幾 %」
             const nr=[0.236,0.382,0.5,0.618,0.786].find(r=>C<Lo+D*r);
@@ -1088,7 +1084,7 @@ class Chart{
           if(!this.pb) blk.push({t1:"回檔起點",t2:fmt(H),yy:yH,top:yH-12,c:"#ffffff"});
           rbk.push(...blk);
           for(const yv of [yH,yL,...blk.map(b=>b.yy)]) occ.push({x:pl,y:yv-2,w:xb-pl,h:4});
-          const txt=C<=Lo?"還在創低，尚無反彈":`反彈 +${up.toFixed(1)}%｜已回補跌幅 ${rec.toFixed(0)}%`;
+          const txt=C<=Lo?"還在創低，尚無反彈":`反彈 +${up.toFixed(1)}%\n已回補 ${rec.toFixed(0)}%`;
           if(RV===3){            // 右側「尺」：低點到高點一條細長條，刻度＝黃金分割，三角標記＝現價位置
             const bx=xb-14;
             o+=`<rect x="${bx}" y="${yH}" width="7" height="${yL-yH}" fill="#000" fill-opacity=".55" stroke="#9AA3B2" stroke-width="1"/><rect x="${bx}" y="${yC}" width="7" height="${yL-yC}" fill="${AM}" fill-opacity=".85"/>`;
@@ -1108,7 +1104,8 @@ class Chart{
         for(let rep=0;rep<6;rep++){const t=ticks.find(ty=>ty>rbk[k].top-9&&ty<rbk[k].top+25); if(t==null)break; rbk[k].top=t+10; if(k>0&&rbk[k].top<rbk[k-1].top+24) rbk[k].top=rbk[k-1].top+24}
       }
       for(const b2 of rbk){
-        o+=`<text x="${W-pr+4}" y="${b2.top+9}" style="fill:${b2.c};font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t1}</text><text x="${W-pr+4}" y="${b2.top+21}" style="fill:${b2.c};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t2}</text>`;
+        if(b2.pill) o+=`<rect x="${W-pr+2}" y="${b2.top}" width="${pr-4}" height="12.5" rx="3" fill="${b2.pill}"/><text x="${W-pr+4}" y="${b2.top+9.5}" style="fill:#000;font-size:10px;font-weight:700">${b2.t1}</text><text x="${W-pr+4}" y="${b2.top+22}" style="fill:${b2.pill};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t2}</text>`;
+        else o+=`<text x="${W-pr+4}" y="${b2.top+9}" style="fill:${b2.c};font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t1}</text><text x="${W-pr+4}" y="${b2.top+21}" style="fill:${b2.c};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b2.t2}</text>`;
         if(Math.abs(b2.top+12-b2.yy)>4) o+=`<line x1="${W-pr}" x2="${W-pr+3}" y1="${b2.yy}" y2="${b2.top+12}" stroke="${b2.c}" stroke-width="1"/>`;
       }
     }
@@ -1139,7 +1136,7 @@ class Chart{
       occ.push(r); labOcc.push(r);
     }
     if(arrowJob){            // 「目前」文字＋開口箭頭（↖ 型）：箭頭線不能碰到任何 K 棒（含影線）和其他文字；空白處可以很遠
-      const [text,ax,ay,col,xc]=arrowJob,fs=11,wd=textW(text,fs),ht=fs+4;
+      const [text,ax,ay,col,xc]=arrowJob,fs=11; let TL=String(text).split("\n"),wd=Math.max(...TL.map(t=>textW(t,fs))),ht=TL.length*(fs+1)+3;
       const cr=vis.map((b,k)=>{const xk=x(vs+k);return[{x:xk-cw*.35-1.5,y:Math.min(y(b.o),y(b.c))-1.5,w:cw*.7+3,h:Math.abs(y(b.o)-y(b.c))+3},{x:xk-2.2,y:y(b.h)-1.5,w:4.4,h:y(b.l)-y(b.h)+3}]}).flat();
       const ma=occ.slice(vis.length,occBase);
       const seg=(x1,y1,x2,y2,r)=>{let t0=0,t1=1;const dx=x2-x1,dy=y2-y1;
@@ -1150,6 +1147,8 @@ class Chart{
       const lastRs=[{x:xc-cw*.35-4,y:bT-4,w:cw*.7+8,h:bB-bT+8},{x:xc-2.2-4,y:y(LB.h)-4,w:8.4,h:y(LB.l)-y(LB.h)+8}];      // 最新 K 棒的實體與影線（各留 4px）
       const inLast=(px,py)=>lastRs.some(q=>px>=q.x&&px<=q.x+q.w&&py>=q.y&&py<=q.y+q.h);
       let best=null;
+      for(let pass=0;pass<2&&!best;pass++){            // 先試兩行（比較窄，塞得進空白處）；找不到位置再改成一行
+        if(pass===1&&TL.length>1){TL=[TL.join(" ")];wd=textW(TL[0],fs);ht=fs+4}
       for(let gx=pl+4;gx<=W-pr-wd-4;gx+=12)for(let gy=pt+4;gy<=priceBot-ht-4;gy+=10){
         const r={x:gx,y:gy,w:wd,h:ht}; if(hit(r)) continue;
         const cx=gx+wd/2,cy=gy+ht/2,fromTop=cy<ay,TX=xc,TY=fromTop?y(LB.h):y(LB.l);        // 從上方來就指 K 棒頂端（含影線），從下方來指底端
@@ -1161,12 +1160,13 @@ class Chart{
         let cost=Math.hypot(tx-sx,ty-sy)+40*ma.filter(q=>seg(sx,sy,tx,ty,q)).length+(fromTop?0:60);      // 偏好從上方指過去
         if(!best||cost<best.cost) best={cost,r,sx,sy,tx,ty,ux,uy};
       }
+      }
       if(best){
         const {r,sx,sy,tx,ty,ux,uy}=best,hl=7,cs=Math.cos(.5),sn=Math.sin(.5);
         const rot=(a2)=>[-(ux*Math.cos(a2)-uy*Math.sin(a2))*hl,-(ux*Math.sin(a2)+uy*Math.cos(a2))*hl];
         const h1=rot(.5),h2=rot(-.5);
         o+=`<line x1="${sx}" y1="${sy}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="0.9"/><path d="M${tx+h1[0]},${ty+h1[1]}L${tx},${ty}L${tx+h2[0]},${ty+h2[1]}" fill="none" stroke="${col}" stroke-width="1"/>`;
-        o+=`<text x="${r.x}" y="${r.y+fs}" style="fill:${col};font-weight:700;font-size:${fs}px">${text}</text>`;
+        o+=TL.map((t,k)=>`<text x="${r.x}" y="${r.y+fs+k*(fs+1)}" style="fill:${col};font-weight:700;font-size:${fs}px">${t}</text>`).join("");
         occ.push(r); labOcc.push(r);
       } else put(text,ax,ay,{color:col,weight:700,prefer:["down","up","left"]});
     }
