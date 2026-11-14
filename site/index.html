@@ -651,7 +651,7 @@ class Chart{
   build(){
     const hasAdj=this.raw.some(b=>Math.abs(b.f-1)>1e-6);
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
-      this.btn("geo","形態",this.geo);
+      this.btn("geo","形態",this.geo,'style="color:#4D7CFF;font-weight:700"');
     const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
     const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
