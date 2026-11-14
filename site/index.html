@@ -1006,7 +1006,7 @@ class Chart{
           if(a>=0&&b>=0)o+=`<rect x="${x(a)-cw/2-2}" y="${y(h1)-3}" width="${(b-a+1)*cw+4}" height="${y(l1)-y(h1)+6}" rx="6" fill="#7dd3fc" fill-opacity=".08" stroke="#7dd3fc" stroke-dasharray="4 3"/>`}
         else{
           const pd=pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("");
-          const cf=gm.status==="confirmed",DSH=cf?"":`stroke-dasharray="8 5"`;            // 已突破（剛成立）＝實線，還沒突破（接近／成形中／舊）＝虛線
+          const cf=gm.status==="confirmed"||/楔形/.test(gm.kind),DSH=cf?"":`stroke-dasharray="8 5"`;            // 楔形不管有沒有突破都畫實線（使用者 11/14）            // 已突破（剛成立）＝實線，還沒突破（接近／成形中／舊）＝虛線
           if(isV) o+=`<path d="${pd}" fill="none" stroke="${ZC}" stroke-width="${cf?3.3:4}" ${DSH} stroke-linecap="round"/>`;
           else o+=`<path d="${pd}" fill="none" stroke="#000" stroke-width="${cf?6.4:7.8}" stroke-opacity=".6" ${DSH} stroke-linejoin="round"/><path d="${pd}" fill="none" stroke="${ZC}" stroke-width="${cf?3:3.8}" stroke-opacity=".6" ${DSH} stroke-linejoin="round"/>`;      // 加粗＋黑色外框
           if(gm.dir==="bull"||gm.dir==="bear"){                                // 折線最後加箭頭：看漲朝上、看跌朝下

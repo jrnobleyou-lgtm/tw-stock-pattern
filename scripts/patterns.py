@@ -411,6 +411,13 @@ def _edge_line(B, piv, T, side, want=0, tol=1):
     return best[1], best[2], best[3], best[4], best[5]
 
 
+def _hugs_recent(B, T, up_T, lo_T):
+    """上線在最新一根的價位不能比近 10 根最高價高出 10% 以上；下線不能比近 10 根最低價低 10% 以上（線要貼著價格）。"""
+    hi10 = max(B[i]["h"] for i in range(max(0, T - 9), T + 1))
+    lo10 = min(B[i]["l"] for i in range(max(0, T - 9), T + 1))
+    return up_T <= hi10 * 1.10 and lo_T >= lo10 * 0.90
+
+
 def triangles(B, T):
     """形態的有無、種類沿用舊判斷（最小平方擬合，使用者確認過的案例不變）；
     畫出來的上下兩條線改成「貼著影線尖端」的人手畫法，並用這兩條線重新判斷接近／突破狀態；
@@ -433,6 +440,8 @@ def triangles(B, T):
             break
     if not up or not lo:
         g["fit"] = "ls"
+        if not _hugs_recent(B, T, g["lines"][0][3], g["lines"][1][3]):
+            return []
         return r
     (ua, ub, ubrk, mh, bh), (la, lb, lbrk, ml, bl) = up, lo
     i0 = max(ua[0], la[0])
@@ -442,8 +451,24 @@ def triangles(B, T):
         g["fit"] = "ls"
         return r
     up_T, lo_T = mh * T + bh, ml * T + bl
-    # 11/14：只換畫出來的線；成立／接近／突破等狀態仍沿用舊判斷，避免連動改變五種型態（使用者要的是線貼著價格）
-    g.update(fit="edge",
+    c = B[T]["c"]
+    if not _hugs_recent(B, T, up_T, lo_T):                   # 11/14 使用者（1201）：兩線在最新一根離近 10 根價格太遠，不像楔形／三角形，不標
+        return []
+    up_brk = next((x for x in range(T - 2, T + 1) if B[x]["c"] > mh * x + bh), None)
+    dn_brk = next((x for x in range(T - 2, T + 1) if B[x]["c"] < ml * x + bl), None)
+    base_dir = {"上升三角形": "bull", "下降三角形": "bear", "上升楔形": "bear", "下降楔形": "bull"}.get(g["kind"], "neutral")
+    st, day, d = "forming", None, base_dir
+    stale = (ubrk is not None and ubrk < T - 2) or (lbrk is not None and lbrk < T - 2)
+    if stale and up_brk is None and dn_brk is None:
+        st = "old"
+    elif up_brk is not None:
+        st, day, d = "confirmed", T - up_brk + 1, "bull"
+    elif dn_brk is not None:
+        st, day, d = "confirmed", T - dn_brk + 1, "bear"
+    elif c >= up_T * 0.97 or c <= lo_T * 1.03:
+        st = "near"
+    # 11/14 使用者同意：接近／突破狀態改用畫出來的這兩條線判斷（圖和字要一致）
+    g.update(fit="edge", status=st, day=day, dir=d,
              lines=[[ua[0], mh * ua[0] + bh, T, up_T], [la[0], ml * la[0] + bl, T, lo_T]])
     return r
 
