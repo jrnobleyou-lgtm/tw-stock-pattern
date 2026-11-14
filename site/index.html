@@ -881,7 +881,7 @@ class Chart{
       return false;
     };
     const put=(text,ax,ay,op={})=>{
-      const fs=op.fs||11,wd=textW(text,fs),ht=fs+4,prefer=op.prefer||["up","down","right","left"];
+      const fs=op.fs||11,wd=textW(text,fs)+(op.bg?8:0),ht=fs+4+(op.bg?2:0),prefer=op.prefer||["up","down","right","left"];
       let best=null,found=false;
       for(const strict of (op.arrow?[true,false]:[false])){
       best=null;
@@ -907,7 +907,8 @@ class Chart{
         const bx2=ax-Math.cos(ang)*L,by2=ay-Math.sin(ang)*L;
         o+=`<line x1="${tx}" y1="${ty}" x2="${bx2}" y2="${by2}" stroke="${c}" stroke-width="0.9"/><polygon points="${ax},${ay} ${bx2+Math.sin(ang)*2.6},${by2-Math.cos(ang)*2.6} ${bx2-Math.sin(ang)*2.6},${by2+Math.cos(ang)*2.6}" fill="${c}"/>`;
       } else if(best.d>6) o+=`<line x1="${ax}" y1="${ay}" x2="${best.x+best.w/2}" y2="${best.y+best.h/2}" stroke="${op.color||"#ece8f5"}" stroke-opacity=".35" stroke-dasharray="2 2"/>`;
-      o+=`<text x="${best.x}" y="${best.y+fs}" style="fill:${op.color||"#ece8f5"};${op.weight?"font-weight:"+op.weight:""};font-size:${fs}px">${text}</text>`;
+      if(op.bg) o+=`<rect x="${best.x}" y="${best.y}" width="${best.w}" height="${best.h}" rx="3" fill="#ffffff" fill-opacity=".93"/>`;
+      o+=`<text x="${best.x+(op.bg?4:0)}" y="${best.y+fs+(op.bg?1:0)}" style="fill:${op.color||"#ece8f5"};${op.weight?"font-weight:"+op.weight:""};font-size:${fs}px">${text}</text>`;
     };
     for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;o+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#2e2a3d"/><text x="${W-pr+4}" y="${y(v)+4}">${fmt(v)}</text>`}
     const labels=[],rbk=[];                       // rb：右邊圖外的文字（名稱＋價格），最後一起排版，不重疊
@@ -996,7 +997,7 @@ class Chart{
         (gm.lines||[]).forEach(L=>{const [d0,p0,d1,p1]=[L[0],ad&&L[4]!=null?L[4]:L[1],L[2],ad&&L[5]!=null?L[5]:L[3]];if(d0)o+=`<line x1="${x(idxOf(B,d0))}" y1="${y(p0)}" x2="${x(idxOf(B,d1))}" y2="${y(p1)}" stroke="${LC}" stroke-width="1.4" stroke-opacity=".9"/>`});
         const nk=ad&&gm.neckA!=null?gm.neckA:gm.neck;
         if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="${LC}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".95"/>`;
-          const xn0=x(Math.max(vs,i0)); labels.push([`頸線 ${fmt(nk)}`,xn0+(W-pr-xn0)*0.6,y(nk),{color:LC,weight:700,prefer:["up","down"]}])}      // 文字放在圖中空白處，貼著頸線；太擠就自動拉線過去
+          const xn0=x(Math.max(vs,i0)); labels.push([`頸線 ${fmt(nk)}`,xn0+(W-pr-xn0)*0.6,y(nk),{color:gm.dir==="bull"?"#dc2626":gm.dir==="bear"?"#15803d":"#0369a1",weight:700,bg:true,prefer:["up","down"]}])}      // 文字放在圖中空白處，貼著頸線；太擠就自動拉線過去
         const [li,lp]=pts.reduce((a,b)=>b[1]>a[1]?b:a);
         labels.push([gm.kind,x(li),y(lp),{color:ZC,weight:700}]);
       }
@@ -1071,9 +1072,9 @@ class Chart{
     const DC="#ff5fd2";
     const drawOne=(d,preview)=>{
       const P=d.pts.map(([dd,pp])=>[this.idxOfDate(dd),pp]).filter(([i])=>i>=0); if(!P.length) return;
-      if(d.kind==="hline"){const [i,pp]=P[0];o+=`<line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="${DC}" stroke-width="1.6" ${preview?'stroke-dasharray="4 3"':""}/>`;
+      if(d.kind==="hline"){const [i,pp]=P[0];o+=`<line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="#000" stroke-width="4.6" stroke-opacity=".75" ${preview?'stroke-dasharray="4 3"':""}/><line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="${DC}" stroke-width="1.8" ${preview?'stroke-dasharray="4 3"':""}/>`;
         if(!preview&&d.name) labels.push([d.name+" "+fmt(pp),x(Math.max(vs,i))+30,y(pp),{color:DC,weight:700,prefer:["up","down","right"]}]);return}
-      o+=`<path d="${P.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("")}" fill="none" stroke="${DC}" stroke-width="1.8" ${preview?'stroke-dasharray="4 3"':""}/>`;
+      {const pd2=P.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pd2}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pd2}" fill="none" stroke="${DC}" stroke-width="2.2" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/>`}
       P.forEach(([i,pp])=>{if(i>=vs&&i<ve)o+=`<circle cx="${x(i)}" cy="${y(pp)}" r="2.6" fill="${DC}"/>`});
       if(!preview&&d.name){const [li,lp]=P.reduce((a,b)=>b[1]>a[1]?b:a);labels.push([d.name,x(li),y(lp),{color:DC,weight:700,prefer:["up","right","left","down"]}])}
     };
