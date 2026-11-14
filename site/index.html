@@ -956,8 +956,8 @@ class Chart{
       const ad=this.adjOn;
       for(const gm of (s.geo||[]).slice(0,2)){                                // 同時最多畫 2 個形態（已依重要性排序）
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
-        const isV=gm.kind.startsWith("V形");                                  // V 形維持原本淺藍色虛線（使用者選定）
-        const ZC=isV?"#7dd3fc":"#e5e7eb", LC=col;                             // 鋸齒折線白色、趨勢線與頸線依多空紅綠
+        const isV=gm.kind.startsWith("V形");                                  // V 形用咖啡色虛線（使用者選定，避免和 10 日線的藍色混淆）
+        const ZC=isV?"#c8915a":"#e5e7eb", LC=col;                             // 鋸齒折線白色、趨勢線與頸線依多空紅綠
         const pts=gm.pts.map(q=>[idxOf(B,q[0]),ad&&q[2]!=null?q[2]:q[1]]).filter(([i])=>i>=0);
         if(!pts.length||pts[pts.length-1][0]<vs) continue;
         if(gm.rect){const R=gm.rect,a=idxOf(B,R[0]),b=idxOf(B,R[1]),h1=ad&&R[4]!=null?R[4]:R[2],l1=ad&&R[5]!=null?R[5]:R[3];
