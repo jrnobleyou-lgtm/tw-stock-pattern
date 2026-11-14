@@ -869,6 +869,7 @@ class Chart{
     const occ=[], pad2=2;
     vis.forEach((b,k)=>{const xc=x(vs+k);occ.push({x:xc-Math.max(cw*.5,2),y:y(b.h),w:Math.max(cw,4),h:Math.max(y(b.l)-y(b.h),2)})});
     for(const n of MA_ALL) if(this.maOn[n]) for(let i=vs;i<ve;i++){const v=this.ma[n][i];if(v!=null)occ.push({x:x(i)-cw/2,y:y(v)-2,w:cw,h:4})}
+    const occBase=occ.length; let arrowJob=null;
     const hit=r=>occ.some(q=>r.x<q.x+q.w+pad2&&r.x+r.w+pad2>q.x&&r.y<q.y+q.h+pad2&&r.y+r.h+pad2>q.y);
     const inb=r=>r.x>=pl&&r.x+r.w<=W-pr&&r.y>=pt&&r.y+r.h<=priceBot;
     const labOcc=[];
@@ -1046,7 +1047,10 @@ class Chart{
         {                         // 右邊圖外的文字：兩行一組，彼此不重疊；撞到價格刻度就往右挪
           const ticks=[0,1,2,3,4].map(k=>y(lo+(hi-lo)*k/4));
           blk.sort((p,q)=>p.yy-q.yy);
-          for(let k=1;k<blk.length;k++) if(blk[k].top<blk[k-1].top+24) blk[k].top=blk[k-1].top+24;
+          for(let k=0;k<blk.length;k++){
+            if(k>0&&blk[k].top<blk[k-1].top+24) blk[k].top=blk[k-1].top+24;
+            if(blk[k].top<yC+10&&blk[k].top+24>yC-10) blk[k].top=yC+11;          // 避開右邊的現價框
+          }
           for(const b of blk){
             const clash=ticks.some(ty=>ty>b.top-8&&ty<b.top+26), tx=xb+(clash?32:4);
             o+=`<text x="${tx}" y="${b.top+9}" style="fill:${b.c};font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${b.t1}</text><text x="${tx}" y="${b.top+21}" style="fill:${b.c};font-size:10px;paint-order:stroke;stroke:#000;stroke-width:2px">${b.t2}</text>`;
@@ -1054,7 +1058,7 @@ class Chart{
           }
         }
         labels.push([`最大回檔 ${dd.toFixed(1)}%（新底 ${fmt(Lo)}）`,xe-60,yL,{color:col,weight:700,prefer:["down","left","right"]}]);      // 寫在紅色虛線下方
-        labels.push([Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe,yC,{color:"#fbbf24",weight:700,arrow:true,prefer:["down","up","left"]}]);   // 箭頭指向現價，標籤放在圖上有空白的地方
+        arrowJob=[Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe,yC,"#fbbf24",x(ve-1)];   // 最後才找位置：箭頭不碰任何 K 棒／影線，可以拉長到遠處空白
       }
     }
     // 管理者畫的型態線（粉紅色，和系統畫的線區分）
@@ -1070,6 +1074,35 @@ class Chart{
     (this.drawings||[]).forEach(d=>drawOne(d,false));
     if(this.drMode&&this.drPts.length) drawOne({kind:this.drMode,pts:this.drPts},true);
     for(const [t,ax,ay,op] of labels) put(t,ax,ay,op);
+    if(arrowJob){            // 「目前」文字＋開口箭頭（↖ 型）：箭頭線不能碰到任何 K 棒（含影線）和其他文字；空白處可以很遠
+      const [text,ax,ay,col,xc]=arrowJob,fs=11,wd=textW(text,fs),ht=fs+4;
+      const cr=vis.map((b,k)=>{const xk=x(vs+k);return[{x:xk-cw*.35-1.5,y:Math.min(y(b.o),y(b.c))-1.5,w:cw*.7+3,h:Math.abs(y(b.o)-y(b.c))+3},{x:xk-2.2,y:y(b.h)-1.5,w:4.4,h:y(b.l)-y(b.h)+3}]}).flat();
+      const ma=occ.slice(vis.length,occBase);
+      const seg=(x1,y1,x2,y2,r)=>{let t0=0,t1=1;const dx=x2-x1,dy=y2-y1;
+        for(const [pp,qq] of [[-dx,x1-r.x],[dx,r.x+r.w-x1],[-dy,y1-r.y],[dy,r.y+r.h-y1]]){
+          if(pp===0){if(qq<0)return false}else{const t=qq/pp;if(pp<0){if(t>t1)return false;if(t>t0)t0=t}else{if(t<t0)return false;if(t<t1)t1=t}}}
+        return true};
+      const lastR={x:xc-cw*.35-5,y:Math.min(y(B[ve-1].o),y(B[ve-1].c),y(B[ve-1].h))-5,w:cw*.7+10,h:y(B[ve-1].l)-y(B[ve-1].h)+10};
+      let best=null;
+      for(let gx=pl+4;gx<=W-pr-wd-4;gx+=12)for(let gy=pt+4;gy<=priceBot-ht-4;gy+=10){
+        const r={x:gx,y:gy,w:wd,h:ht}; if(hit(r)) continue;
+        const cx=gx+wd/2,cy=gy+ht/2,L0=Math.hypot(ax-cx,ay-cy),ux=(ax-cx)/L0,uy=(ay-cy)/L0;
+        let sx=cx,sy=cy; while(sx>=gx-3&&sx<=gx+wd+3&&sy>=gy-3&&sy<=gy+ht+3){sx+=ux;sy+=uy}                 // 起點：文字框邊緣
+        let tx=ax,ty=ay; for(let i=0;i<40&&tx>=lastR.x&&tx<=lastR.x+lastR.w&&ty>=lastR.y&&ty<=lastR.y+lastR.h;i++){tx-=ux;ty-=uy}   // 箭頭尖：停在最新 K 棒外 5px，不碰到
+        if((tx-sx)*ux+(ty-sy)*uy<8) continue;
+        if(cr.some(q=>seg(sx,sy,tx,ty,q))||labOcc.some(q=>seg(sx,sy,tx,ty,{x:q.x-2,y:q.y-2,w:q.w+4,h:q.h+4}))) continue;
+        let cost=Math.hypot(tx-sx,ty-sy)+40*ma.filter(q=>seg(sx,sy,tx,ty,q)).length;
+        if(!best||cost<best.cost) best={cost,r,sx,sy,tx,ty,ux,uy};
+      }
+      if(best){
+        const {r,sx,sy,tx,ty,ux,uy}=best,hl=7,cs=Math.cos(.5),sn=Math.sin(.5);
+        const rot=(a2)=>[-(ux*Math.cos(a2)-uy*Math.sin(a2))*hl,-(ux*Math.sin(a2)+uy*Math.cos(a2))*hl];
+        const h1=rot(.5),h2=rot(-.5);
+        o+=`<line x1="${sx}" y1="${sy}" x2="${tx}" y2="${ty}" stroke="${col}" stroke-width="0.9"/><path d="M${tx+h1[0]},${ty+h1[1]}L${tx},${ty}L${tx+h2[0]},${ty+h2[1]}" fill="none" stroke="${col}" stroke-width="1"/>`;
+        o+=`<text x="${r.x}" y="${r.y+fs}" style="fill:${col};font-weight:700;font-size:${fs}px">${text}</text>`;
+        occ.push(r); labOcc.push(r);
+      } else put(text,ax,ay,{color:col,weight:700,prefer:["down","up","left"]});
+    }
     // 日期軸（獨立一條，不與 K 棒、成交量重疊）
     const step=Math.max(1,Math.ceil(vis.length/Math.max(3,Math.floor((W-pl-pr)/90))));
     for(let k=0;k<vis.length;k+=step){const b=vis[k];o+=`<text x="${x(vs+k)}" y="${mainH-4}" text-anchor="middle" style="fill:#9a93ad">${this.tf==="M"?b.d.slice(0,7):b.d.slice(2)}</text>`}
