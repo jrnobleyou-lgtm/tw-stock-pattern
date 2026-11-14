@@ -1021,6 +1021,8 @@ class Chart{
           if(WV===1) o+=`<line ${ln} stroke="${ZC}" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity=".85"/>`;
           else if(WV===2) o+=`<line ${ln} stroke="#000" stroke-width="4" stroke-opacity=".6"/><line ${ln} stroke="${ZC}" stroke-width="2" stroke-opacity=".85"/>`;
           else if(WV===3) o+=`<line ${ln} stroke="#000" stroke-width="3.6" stroke-opacity=".5" stroke-dasharray="7 5"/><line ${ln} stroke="${ZC}" stroke-width="1.8" stroke-dasharray="7 5"/>`;
+          else if(WV===4){const cf=gm.status==="confirmed",da=cf?"":` stroke-dasharray="8 5"`;
+            o+=`<line ${ln} stroke="#000" stroke-width="${cf?6.4:7.8}" stroke-opacity=".6"${da}/><line ${ln} stroke="#fff" stroke-width="${cf?3:3.8}" stroke-opacity=".6"${da}/>`}
           else o+=`<line ${ln} stroke="${LC}" stroke-width="1.4" stroke-opacity=".9"/>`}});
         const nk=ad&&gm.neckA!=null?gm.neckA:gm.neck;
         if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="${LC}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".95"/>`;
