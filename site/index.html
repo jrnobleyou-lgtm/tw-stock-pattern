@@ -873,7 +873,7 @@ class Chart{
     const inb=r=>r.x>=pl&&r.x+r.w<=W-pr&&r.y>=pt&&r.y+r.h<=priceBot;
     const labOcc=[];
     const arrowCross=(ax,ay,r,strict)=>{          // 箭頭從標籤邊緣連到錨點：不能穿過其他文字；strict 時也不能穿過 K 棒
-      const tx=r.x+r.w/2,ty=r.y+r.h/2,len=Math.hypot(ax-tx,ay-ty),candles=occ.slice(0,vis.length);
+      const tx=r.x+r.w/2,ty=r.y+r.h/2,len=Math.hypot(ax-tx,ay-ty),candles=vis.map((b,k)=>{const yo=y(b.o),yc=y(b.c),xc=x(vs+k);return{x:xc-cw*.35,w:cw*.7,y:Math.min(yo,yc),h:Math.max(1,Math.abs(yo-yc))}});      // 只看 K 棒實體（影線很細，穿過去沒關係）
       for(let t=0;t<=len;t+=3){const px=tx+(ax-tx)*t/len,py=ty+(ay-ty)*t/len;
         if(labOcc.some(q=>px>=q.x-2&&px<=q.x+q.w+2&&py>=q.y-2&&py<=q.y+q.h+2)) return true;
         if(strict&&Math.hypot(px-ax,py-ay)>cw+8&&!(px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h)&&candles.some(q=>px>=q.x-1&&px<=q.x+q.w+1&&py>=q.y-1&&py<=q.y+q.h+1)) return true}
@@ -901,10 +901,10 @@ class Chart{
       if(!best) best={x:Math.min(Math.max(pl,ax-wd/2),W-pr-wd),y:Math.min(Math.max(pt,ay-ht),priceBot-ht),w:wd,h:ht,d:0};
       occ.push(best); labOcc.push(best);
       if(op.arrow){                       // 實線＋箭頭：從標籤指向錨點
-        const cx0=best.x+best.w/2,cy0=best.y+best.h/2,ang=Math.atan2(ay-cy0,ax-cx0),L=8,c=op.color||"#ece8f5";
+        const cx0=best.x+best.w/2,cy0=best.y+best.h/2,ang=Math.atan2(ay-cy0,ax-cx0),L=6,c=op.color||"#ece8f5";
         let tx=cx0,ty=cy0; while(tx>=best.x-3&&tx<=best.x+best.w+3&&ty>=best.y-3&&ty<=best.y+best.h+3){tx+=Math.cos(ang);ty+=Math.sin(ang)}      // 線從文字框邊緣出發，不穿過自己的字
         const bx2=ax-Math.cos(ang)*L,by2=ay-Math.sin(ang)*L;
-        o+=`<line x1="${tx}" y1="${ty}" x2="${bx2}" y2="${by2}" stroke="${c}" stroke-width="1.4"/><polygon points="${ax},${ay} ${bx2+Math.sin(ang)*4},${by2-Math.cos(ang)*4} ${bx2-Math.sin(ang)*4},${by2+Math.cos(ang)*4}" fill="${c}"/>`;
+        o+=`<line x1="${tx}" y1="${ty}" x2="${bx2}" y2="${by2}" stroke="${c}" stroke-width="0.9"/><polygon points="${ax},${ay} ${bx2+Math.sin(ang)*2.6},${by2-Math.cos(ang)*2.6} ${bx2-Math.sin(ang)*2.6},${by2+Math.cos(ang)*2.6}" fill="${c}"/>`;
       } else if(best.d>6) o+=`<line x1="${ax}" y1="${ay}" x2="${best.x+best.w/2}" y2="${best.y+best.h/2}" stroke="${op.color||"#ece8f5"}" stroke-opacity=".35" stroke-dasharray="2 2"/>`;
       o+=`<text x="${best.x}" y="${best.y+fs}" style="fill:${op.color||"#ece8f5"};${op.weight?"font-weight:"+op.weight:""};font-size:${fs}px">${text}</text>`;
     };
