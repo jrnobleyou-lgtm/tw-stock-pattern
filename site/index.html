@@ -976,13 +976,15 @@ class Chart{
       for(const gm of (s.geo||[]).slice(0,2)){                                // 同時最多畫 2 個形態（已依重要性排序）
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
         const isV=gm.kind.startsWith("V形");                                  // V 形用鈷藍色粗圓角虛線（使用者 11/14 選定）
-        const ZC=isV?"#4D7CFF":"#e5e7eb", LC=col;                             // 鋸齒折線白色、趨勢線與頸線依多空紅綠
+        const ZC="#4D7CFF", LC=col;                                            // 所有型態折線固定鈷藍色（使用者 11/14 定）；趨勢線與頸線依多空紅綠
         const pts=gm.pts.map(q=>[idxOf(B,q[0]),ad&&q[2]!=null?q[2]:q[1]]).filter(([i])=>i>=0);
         if(!pts.length||pts[pts.length-1][0]<vs) continue;
         if(gm.rect){const R=gm.rect,a=idxOf(B,R[0]),b=idxOf(B,R[1]),h1=ad&&R[4]!=null?R[4]:R[2],l1=ad&&R[5]!=null?R[5]:R[3];
           if(a>=0&&b>=0)o+=`<rect x="${x(a)-cw/2-2}" y="${y(h1)-3}" width="${(b-a+1)*cw+4}" height="${y(l1)-y(h1)+6}" rx="6" fill="#7dd3fc" fill-opacity=".08" stroke="#7dd3fc" stroke-dasharray="4 3"/>`}
         else{
-          o+=`<path d="${pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("")}" fill="none" stroke="${ZC}" stroke-width="${isV?2.7:1.5}" stroke-opacity="${isV?1:.85}"${isV?' stroke-dasharray="8 5" stroke-linecap="round"':""}/>`;
+          const pd=pts.map(([i,p],k)=>(k?"L":"M")+x(i)+","+y(p)).join("");
+          if(isV) o+=`<path d="${pd}" fill="none" stroke="${ZC}" stroke-width="2.7" stroke-dasharray="8 5" stroke-linecap="round"/>`;
+          else o+=`<path d="${pd}" fill="none" stroke="#000" stroke-width="5.4" stroke-opacity=".75" stroke-linejoin="round"/><path d="${pd}" fill="none" stroke="${ZC}" stroke-width="2.4" stroke-linejoin="round"/>`;      // 加粗＋黑色外框
           if(gm.dir==="bull"||gm.dir==="bear"){                                // 折線最後加箭頭：看漲朝上、看跌朝下
             const [li,lp]=pts[pts.length-1],x0=x(li),y0=y(lp),up=gm.dir==="bull",len=Math.max(18,Math.min(46,cw*4)),x1=x0+len*.6,y1=y0+(up?-len:len);
             const ang=Math.atan2(y1-y0,x1-x0),hl=8,a1=ang+2.6,a2=ang-2.6;
