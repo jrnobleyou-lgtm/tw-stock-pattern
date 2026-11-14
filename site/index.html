@@ -110,6 +110,7 @@ svg text{fill:var(--fg);font-size:11px}
 .ichip:hover{border-color:var(--mute)}
 .ichip b{font-variant-numeric:tabular-nums;font-size:14px}
 .swhint{display:none}
+.sortbar{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:4px 0 6px;font-size:13px;color:#a5b4fc}.sortbar select{background:#161227;color:#e5e7eb;border:1px solid #3b3566;border-radius:8px;padding:5px 8px;font-size:13px}
 .stt .tvm{display:none}
 @media(max-width:900px){
   .modal{align-items:stretch;overflow:hidden;padding:6px;touch-action:pan-x pan-y}
@@ -295,18 +296,27 @@ function group(name){
 const gtxt=s=>(s.groups||[s.group]).join("、");
 function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
 function turnover(s){const v=s.close*s.vol*1000;return D.market==="US"?fmtUSD(v):(v/1e8>=1?(v/1e8).toFixed(1)+" 億":(v/1e4).toFixed(0)+" 萬")}
+let SORTK="tv";            // 列表排序方式（預設成交值）
+const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["state","目前型態（強到弱）"]];
+function sortList(list){
+  const tv=s=>s.close*s.vol;
+  const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
+    state:(a,b)=>STATES.indexOf(a.state)-STATES.indexOf(b.state)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
+  return list.sort(f);
+}
+function sortBar(){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select></div>`}
 function stockTable(list,withGroup,showVal){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th><th class="cc">收盤</th><th class="cc">漲跌%</th>${showVal?'<th class="cc">成交值</th>':""}</tr></thead><tbody>`;
+  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td><td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}</tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
 function stateList(st){
   if(!STATES.includes(st)){location.hash="";return}
-  const list=Object.values(D.stocks).filter(x=>x.state===st).sort((a,b)=>b.close*b.vol-a.close*a.vol);
-  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">依成交值由大到小排列，點股票看 K 線圖。</p>`;
-  h+=stockTable(list,true,true);
+  const list=sortList(Object.values(D.stocks).filter(x=>x.state===st));
+  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">預設依成交值由大到小排列（可用右邊「排序」改），點股票看 K 線圖。</p>`;
+  h+=sortBar()+stockTable(list,true,true);
   $("#app").innerHTML=h; bindRows();
 }
 function bindRows(){document.querySelectorAll("tr.row[data-c]").forEach(r=>r.onclick=()=>{location.hash="s-"+r.dataset.c})}
@@ -385,12 +395,12 @@ function screener(key){
   let list = all.filter(cur.f);
   const tv=s=>s.close*s.vol;            // 成交值（收盤×成交張數）
   if(cur.k==="rb3"||cur.k==="rb") list.sort((a,b)=>b.rebound.score-a.rebound.score || tv(b)-tv(a));
-  else list.sort((a,b)=>tv(b)-tv(a));            // 各種形態篩選一律依成交值由大到小（使用者要求）
+  else sortList(list);            // 預設依成交值由大到小，右上角可改排序
   if(cur.k==="rb3"||cur.k==="rb"){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
     h += `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
-  } else h += `<p class="note" style="margin-top:0">依成交值由大到小排列。</p>`+stockTable(list,false,true);
+  } else h += sortBar()+stockTable(list,false,true);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
   document.querySelectorAll(".filters .btn").forEach(b=>b.onclick=()=>{location.hash="scr-"+b.dataset.k});
