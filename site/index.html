@@ -651,7 +651,7 @@ class Chart{
   build(){
     const hasAdj=this.raw.some(b=>Math.abs(b.f-1)>1e-6);
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
-      this.btn("geo","形態",this.geo,'style="color:#4D7CFF;font-weight:700"');
+      this.btn("geo","形態",this.geo,`style="color:${this.geo?"#1E40AF":"#4D7CFF"};font-weight:700"`);      // 開啟（黃底）用深藍、關閉（黑底）用亮一點的藍才看得清楚
     const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
     const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
@@ -996,7 +996,7 @@ class Chart{
         (gm.lines||[]).forEach(L=>{const [d0,p0,d1,p1]=[L[0],ad&&L[4]!=null?L[4]:L[1],L[2],ad&&L[5]!=null?L[5]:L[3]];if(d0)o+=`<line x1="${x(idxOf(B,d0))}" y1="${y(p0)}" x2="${x(idxOf(B,d1))}" y2="${y(p1)}" stroke="${LC}" stroke-width="1.4" stroke-opacity=".9"/>`});
         const nk=ad&&gm.neckA!=null?gm.neckA:gm.neck;
         if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="${LC}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".95"/>`;
-          rbk.push({t1:"頸線",t2:fmt(nk),yy:y(nk),top:y(nk)-12,c:LC})}
+          const xn0=x(Math.max(vs,i0)); labels.push([`頸線 ${fmt(nk)}`,xn0+(W-pr-xn0)*0.6,y(nk),{color:LC,weight:700,prefer:["up","down"]}])}      // 文字放在圖中空白處，貼著頸線；太擠就自動拉線過去
         const [li,lp]=pts.reduce((a,b)=>b[1]>a[1]?b:a);
         labels.push([gm.kind,x(li),y(lp),{color:ZC,weight:700}]);
       }
