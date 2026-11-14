@@ -155,6 +155,20 @@ const loginForm = (err = "", next = "/admin/") => page("管理者專區", `<h1>�
 <form method="post" action="/admin/login" style="display:flex;flex-direction:column;gap:10px"><input type="hidden" name="next" value="${next.replace(/"/g, "")}"><input type="password" name="pw" id="pw" autocomplete="current-password" autofocus required><button>登入</button></form>
 ${err ? `<div class="e">${err}</div>` : ""}<a href="/" class="m">← 回台股</a>`);
 const TYPES = { html: "text/html; charset=utf-8", js: "application/javascript; charset=utf-8", json: "application/json", css: "text/css", png: "image/png", jpg: "image/jpeg" };
+// 從 {"代號":[[…],…],…} 文字切出某檔的陣列文字（不 JSON.parse 整包）
+function sliceArr(txt, code) {
+  const key = JSON.stringify(code) + ":[", i = txt ? txt.indexOf(key) : -1;
+  if (i < 0) return null;
+  let j = i + key.length - 1, depth = 0;
+  const st = j;
+  for (; j < txt.length; j++) { const c = txt.charCodeAt(j); if (c === 91) depth++; else if (c === 93 && --depth === 0) break; }
+  return txt.slice(st, j + 1);
+}
+// 底包＋近期包接起來（底包的日期都早於近期包）
+function joinBars(a, b) {
+  if (!a || a === "[]") return b; if (!b || b === "[]") return a;
+  return a.slice(0, -1) + "," + b.slice(1);
+}
 async function usRoute(req, env, u) {
   const p = u.pathname;
   if (!env.US) return new Response("美股尚未設定", { status: 503 });
@@ -201,16 +215,9 @@ async function usRoute(req, env, u) {
   const sm = p.match(/^\/admin\/s\/([A-Za-z0-9.\-^]+)\.json$/);          // 個股 K 線：從分包裡取出那一檔
   if (sm) {
     let h = 0; for (const ch of sm[1]) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
-    // 不解析整包（免費方案 CPU 只有約 10 毫秒，大包會超時）：直接從文字切出那一檔的陣列
-    const txt = await env.US.get("site/sh/" + (h % 256) + ".json");
-    const i = txt ? txt.indexOf(JSON.stringify(sm[1]) + ":[") : -1;
-    let bars = null;
-    if (i >= 0) {
-      let j = i + JSON.stringify(sm[1]).length + 1, depth = 0;
-      const st = j;
-      for (; j < txt.length; j++) { const c = txt.charCodeAt(j); if (c === 91) depth++; else if (c === 93 && --depth === 0) break; }
-      bars = txt.slice(st, j + 1);
-    }
+    // 方案 B：底包 site/sh/<h%256> ＋ 近期包 site/rc/<h%16>，各自用文字切出該檔再接起來（不解析整包，免費方案 CPU 只有約 10 毫秒）
+    const [tb, tr] = await Promise.all([env.US.get("site/sh/" + (h % 256) + ".json"), env.US.get("site/rc/" + (h % 16) + ".json")]);
+    const bars = joinBars(sliceArr(tb, sm[1]), sliceArr(tr, sm[1]));
     return bars ? new Response('{"bars":' + bars + "}", { headers: { "content-type": "application/json", "cache-control": "private, max-age=300" } }) : new Response("找不到", { status: 404 });
   }
   let key = "site/" + (p.slice(7) || "index.html");

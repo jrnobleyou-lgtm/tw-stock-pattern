@@ -72,12 +72,14 @@ elif sys.argv[1:] == ["push"]:
             files[k] = b                              # 只上傳有變動的
     for name in ("index.html", "data.js"):
         add("site/" + name, open(os.path.join(ROOT, "site", "us", name), "rb").read())
-    sh = {}
-    for p in glob.glob(os.path.join(ROOT, "site", "us", "s", "*.json")):
-        code = os.path.basename(p)[:-5]
-        sh.setdefault(shard(code, NSH), {})[code] = json.load(open(p))["bars"]
-    for n, d in sh.items():
-        add(f"site/sh/{n}.json", json.dumps(d, separators=(",", ":")).encode())
+    # 個股 K 線：方案 B（底包＋近期包，見 us_store.py），只寫有變動的
+    import us_store
+    D0 = json.loads(open(os.path.join(ROOT, "site", "us", "data.js"), encoding="utf-8").read()[len("window.DATA="):-1])
+    stocks = {os.path.basename(p)[:-5]: us_store.to_rows(json.load(open(p))["bars"], D0["dates"])
+              for p in glob.glob(os.path.join(ROOT, "site", "us", "s", "*.json"))}
+    tw_wd = (datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))).weekday()
+    kw, kman = us_store.plan(D0["dates"], stocks, old.get("kline", {}), tw_wd)
+    files.update(kw)
     lines = open(os.path.join(ROOT, "data", "us", "hist.csv"), "rb").read().split(b"\n")
     head, parts = lines[0], [[] for _ in range(NST)]
     for ln in lines[1:]:
@@ -87,8 +89,12 @@ elif sys.argv[1:] == ["push"]:
         files[f"state/hist_{k}.csv.gz"] = gzip.compress(b"\n".join([head] + parts[k]) + b"\n")
     for name in ("groups_us.csv", "groups_us_all.csv"):
         pth = os.path.join(ROOT, "data", name)
-        if os.path.exists(pth): files["state/" + name] = open(pth, "rb").read()
+        if os.path.exists(pth): add("state/" + name, open(pth, "rb").read())
+    man["kline"] = kman
     files["state/manifest.json"] = json.dumps(man).encode()
+    us_store.check_cap(files)                       # 超過上限就停，一筆都不寫
+    print("本次寫入", len(files), "筆：底包", sum(k.startswith("site/sh/") for k in files), "、近期包", sum(k.startswith("site/rc/") for k in files),
+          "、K 線底包截止", kman["base"]["cutoff"])
     D = json.loads(open(os.path.join(ROOT, "site", "us", "data.js"), encoding="utf-8").read()[len("window.DATA="):-1])
     meta = {"asof": D["asof"], "stocks": len(D["stocks"]), "missing": D.get("missing", [])[:50], "missingN": len(D.get("missing", [])),
             "updated": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M（台灣時間）")}

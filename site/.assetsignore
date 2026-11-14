@@ -5,3 +5,5 @@ wrangler.jsonc
 .git/*
 .wrangler
 .wrangler/*
+us
+us/*

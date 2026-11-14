@@ -471,7 +471,8 @@ function startLiveTX(c,mode){
 function openStock(code){
   const s = D.stocks[code]; if(!s) return;
   if(!s.bars){   // 全市場版：K 線資料點開才載入
-    fetch("s/"+code+".json").then(r=>r.json()).then(j=>{s.bars=j.bars.filter(b=>D.dates[b[0]]!==undefined);   /* K 線分包比總表新（上傳只成功一半）時，日期對不上的先不顯示 */ if(location.hash==="#s-"+code) openStock(code)}).catch(()=>{const m=document.querySelector(".modal .mpanel");if(m)m.innerHTML=`<div class="mute" style="padding:30px;text-align:center;line-height:1.8">${s.code} ${s.name}<br>這個預覽版只內嵌 207 檔的 K 線；正式網站會有全部個股。<br><button class="btn" onclick="goBack()">關閉</button></div>`});
+    fetch("s/"+code+".json").then(r=>r.json()).then(j=>{const DI=window.__DI||(window.__DI=Object.fromEntries(D.dates.map((d,i)=>[d,i])));   /* 美股方案 B：K 線存日期字串 → 換成總表第幾天 */
+    s.bars=j.bars.map(b=>typeof b[0]==="string"?[DI[b[0]]].concat(b.slice(1)):b).filter(b=>D.dates[b[0]]!==undefined);   /* K 線分包比總表新（上傳只成功一半）時，日期對不上的先不顯示 */ if(location.hash==="#s-"+code) openStock(code)}).catch(()=>{const m=document.querySelector(".modal .mpanel");if(m)m.innerHTML=`<div class="mute" style="padding:30px;text-align:center;line-height:1.8">${s.code} ${s.name}<br>這個預覽版只內嵌 207 檔的 K 線；正式網站會有全部個股。<br><button class="btn" onclick="goBack()">關閉</button></div>`});
     closeModal(); document.body.style.overflow="hidden";
     const el=document.createElement("div"); el.className="modal"; el.innerHTML='<div class="mpanel"><div class="mute" style="padding:30px;text-align:center">載入中…</div></div>';
     el.addEventListener("click",e=>{ if(e.target===el) goBack(); }); document.body.appendChild(el); modalEl=el;
