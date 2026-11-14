@@ -958,7 +958,7 @@ class Chart{
     if(bx&&this.boxOn){
       const a=Math.max(vs,idxOf(B,bx.s)),b0=bx.live?ve-1:idxOf(B,bx.e),b=Math.min(ve-1,b0);
       if(idxOf(B,bx.s)<ve&&b0>=vs&&b>=a){
-        const xx=pl+(a-vs)*cw,ww=(b-a+1)*cw,old=!!(s.ev&&(s.ev.expired||s.ev.state==="breakdown_confirmed")),bc=old?"#c9a7f0":"#f0d34a";
+        const xx=pl+(a-vs)*cw,ww=(b-a+1)*cw,old=!!(s.ev&&(s.ev.expired||s.ev.state==="breakdown_confirmed"||s.ev.state==="failed")),bc=old?"#c9a7f0":"#f0d34a";
         o+=`<rect x="${xx}" y="${y(bx.hi)}" width="${ww}" height="${y(bx.lo)-y(bx.hi)}" fill="${bc}" fill-opacity=".10" stroke="${bc}" stroke-dasharray="4 3"/>`;
         labels.push([`${old?(s.ev.state==="breakdown_confirmed"?"已失效區間（跌破）":"已失效區間 "):""}上緣 ${bx.hi}`,xx+ww/2,y(bx.hi),{color:bc,prefer:["up","right","left","down"]}]);
         labels.push([`下緣 ${bx.lo}`,xx+ww/2,y(bx.lo),{color:bc,prefer:["down","right","left","up"]}]);
