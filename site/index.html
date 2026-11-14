@@ -872,15 +872,18 @@ class Chart{
     const hit=r=>occ.some(q=>r.x<q.x+q.w+pad2&&r.x+r.w+pad2>q.x&&r.y<q.y+q.h+pad2&&r.y+r.h+pad2>q.y);
     const inb=r=>r.x>=pl&&r.x+r.w<=W-pr&&r.y>=pt&&r.y+r.h<=priceBot;
     const labOcc=[];
-    const arrowCross=(ax,ay,r)=>{                 // 箭頭從標籤中心連到錨點，不能穿過已放好的文字
-      const tx=r.x+r.w/2,ty=r.y+r.h/2,len=Math.hypot(ax-tx,ay-ty);
+    const arrowCross=(ax,ay,r,strict)=>{          // 箭頭從標籤邊緣連到錨點：不能穿過其他文字；strict 時也不能穿過 K 棒
+      const tx=r.x+r.w/2,ty=r.y+r.h/2,len=Math.hypot(ax-tx,ay-ty),candles=occ.slice(0,vis.length);
       for(let t=0;t<=len;t+=3){const px=tx+(ax-tx)*t/len,py=ty+(ay-ty)*t/len;
-        if(labOcc.some(q=>px>=q.x-2&&px<=q.x+q.w+2&&py>=q.y-2&&py<=q.y+q.h+2)) return true}
+        if(labOcc.some(q=>px>=q.x-2&&px<=q.x+q.w+2&&py>=q.y-2&&py<=q.y+q.h+2)) return true;
+        if(strict&&Math.hypot(px-ax,py-ay)>cw+8&&!(px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h)&&candles.some(q=>px>=q.x-1&&px<=q.x+q.w+1&&py>=q.y-1&&py<=q.y+q.h+1)) return true}
       return false;
     };
     const put=(text,ax,ay,op={})=>{
       const fs=op.fs||11,wd=textW(text,fs),ht=fs+4,prefer=op.prefer||["up","down","right","left"];
-      let best=null;
+      let best=null,found=false;
+      for(const strict of (op.arrow?[true,false]:[false])){
+      best=null;
       outer: for(let d=2;d<=Math.max(W,priceBot);d+=ht){
         for(const side of prefer){
           const xs=side==="up"||side==="down"?[0,-wd/2,wd/2,-wd,wd*0.1]:[0];
@@ -888,15 +891,18 @@ class Chart{
             const r=side==="up"?{x:ax-wd/2+dx,y:ay-d-ht,w:wd,h:ht}:side==="down"?{x:ax-wd/2+dx,y:ay+d,w:wd,h:ht}:side==="right"?{x:ax+d,y:ay-ht/2,w:wd,h:ht}:{x:ax-d-wd,y:ay-ht/2,w:wd,h:ht};
             r.d=d;
             if(!inb(r)) {if(!best)best=r;continue}
-            if(!hit(r)&&!(op.arrow&&(r.x+r.w>W-pr-6||arrowCross(ax,ay,r)))){best=r;break outer}
+            if(!hit(r)&&!(op.arrow&&(r.x+r.w>W-pr-6||arrowCross(ax,ay,r,strict)))){best=r;found=true;break outer}
           }
         }
         if(d>260) break;
       }
+      if(found) break;
+      }
       if(!best) best={x:Math.min(Math.max(pl,ax-wd/2),W-pr-wd),y:Math.min(Math.max(pt,ay-ht),priceBot-ht),w:wd,h:ht,d:0};
       occ.push(best); labOcc.push(best);
       if(op.arrow){                       // 實線＋箭頭：從標籤指向錨點
-        const tx=best.x+best.w/2,ty=best.y+best.h/2,ang=Math.atan2(ay-ty,ax-tx),L=8,c=op.color||"#ece8f5";
+        const cx0=best.x+best.w/2,cy0=best.y+best.h/2,ang=Math.atan2(ay-cy0,ax-cx0),L=8,c=op.color||"#ece8f5";
+        let tx=cx0,ty=cy0; while(tx>=best.x-3&&tx<=best.x+best.w+3&&ty>=best.y-3&&ty<=best.y+best.h+3){tx+=Math.cos(ang);ty+=Math.sin(ang)}      // 線從文字框邊緣出發，不穿過自己的字
         const bx2=ax-Math.cos(ang)*L,by2=ay-Math.sin(ang)*L;
         o+=`<line x1="${tx}" y1="${ty}" x2="${bx2}" y2="${by2}" stroke="${c}" stroke-width="1.4"/><polygon points="${ax},${ay} ${bx2+Math.sin(ang)*4},${by2-Math.cos(ang)*4} ${bx2-Math.sin(ang)*4},${by2+Math.cos(ang)*4}" fill="${c}"/>`;
       } else if(best.d>6) o+=`<line x1="${ax}" y1="${ay}" x2="${best.x+best.w/2}" y2="${best.y+best.h/2}" stroke="${op.color||"#ece8f5"}" stroke-opacity=".35" stroke-dasharray="2 2"/>`;
@@ -1047,7 +1053,7 @@ class Chart{
             if(Math.abs(b.top+12-b.yy)>4) o+=`<line x1="${xb}" x2="${tx-1}" y1="${b.yy}" y2="${b.top+12}" stroke="${b.c}" stroke-width="1"/>`;
           }
         }
-        labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-60,yL,{color:col,weight:700,prefer:["down","left","right"]}]);      // 寫在紅色虛線下方
+        labels.push([`最大回檔 ${dd.toFixed(1)}%（新底 ${fmt(Lo)}）`,xe-60,yL,{color:col,weight:700,prefer:["down","left","right"]}]);      // 寫在紅色虛線下方
         labels.push([Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe,yC,{color:"#fbbf24",weight:700,arrow:true,prefer:["down","up","left"]}]);   // 箭頭指向現價，標籤放在圖上有空白的地方
       }
     }
