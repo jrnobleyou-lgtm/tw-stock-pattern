@@ -109,6 +109,7 @@ svg text{fill:var(--fg);font-size:11px}
 .ichip{border:1px solid var(--line-t);border-radius:8px;padding:3px 10px;cursor:pointer;background:transparent;color:var(--fg);font:inherit;font-size:12px;text-align:left;line-height:1.3}
 .ichip:hover{border-color:var(--mute)}
 .ichip b{font-variant-numeric:tabular-nums;font-size:14px}
+.swhint{display:none}
 @media(max-width:900px){
   .modal{align-items:stretch;overflow:hidden;padding:6px;touch-action:pan-x pan-y}
   .mpanel{width:min(99vw,1840px);height:100%;max-height:none;overflow:hidden;padding:8px 8px 6px}
@@ -116,6 +117,7 @@ svg text{fill:var(--fg);font-size:11px}
   .cmod{display:flex;flex-direction:column;flex:1;min-height:0;height:100%;gap:5px}
   .cr{display:contents}
   .cr .cgrid,.cr .chips,.cr #rangebar{order:0;flex:none}
+  .cr .swhint{display:block;order:0;flex:none;font-size:11px;color:#94a3b8;margin:0 0 -2px;line-height:1.2}
   .cl{order:1;flex:1 1 0;min-height:0}
   .cl .chart{flex:1 1 0;height:auto;min-height:120px;touch-action:none}
   .cr .cgrid.small{order:2;flex:none}
@@ -664,7 +666,7 @@ class Chart{
     this.el.innerHTML=`<div class="cmod">
       <div class="cl"><div class="info" id="info"></div><div class="chart" id="cv"></div></div>
       <div class="cr">
-        <div class="cgrid">${row1}${row2}${row3}</div>${maopts}${list}
+        <div class="swhint">選單按鈕可左右滑動 ⇆</div><div class="cgrid">${row1}${row2}${row3}</div>${maopts}${list}
         <div id="rangebar"></div>
         <div class="cgrid small">${row4}</div>
         <div class="stats" id="stats"></div>
