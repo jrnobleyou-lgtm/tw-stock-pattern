@@ -1081,7 +1081,7 @@ class Chart{
       let hI=vs; for(let i=vs;i<ve;i++) if(B[i].h>=B[hI].h) hI=i;
       if(hI<ve-1){
         let lI=hI+1; for(let i=hI+1;i<ve;i++) if(B[i].l<=B[lI].l) lI=i;
-        const H=B[hI].h,Lo=B[lI].l,C=B[ve-1].c,D=H-Lo,rec=D>0?(C-Lo)/D*100:0,up=(C/Lo-1)*100,RV=window.RBV||1;
+        const H=B[hI].h,Lo=B[lI].l,C=B[ve-1].c,D=H-Lo,rec=D>0?(C-Lo)/D*100:0,up=(C/Lo-1)*100,RV=window.RBV||2;
         const xa=pl,xb=W-pr,yH=y(H),yL=y(Lo),yC=y(C),GC="#9AA3B2",AM="#fbbf24",DW=1.8,DA="8 5",blk=[];
         if(D>0&&H/Lo>=1.03){
           if(RV>=2&&C>Lo) o+=`<rect x="${xa}" y="${yC}" width="${xb-xa}" height="${yL-yC}" fill="${AM}" fill-opacity=".10"/>`;   // 已經反彈的那一段（低點到現價）淡黃底
