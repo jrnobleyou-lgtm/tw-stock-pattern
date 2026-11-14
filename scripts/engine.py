@@ -418,6 +418,13 @@ BEAR_REV = {"雙重頂", "頭肩頂", "V形頂", "圓弧頂", "上升楔形", "�
 BULL_SETUP = {"杯柄", "圓弧底", "雙重底", "雙重底（不對稱）", "頭肩底", "上升三角形", "下降楔形"}
 
 
+DISPLAY = {"雙重底": "W雙重底", "雙重底（不對稱）": "W雙重底（不對稱）", "雙重頂": "M雙重頂"}      # 11/14 使用者：標籤與圖上文字加 W／M 字樣（只改顯示，判斷仍用原名稱）
+
+
+def dn(kind):
+    return DISPLAY.get(kind, kind)
+
+
 def apply_patterns(state, tags, sub, geo):
     """用幾何形態調整四種型態。
     頂部反轉成立（頸線剛被跌破）→ 走弱；底部反轉/杯柄突破（頸線剛被突破）→ 轉強。"""
@@ -430,13 +437,13 @@ def apply_patterns(state, tags, sub, geo):
         g = bear[0]
         state, sub = "走弱", sub if state == "走弱" and sub == "破底走弱" else "回檔走弱"
         tags = [t for t in tags if t != "多頭回檔"]
-        tags.append(f"{g['kind']}跌破" if g["neck"] else g["kind"])
+        tags.append(f"{dn(g['kind'])}跌破" if g["neck"] else dn(g["kind"]))
     elif bull:
         g = bull[0]
         if state in ("走弱", "盤整", "型態好") or sub:
             state, sub = "轉強", None
             tags = [t for t in tags if t not in ("破底走弱", "回檔走弱", "空頭排列", "均線糾結")]
-        tags.append(f"{g['kind']}突破" if g["neck"] else g["kind"])
+        tags.append(f"{dn(g['kind'])}突破" if g["neck"] else dn(g["kind"]))
     for g in geo:
         if g["status"] == "confirmed" and g["kind"].startswith("單日島型"):
             tags.append(g["kind"])
@@ -444,7 +451,7 @@ def apply_patterns(state, tags, sub, geo):
             tags.append("島型量增確認")
     for g in geo:
         if g["status"] in ("near", "forming") and g["kind"] in BULL_SETUP:
-            tags.append(f"{g['kind']}{'接近頸線' if g['status'] == 'near' else '成形中'}")
+            tags.append(f"{dn(g['kind'])}{'接近頸線' if g['status'] == 'near' else '成形中'}")
     setup = any(g["status"] in ("near", "forming") and g["kind"] in ("杯柄", "圓弧底") for g in geo) \
         or "準備突破" in tags
     if state == "盤整" and setup:

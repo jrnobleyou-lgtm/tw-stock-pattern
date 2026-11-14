@@ -180,6 +180,7 @@ svg text{fill:var(--fg);font-size:11px}
 <script src="data.js"></script>
 <script>
 const D = window.DATA;
+const DN={"雙重底":"W雙重底","雙重底（不對稱）":"W雙重底（不對稱）","雙重頂":"M雙重頂"}, dn=k=>DN[k]||k;      // 顯示用名稱（判斷仍用原名稱）
 const STATES = ["轉強","弱轉強","型態好","盤整","走弱"];
 const CLS = {"轉強":"strong","弱轉強":"wstrong","型態好":"good","盤整":"range","走弱":"weak"};
 const $ = s => document.querySelector(s);
@@ -424,7 +425,7 @@ function notesHTML(s){
   let h="";
   if(s.box) h+=`<p>盤整區間：${s.box.s} ～ ${s.box.e}<br>上緣 ${s.box.hi}　下緣 ${s.box.lo}<br>${s.ev?`事件：${s.ev.date} ${evText(s.ev)}`:"價格仍在區間內"}</p>`;
   else if(s.state) h+=`<p>目前沒有符合規則的盤整區間。</p>`;
-  if(s.geo&&s.geo.length) h+=`<p>形態（系統判斷）：`+s.geo.map(g=>`${g.kind}（${({confirmed:"剛成立",near:"接近頸線",forming:"成形中"})[g.status]}${g.neck?"，頸線 "+g.neck:""}${g.stop?"，停損參考 "+g.stop:""}${g.volup?"，量增":""}）`).join("、")+`</p>`;
+  if(s.geo&&s.geo.length) h+=`<p>形態（系統判斷）：`+s.geo.map(g=>`${dn(g.kind)}（${({confirmed:"剛成立",near:"接近頸線",forming:"成形中"})[g.status]}${g.neck?"，頸線 "+g.neck:""}${g.stop?"，停損參考 "+g.stop:""}${g.volup?"，量增":""}）`).join("、")+`</p>`;
   if(s.rebound) h+=`<p>止跌反彈：自高點跌 ${s.rebound.drop}%，谷底 ${fmt(s.rebound.low)}，已反彈 ${s.rebound.bounce}%，分數 ${s.rebound.score}。</p>`;
   return h;
 }
@@ -1021,7 +1022,7 @@ class Chart{
         if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="${LC}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".95"/>`;
           const xn0=x(Math.max(vs,i0)); neckJobs.push([`頸線 ${fmt(nk)}`,xn0+(W-pr-xn0)*0.6,y(nk),gm.dir==="bull"?"#dc2626":gm.dir==="bear"?"#15803d":"#0369a1",gm.dir==="bear"?["down","up"]:["up","down"]])}      // 頸線文字：看跌（綠）放下方、看漲（紅）放上方，跟線隔一點空隙；離太遠就用白色直線連回頸線
         const [li,lp]=pts.reduce((a,b)=>b[1]>a[1]?b:a);
-        labels.push([gm.kind,x(li),y(lp),{color:ZC,weight:700}]);
+        labels.push([dn(gm.kind),x(li),y(lp),{color:ZC,weight:700}]);
       }
     }
     // 畫面內最高、最低 K 棒
