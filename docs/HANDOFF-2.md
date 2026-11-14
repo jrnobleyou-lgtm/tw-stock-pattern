@@ -84,3 +84,11 @@
 - 美股 K 線日期顯示 undefined（APH、ARM）：11/13 上傳只成功一半，`site/sh` 分包多一根（索引 551），`site/data.js` 的 dates 只到 11/12（551 筆）。前端已加保險：日期對不上的 K 棒不顯示；11/14 08:10 完整上傳後應一致。
 - 工程技能在 `.claude/skills/`（mattpocock/skills 8 個），使用時機寫在 CLAUDE.md，由我主動啟動。
 - **11/14 早上 08:40 自動檢查**（本對話的提醒）：排程、美股更新、美股頁新版、看門狗 → 方案 B ＋ `.assetsignore` 加 `us` → 14:53 族群同步結果 → 寫交接 → 請使用者開新對話。
+
+## 2026-11-14 早上檢查與方案 B
+- 06:00–07:30 上市收盤、08:10 美股都由 Cloudflare cron 準時觸發並成功；美股 KV 資料日到 11/13，11/12、11/13 收盤和 Yahoo 一致；美股頁已換新版；看門狗「正常」。
+- **方案 B 上線（程式）**：`scripts/us_store.py` 規劃 KV K 線：底包 `site/sh/<h%256>`（日期在 [start, cutoff)）＋近期包 `site/rc/<h%16>`（≥ cutoff），存**日期字串**（總表每天往後移，用編號會每天全變）。
+  整理（rebuild）時機：週六、近期包超過 12 根、cutoff 不在總表、總表第一天晚於 start；整理時 cutoff＝倒數第 5 天、start＝總表第 8 天（每檔少顯示最前面約 7 根，約 513 根）。
+  manifest 的 `kline` 存 base 與各包 md5，內容沒變不寫。`us_store.check_cap()`：一次超過 400 筆就停。實測：整理日約 272 筆、平日 K 線 16 筆（總共約 28 筆）。
+  Worker `sliceArr()`＋`joinBars()` 接底包＋近期包（舊格式也相容）；前端把日期字串換回總表索引。固定檢查：`python3 -m unittest discover -s scripts/tests`。
+- `site/.assetsignore` 已加 `us`、`us/*`（防止本機部署把美股資料公開）。
