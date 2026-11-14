@@ -759,7 +759,7 @@ class Chart{
     this.active=this.custom[this.custom.length-1];this.range=null;this.listOpen=true;this.build();
   }
   clear(){ if(this.cancelScissor()) return; if(this.sel!=null){this.sel=null;this.draw()} }
-  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=this.rb?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/n}}
+  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=(this.rb||this.pb)?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/n}}
   rect(){const s=this.cv.querySelector("svg");return (s||this.cv).getBoundingClientRect()}
   indexAtX(cx){const g=this.geom(),r=this.rect(),x=(cx-r.left)/r.width*g.W;return Math.min(this.end-1,Math.max(g.vs,g.vs+Math.floor((x-g.pl)/g.cw)))}
   indexAt(e){return this.indexAtX(e.clientX)}
@@ -1114,6 +1114,11 @@ class Chart{
     }
     if(rbk.length){            // 右邊圖外的文字：名稱＋價格兩行一組，依價位由上往下排，彼此不重疊、避開價格刻度與現價框
       const ticks=[0,1,2,3,4].map(k=>y(lo+(hi-lo)*k/4)).concat([y(B[ve-1].c)]);
+      // 比例線剛好落在價格刻度上（價差 2px 內）：不另外排兩行字，把倍數直接接在刻度價格後面（使用者 11/14）
+      const axT=[0,1,2,3,4].map(k=>({y:y(lo+(hi-lo)*k/4),s:fmt(lo+(hi-lo)*k/4)}));
+      const merged=[];
+      for(const b3 of rbk.slice()){const m=b3.pill?null:axT.find(t=>Math.abs(t.y-b3.yy)<=2.5); if(m){b3.merge=m;merged.push(b3);rbk.splice(rbk.indexOf(b3),1)}}
+      for(const b3 of merged) o+=`<text x="${W-pr+4+textW(b3.merge.s,11)+3}" y="${b3.merge.y+4}" style="fill:${b3.c};font-size:10px;font-weight:700;paint-order:stroke;stroke:#000;stroke-width:2px">${b3.t1}</text>`;
       rbk.sort((p2,q2)=>p2.yy-q2.yy);
       for(let k=0;k<rbk.length;k++){
         if(k>0&&rbk[k].top<rbk[k-1].top+24) rbk[k].top=rbk[k-1].top+24;
