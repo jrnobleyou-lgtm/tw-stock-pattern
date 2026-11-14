@@ -1078,7 +1078,7 @@ class Chart{
               let ci=lI+1; while(ci<ve-1&&B[ci].c<pv) ci++;
               o+=`<circle cx="${x(ci)}" cy="${yy}" r="8" fill="${AM}" stroke="#000" stroke-width="1.5"/><path d="M${x(ci)-4},${yy} l3,3.5 l5,-7" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
             }
-            blk.push({t1:"反彈 "+r+(passed?" ✓":""),t2:fmt(pv),yy,top:yy-12,c:passed&&RV>=2?AM:GC});
+            blk.push({t1:"反彈"+r+(passed?"✓":""),t2:fmt(pv),yy,top:yy-12,c:passed&&RV>=2?AM:GC});
           }
           {            // 下一關：第一條還沒漲過的線，直接標在線上「還差幾 %」
             const nr=[0.236,0.382,0.5,0.618,0.786].find(r=>C<Lo+D*r);
