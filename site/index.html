@@ -1012,7 +1012,7 @@ class Chart{
         const xa=Math.max(x(sr.j),pl),yy2=y(sr.L);
         o+=`<line x1="${xa}" x2="${x(ve-1)+cw/2}" y1="${yy2}" y2="${yy2}" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="5 4"/>`;
         if(sr.j>=vs)o+=`<circle cx="${x(sr.j)}" cy="${yy2}" r="3" fill="none" stroke="#38bdf8"/>`;
-        labels.push([`前低支撐 ${fmt(sr.L)}（觸及 ${sr.touches} 次）`,Math.max(xa+10,x(ve-1)-110),yy2,{color:"#38bdf8",weight:600,prefer:["down","up","left","right"]}]);
+        labels.push([`回測支撐 ${fmt(sr.L)}（觸及 ${sr.touches} 次）`,Math.max(xa+10,x(ve-1)-110),yy2,{color:"#38bdf8",weight:600,prefer:["down","up","left","right"]}]);
       }
     }
     // 回檔%（按鈕開關，預設關）：目前畫面最高點 → 最高點之後的最低點＝最大回檔幾 %；同時標出最新收盤目前回檔幾 %
@@ -1035,17 +1035,12 @@ class Chart{
             }
           }
         }
-        if(this.supRes&&this.supRes.L!=null){        // 前低支撐（已回測確認）：整條橫跨，右邊標價格
-          const ysr=y(this.supRes.L);
-          if(ysr>pt&&ysr<priceBot){o+=`<line x1="${xa}" x2="${xb}" y1="${ysr}" y2="${ysr}" stroke="#38bdf8" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".95"/>`;
-            blk.push({t1:"前低支撐",t2:fmt(this.supRes.L),yy:ysr,top:ysr-12,c:"#38bdf8"})}
-        }
         {                         // 前波低（畫面內最高點之前最近一個還沒被跌破的波段低點）
           const st2=calcStats(B,vs,ve-1);
-          if(st2&&st2.swing!=null&&!this.supRes){        // 已經畫了「前低支撐」就不再重複畫前低
+          if(st2&&st2.swing!=null){        // 前低支撐＝起漲前最近一個還沒被跌破的波段低點（不管有沒有回測）
             const sv=B[st2.swing].l,ys=y(sv);
             if(ys>pt&&ys<priceBot){o+=`<line x1="${xa}" x2="${xb}" y1="${ys}" y2="${ys}" stroke="#67e8f9" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".95"/>`;
-              blk.push({t1:"前低",t2:fmt(sv),yy:ys,top:ys-12,c:"#67e8f9"})}
+              blk.push({t1:"前低支撐",t2:fmt(sv),yy:ys,top:ys-12,c:"#67e8f9"})}
           }
         }
         blk.push({t1:"回檔起點",t2:fmt(H),yy:yH,top:yH-12,c:"#ffffff"});
@@ -1208,7 +1203,7 @@ class Chart{
       <div>最高 <b>${fmt(st.hi)}</b> ${MD(B[st.hiI].d)}　最低 <b>${fmt(st.lo)}</b> ${MD(B[st.loI].d)}</div>
       <div>最大回調 <b style="color:var(--down)">${(st.dd*100).toFixed(2)}%</b> ${MD(B[st.ddA].d)}→${MD(B[st.ddB].d)}</div>
       <div>距高 <b style="color:var(--down)">${(st.fromHi*100).toFixed(2)}%</b>　距低 <b style="color:var(--up)">+${(st.fromLo*100).toFixed(2)}%</b></div>
-      ${st.swing!=null?`<div>前波低 <b>${fmt(B[st.swing].l)}</b>（${MD(B[st.swing].d)}）</div>`:""}${this.supRes?`<div style="color:#38bdf8">前低支撐 <b>${fmt(this.supRes.L)}</b>（觸及 ${this.supRes.touches} 次）</div>`:this.sup?`<div class="mute">尚無已確認支撐</div>`:""}`:"";
+      ${st.swing!=null?`<div>前低支撐 <b>${fmt(B[st.swing].l)}</b>（${MD(B[st.swing].d)}）</div>`:""}${this.supRes?`<div style="color:#38bdf8">回測支撐 <b>${fmt(this.supRes.L)}</b>（觸及 ${this.supRes.touches} 次）</div>`:this.sup?`<div class="mute">尚無已確認支撐</div>`:""}`:"";
     // 右側：均線數值（隨選取的 K 棒）
     const lv=MA_ALL.filter(n=>this.maOn[n]).map(n=>`<span style="color:${MA_COL[n]}">${n}日 <b>${f2(this.ma[n][cur])}</b></span>`);
     if(this.ind.boll){const bb=this.get("boll")[cur];if(bb)lv.push(`<span style="color:#209A43">布林 上 <b>${f2(bb.u)}</b> 中 <b>${f2(bb.m)}</b> 下 <b>${f2(bb.l)}</b></span>`)}
