@@ -1017,7 +1017,11 @@ class Chart{
         }
         if(gm.rect&&gm.stop){const sp=ad&&gm.stopA!=null?gm.stopA:gm.stop,a0=idxOf(B,gm.rect[0]);
           if(a0>=0){o+=`<line x1="${x(Math.max(vs,a0))}" x2="${W-pr}" y1="${y(sp)}" y2="${y(sp)}" stroke="#fb7185" stroke-opacity=".6" stroke-dasharray="3 3"/>`;labels.push([`停損 ${sp}`,x(Math.max(vs,a0))+20,y(sp),{color:"#fb7185",prefer:gm.dir==="bear"?["up","right"]:["down","right"]}])}}
-        (gm.lines||[]).forEach(L=>{const [d0,p0,d1,p1]=[L[0],ad&&L[4]!=null?L[4]:L[1],L[2],ad&&L[5]!=null?L[5]:L[3]];if(d0)o+=`<line x1="${x(idxOf(B,d0))}" y1="${y(p0)}" x2="${x(idxOf(B,d1))}" y2="${y(p1)}" stroke="${LC}" stroke-width="1.4" stroke-opacity=".9"/>`});
+        (gm.lines||[]).forEach(L=>{const [d0,p0,d1,p1]=[L[0],ad&&L[4]!=null?L[4]:L[1],L[2],ad&&L[5]!=null?L[5]:L[3]];if(d0){const WV=window.WLV||0,ln=`x1="${x(idxOf(B,d0))}" y1="${y(p0)}" x2="${x(idxOf(B,d1))}" y2="${y(p1)}"`;
+          if(WV===1) o+=`<line ${ln} stroke="${ZC}" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity=".85"/>`;
+          else if(WV===2) o+=`<line ${ln} stroke="#000" stroke-width="4" stroke-opacity=".6"/><line ${ln} stroke="${ZC}" stroke-width="2" stroke-opacity=".85"/>`;
+          else if(WV===3) o+=`<line ${ln} stroke="#000" stroke-width="3.6" stroke-opacity=".5" stroke-dasharray="7 5"/><line ${ln} stroke="${ZC}" stroke-width="1.8" stroke-dasharray="7 5"/>`;
+          else o+=`<line ${ln} stroke="${LC}" stroke-width="1.4" stroke-opacity=".9"/>`}});
         const nk=ad&&gm.neckA!=null?gm.neckA:gm.neck;
         if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="${LC}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".95"/>`;
           const xn0=x(Math.max(vs,i0)); neckJobs.push([`頸線 ${fmt(nk)}`,xn0+(W-pr-xn0)*0.6,y(nk),gm.dir==="bull"?"#dc2626":gm.dir==="bear"?"#15803d":"#0369a1",gm.dir==="bear"?["down","up"]:["up","down"]])}      // 頸線文字：看跌（綠）放下方、看漲（紅）放上方，跟線隔一點空隙；離太遠就用白色直線連回頸線
