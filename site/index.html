@@ -668,7 +668,7 @@ class Chart{
         <div class="cgrid small">${row4}</div>
         <div class="stats" id="stats"></div>
         <div class="legendv" id="legendv"></div>
-        <div class="note notes">${this.opts.notes||""}<p class="supn">${this.sup?"支撐先看最近 60 根 K 棒，沒有已確認支撐才往左看到畫面最左邊；週 K、月 K 用同一套、各算各的 K 棒，縮放或拖曳會重算。前低＝某根最低價比前後各 5 根都低；之後另有一根最低價在前低以上 3% 內（或刺破前低但收盤仍在前低之上）、且距上次觸及至少 5 根，算回測；收盤價低於前低才算破。至少回測 1 次、到最新一根都沒破才是已確認支撐；有多條只顯示股價下方最近的一條，真的沒有就寫「尚無已確認支撐」。":""}</p><p class="howto">電腦：滾輪縮放、拖曳平移、點 K 棒看資料，點圖旁邊取消。手機：滑動平移、雙指縮放、長按看每根 K 棒（放開後仍顯示，點一下空白處關閉）。點視窗外或按 ESC 關閉。</p></div>
+        <div class="note notes">${this.opts.notes||""}<p class="supn">${this.sup?"前低支撐＝畫面內最高點之前、最近一個還沒被跌破的波段低點（前一波最低點，撐住沒再破）；近期支撐＝最高點之後的最低點（最近一次回檔的低點），最新一根還在創低就不算撐住。縮放或拖曳會重算。":""}</p><p class="howto">電腦：滾輪縮放、拖曳平移、點 K 棒看資料，點圖旁邊取消。手機：滑動平移、雙指縮放、長按看每根 K 棒（放開後仍顯示，點一下空白處關閉）。點視窗外或按 ESC 關閉。</p></div>
       </div></div>`;
     this.el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>this.act(b.dataset.a));
     const cv=this.cv=this.el.querySelector("#cv");
@@ -1004,15 +1004,18 @@ class Chart{
       labels.unshift([`最低 ${fmt(vis[lk].l)}`,x(vs+lk),y(vis[lk].l),{color:"#cfe8ff",weight:600,prefer:["down","right","left","up"]}]);
       labels.unshift([`最高 ${fmt(vis[hk].h)}`,x(vs+hk),y(vis[hk].h),{color:"#ffe9a8",weight:600,prefer:["up","right","left","down"]}]);
     }
-    // 支撐線：第一次觸及畫到最新一根，不受選取的 K 棒影響
-    this.supRes=null;
-    if(this.sup&&ve-1>=10){
-      const sr=findSupport(B,vs,ve-1); this.supRes=sr||false;
-      if(sr&&sr.j>=0){
-        const xa=Math.max(x(sr.j),pl),yy2=y(sr.L);
-        o+=`<line x1="${xa}" x2="${x(ve-1)+cw/2}" y1="${yy2}" y2="${yy2}" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="5 4"/>`;
-        if(sr.j>=vs)o+=`<circle cx="${x(sr.j)}" cy="${yy2}" r="3" fill="none" stroke="#38bdf8"/>`;
-        labels.push([`回測支撐 ${fmt(sr.L)}（觸及 ${sr.touches} 次）`,Math.max(xa+10,x(ve-1)-110),yy2,{color:"#38bdf8",weight:600,prefer:["down","up","left","right"]}]);
+    // 支撐（使用者定義）：前低支撐＝圖上前一波最低點（最高點之前、還沒被跌破的波段低點）；近期支撐＝最近一次回檔的低點（最高點之後的最低點，最新一根還在創低就不算撐住）
+    this.supRes=null; const supBlk=[];
+    if(this.sup&&ve-vs>=10){
+      const sS=calcStats(B,vs,ve-1); let hI2=vs; for(let i=vs;i<ve;i++) if(B[i].h>=B[hI2].h) hI2=i;
+      let lI2=hI2+1<ve?hI2+1:-1; for(let i=hI2+1;i<ve;i++) if(B[i].l<=B[lI2].l) lI2=i;
+      const front=sS&&sS.swing!=null?{L:B[sS.swing].l,i:sS.swing}:null, recent=lI2>=0&&lI2<ve-1?{L:B[lI2].l,i:lI2}:null;
+      this.supRes={front,recent};
+      for(const [it,nm,col] of [[front,"前低支撐","#38bdf8"],[recent,"近期支撐","#ff8a8a"]]){
+        if(!it) continue; const yy2=y(it.L); if(!(yy2>pt&&yy2<priceBot)) continue;
+        o+=`<line x1="${pl}" x2="${W-pr}" y1="${yy2}" y2="${yy2}" stroke="${col}" stroke-width="1.3" stroke-dasharray="6 4" opacity=".9"/>`;
+        if(this.pb) supBlk.push({t1:nm,t2:fmt(it.L),yy:yy2,top:yy2-12,c:col});            // 開著「回檔%」時，文字放右邊圖外，跟其他線的文字一起排
+        else labels.push([`${nm} ${fmt(it.L)}（${MD(B[it.i].d)}）`,pl+90,yy2,{color:col,weight:600,prefer:["down","up"]}]);
       }
     }
     // 回檔%（按鈕開關，預設關）：目前畫面最高點 → 最高點之後的最低點＝最大回檔幾 %；同時標出最新收盤目前回檔幾 %
@@ -1037,13 +1040,14 @@ class Chart{
         }
         {                         // 前波低（畫面內最高點之前最近一個還沒被跌破的波段低點）
           const st2=calcStats(B,vs,ve-1);
-          if(st2&&st2.swing!=null){        // 前低支撐＝起漲前最近一個還沒被跌破的波段低點（不管有沒有回測）
+          if(st2&&st2.swing!=null&&!this.sup){        // 「支撐」按鈕開著時已畫過前低支撐，不重複
             const sv=B[st2.swing].l,ys=y(sv);
             if(ys>pt&&ys<priceBot){o+=`<line x1="${xa}" x2="${xb}" y1="${ys}" y2="${ys}" stroke="#67e8f9" stroke-width="${DW}" stroke-dasharray="${DA}" opacity=".95"/>`;
               blk.push({t1:"前低支撐",t2:fmt(sv),yy:ys,top:ys-12,c:"#67e8f9"})}
           }
         }
         blk.push({t1:"回檔起點",t2:fmt(H),yy:yH,top:yH-12,c:"#ffffff"});
+        blk.push(...supBlk);
         {                         // 右邊圖外的文字：兩行一組，彼此不重疊；撞到價格刻度就往右挪
           const ticks=[0,1,2,3,4].map(k=>y(lo+(hi-lo)*k/4)).concat([yC]);      // 價格刻度與現價框
           blk.sort((p,q)=>p.yy-q.yy);
@@ -1057,7 +1061,7 @@ class Chart{
             if(Math.abs(b.top+12-b.yy)>4) o+=`<line x1="${xb}" x2="${tx-1}" y1="${b.yy}" y2="${b.top+12}" stroke="${b.c}" stroke-width="1"/>`;
           }
         }
-        labels.push([`最大回檔 ${dd.toFixed(1)}%（近期支撐 ${fmt(Lo)}）`,xe-60,yL,{color:col,weight:700,prefer:["down","left","right"]}]);      // 寫在紅色虛線下方
+        labels.push([`最大回檔 ${dd.toFixed(1)}%`,xe-60,yL,{color:col,weight:700,prefer:["down","left","right"]}]);      // 寫在紅色虛線下方
         for(const yv of [yH,yL,...blk.map(b=>b.yy)]) occ.push({x:pl,y:yv-2,w:xb-pl,h:4});          // 水平虛線登記為占位，文字不壓在線上
         arrowJob=[Math.abs(cur-dd)>=0.05?`目前 ${cur>=0?"+":""}${cur.toFixed(1)}%`:"目前＝最低點",xe,yC,"#fbbf24",x(ve-1)];   // 最後才找位置：箭頭不碰任何 K 棒／影線，可以拉長到遠處空白
       }
@@ -1203,7 +1207,7 @@ class Chart{
       <div>最高 <b>${fmt(st.hi)}</b> ${MD(B[st.hiI].d)}　最低 <b>${fmt(st.lo)}</b> ${MD(B[st.loI].d)}</div>
       <div>最大回調 <b style="color:var(--down)">${(st.dd*100).toFixed(2)}%</b> ${MD(B[st.ddA].d)}→${MD(B[st.ddB].d)}</div>
       <div>距高 <b style="color:var(--down)">${(st.fromHi*100).toFixed(2)}%</b>　距低 <b style="color:var(--up)">+${(st.fromLo*100).toFixed(2)}%</b></div>
-      ${st.swing!=null?`<div>前低支撐 <b>${fmt(B[st.swing].l)}</b>（${MD(B[st.swing].d)}）</div>`:""}${this.supRes?`<div style="color:#38bdf8">回測支撐 <b>${fmt(this.supRes.L)}</b>（觸及 ${this.supRes.touches} 次）</div>`:this.sup?`<div class="mute">尚無已確認支撐</div>`:""}`:"";
+      ${this.sup&&this.supRes?(this.supRes.front?`<div style="color:#38bdf8">前低支撐 <b>${fmt(this.supRes.front.L)}</b>（${MD(B[this.supRes.front.i].d)}）</div>`:"")+(this.supRes.recent?`<div style="color:#ff8a8a">近期支撐 <b>${fmt(this.supRes.recent.L)}</b>（${MD(B[this.supRes.recent.i].d)}）</div>`:"")+(!this.supRes.front&&!this.supRes.recent?`<div class="mute">尚無支撐</div>`:""):""}`:"";
     // 右側：均線數值（隨選取的 K 棒）
     const lv=MA_ALL.filter(n=>this.maOn[n]).map(n=>`<span style="color:${MA_COL[n]}">${n}日 <b>${f2(this.ma[n][cur])}</b></span>`);
     if(this.ind.boll){const bb=this.get("boll")[cur];if(bb)lv.push(`<span style="color:#209A43">布林 上 <b>${f2(bb.u)}</b> 中 <b>${f2(bb.m)}</b> 下 <b>${f2(bb.l)}</b></span>`)}
