@@ -1,0 +1,9 @@
+worker.js
+wrangler.jsonc
+.assetsignore
+.git
+.git/*
+.wrangler
+.wrangler/*
+us
+us/*
