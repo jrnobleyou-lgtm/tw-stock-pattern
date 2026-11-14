@@ -911,7 +911,7 @@ class Chart{
       o+=`<text x="${best.x+(op.bg?4:0)}" y="${best.y+fs+(op.bg?1:0)}" style="fill:${op.color||"#ece8f5"};${op.weight?"font-weight:"+op.weight:""};font-size:${fs}px">${text}</text>`;
     };
     for(let k=0;k<=4;k++){const v=lo+(hi-lo)*k/4;o+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#2e2a3d"/><text x="${W-pr+4}" y="${y(v)+4}">${fmt(v)}</text>`}
-    const labels=[],rbk=[];                       // rb：右邊圖外的文字（名稱＋價格），最後一起排版，不重疊
+    const labels=[],rbk=[],neckJobs=[];                       // rb：右邊圖外的文字（名稱＋價格），最後一起排版，不重疊
     const shade=(a,b,col,label)=>{
       const A=Math.max(vs,Math.min(a,b)),Z=Math.min(ve-1,Math.max(a,b)); if(Z<A) return;
       o+=`<rect x="${pl+(A-vs)*cw}" y="${pt}" width="${(Z-A+1)*cw}" height="${priceBot-pt}" fill="${col}" fill-opacity=".12" stroke="${col}" stroke-opacity=".7" stroke-dasharray="4 3"/>`;
@@ -997,7 +997,7 @@ class Chart{
         (gm.lines||[]).forEach(L=>{const [d0,p0,d1,p1]=[L[0],ad&&L[4]!=null?L[4]:L[1],L[2],ad&&L[5]!=null?L[5]:L[3]];if(d0)o+=`<line x1="${x(idxOf(B,d0))}" y1="${y(p0)}" x2="${x(idxOf(B,d1))}" y2="${y(p1)}" stroke="${LC}" stroke-width="1.4" stroke-opacity=".9"/>`});
         const nk=ad&&gm.neckA!=null?gm.neckA:gm.neck;
         if(nk){const i0=pts[0][0];o+=`<line x1="${x(Math.max(vs,i0))}" x2="${W-pr}" y1="${y(nk)}" y2="${y(nk)}" stroke="${LC}" stroke-width="1.6" stroke-dasharray="6 4" stroke-opacity=".95"/>`;
-          const xn0=x(Math.max(vs,i0)); labels.push([`頸線 ${fmt(nk)}`,xn0+(W-pr-xn0)*0.6,y(nk),{color:gm.dir==="bull"?"#dc2626":gm.dir==="bear"?"#15803d":"#0369a1",weight:700,bg:true,prefer:["up","down"]}])}      // 文字放在圖中空白處，貼著頸線；太擠就自動拉線過去
+          const xn0=x(Math.max(vs,i0)); neckJobs.push([`頸線 ${fmt(nk)}`,xn0+(W-pr-xn0)*0.6,y(nk),gm.dir==="bull"?"#dc2626":gm.dir==="bear"?"#15803d":"#0369a1",gm.dir==="bear"?["down","up"]:["up","down"]])}      // 頸線文字：看跌（綠）放下方、看漲（紅）放上方，跟線隔一點空隙；離太遠就用白色直線連回頸線
         const [li,lp]=pts.reduce((a,b)=>b[1]>a[1]?b:a);
         labels.push([gm.kind,x(li),y(lp),{color:ZC,weight:700}]);
       }
@@ -1081,6 +1081,19 @@ class Chart{
     (this.drawings||[]).forEach(d=>drawOne(d,false));
     if(this.drMode&&this.drPts.length) drawOne({kind:this.drMode,pts:this.drPts},true);
     for(const [t,ax,ay,op] of labels) put(t,ax,ay,op);
+    for(const [text,ax,ay,col,pref] of neckJobs){         // 頸線文字（白底小框）
+      const fs=11,wd=textW(text,fs)+8,ht=fs+6; let best=null;
+      outer2: for(let d=6;d<=Math.max(W,priceBot);d+=4) for(const side of pref) for(const dx of [0,-wd/2,wd/2,-wd,wd,-wd*1.5,wd*1.5]){
+        const r={x:ax-wd/2+dx,y:side==="up"?ay-d-ht:ay+d,w:wd,h:ht};
+        if(inb(r)&&!hit(r)){best={r,side,d};break outer2}
+      }
+      if(!best) continue;
+      const {r,side,d}=best;
+      if(d>14){const lx=Math.min(Math.max(ax,r.x+5),r.x+r.w-5);              // 離頸線比較遠：白色直線連回頸線
+        o+=`<line x1="${lx}" y1="${side==="up"?r.y+r.h:r.y}" x2="${lx}" y2="${ay}" stroke="#fff" stroke-width="1.3" stroke-opacity=".95"/>`}
+      o+=`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="3" fill="#ffffff" fill-opacity=".93"/><text x="${r.x+4}" y="${r.y+fs+1}" style="fill:${col};font-weight:700;font-size:${fs}px;text-shadow:none">${text}</text>`;
+      occ.push(r); labOcc.push(r);
+    }
     if(arrowJob){            // 「目前」文字＋開口箭頭（↖ 型）：箭頭線不能碰到任何 K 棒（含影線）和其他文字；空白處可以很遠
       const [text,ax,ay,col,xc]=arrowJob,fs=11,wd=textW(text,fs),ht=fs+4;
       const cr=vis.map((b,k)=>{const xk=x(vs+k);return[{x:xk-cw*.35-1.5,y:Math.min(y(b.o),y(b.c))-1.5,w:cw*.7+3,h:Math.abs(y(b.o)-y(b.c))+3},{x:xk-2.2,y:y(b.h)-1.5,w:4.4,h:y(b.l)-y(b.h)+3}]}).flat();
