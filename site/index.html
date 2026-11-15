@@ -186,6 +186,13 @@ svg text{fill:var(--fg);font-size:11px}
   .hs3 .hsx{position:relative}.hs3 .hsx>.hsa{position:sticky;top:45vh;float:right;margin-bottom:-36px;z-index:5;width:34px;height:34px;border-radius:50%;background:rgba(124,58,237,.75);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
   .hs3 .hsx.hse>.hsa{opacity:0;pointer-events:none}
 }
+/* 手機五種型態卡片列（.sum）左右滑動提示：兩側淡出＋◀ ▶ 箭頭（使用者 11/15 選 B 風格） */
+.hsw{position:sticky;top:var(--hh,0px);z-index:25;margin:10px -10px}.hsw>.sum{position:relative;top:auto;margin:0}.hsw>.hsl,.hsw>.hsr{display:none}
+@media(max-width:900px){
+  .hsw>.hsl,.hsw>.hsr{display:flex;position:absolute;top:0;bottom:0;width:28px;align-items:center;justify-content:center;color:#e9e4ff;font-size:14px;pointer-events:none;z-index:26}
+  .hsw>.hsr{right:0;background:linear-gradient(90deg,transparent,rgba(9,5,26,.95) 70%)}.hsw>.hsl{left:0;background:linear-gradient(270deg,transparent,rgba(9,5,26,.95) 70%)}
+  .hsw.hss>.hsl{display:none}.hsw.hse>.hsr{display:none}
+}
 @keyframes hsb{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
 /* 頂端／底部按鈕透明度（window.TTA：1 半透明底／2 全透明只留框／3 平時淡、碰到才亮） */
 .ta1 .ttb{background:rgba(20,12,48,.35)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
@@ -1567,8 +1574,14 @@ $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value
 /* 強弱族群：點族群名稱進族群頁（11/15 使用者）；手機表格左右滑動提示 */
 document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(!t)return;const i=D.groups.findIndex(x=>x.name===t.dataset.swg);if(i>=0)location.hash="g-"+i});
 (function(){
-  const v=window.SLV||1; document.documentElement.classList.add("hs"+v,"ta"+(window.TTA||1));
+  const v=window.SLV||2; document.documentElement.classList.add("hs"+v,"ta"+(window.TTA||2));
   const mark=()=>{ if(innerWidth>900) return;
+    document.querySelectorAll("#app .sum").forEach(sm=>{
+      if(sm.scrollWidth<=sm.clientWidth+4||sm.parentElement.classList.contains("hsw")) return;
+      const w=document.createElement("div");w.className="hsw hss";sm.parentNode.insertBefore(w,sm);w.appendChild(sm);
+      w.insertAdjacentHTML("beforeend",'<span class="hsl">◀</span><span class="hsr">▶</span>');
+      sm.addEventListener("scroll",()=>{w.classList.toggle("hss",sm.scrollLeft<4);w.classList.toggle("hse",sm.scrollLeft+sm.clientWidth>=sm.scrollWidth-4)},{passive:true});
+    });
     document.querySelectorAll("#app .tw").forEach(tw=>{
       if(tw.scrollWidth<=tw.clientWidth+4) return;
       let w=tw.parentElement; if(!w.classList.contains("hsx")){w=document.createElement("div");w.className="hsx";tw.parentNode.insertBefore(w,tw);w.appendChild(tw);
@@ -1585,9 +1598,11 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(
   const mk=(id,t,title,fn)=>{const b=document.createElement("button");b.id=id;b.className="ttb";b.textContent=t;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;document.body.appendChild(b);return b};
   const top=mk("ttTop",lab[0],"回到頂端",()=>scrollTo({top:0,behavior:"smooth"}));
   const bot=mk("ttBot",lab[1],"到底部",()=>scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"}));
-  const upd=()=>{const hd=document.querySelector("header");bot.style.top=((hd?hd.getBoundingClientRect().bottom:0)+10)+"px";
+  const upd=()=>{const hd=document.querySelector("header");let t=hd?hd.getBoundingClientRect().bottom:0;
+    const sm=document.querySelector("#app .sum");if(sm){const r=sm.getBoundingClientRect();if(r.top<=t+2&&r.bottom>t)t=r.bottom}   /* 五種型態卡片列黏在頁首下方時，按鈕放到它下面 */
+    bot.style.top=(t+10)+"px";
     const y=scrollY,rest=document.documentElement.scrollHeight-innerHeight-y;
-    top.classList.toggle("show",y>300); bot.classList.toggle("show",rest>300)};
+    top.classList.toggle("show",y>300); bot.classList.toggle("show",rest>300&&y>150)};   /* 最上面時不顯示「底部」，免得蓋住五種型態卡片 */
   addEventListener("scroll",upd,{passive:true}); addEventListener("resize",upd); addEventListener("hashchange",()=>setTimeout(upd,300));
   new MutationObserver(()=>requestAnimationFrame(upd)).observe($("#app"),{childList:true}); upd();
 })();
