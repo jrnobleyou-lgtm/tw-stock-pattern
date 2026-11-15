@@ -774,7 +774,7 @@ class Chart{
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
     if(/^scr-dmi(b|up|soon|pre)$/.test(baseRaw||"")) this.ind.dmi=1;
-    if(/^scr-dmi(up|soon|pre)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
+    if(/^scr-dmi(b|up|soon|pre)$/.test(baseRaw||"")) this.ind.kd=1;   /* 11/15 使用者：從任何 DMI 篩選點進來都同時開 DMI 和 KD */      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
     this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[];
@@ -1335,7 +1335,7 @@ class Chart{
     const step=Math.max(1,Math.ceil(vis.length/Math.max(3,Math.floor((W-pl-pr)/90))));
     for(let k=0;k<vis.length;k+=step){const b=vis[k];o+=`<text x="${x(vs+k)}" y="${mainH-4}" text-anchor="middle" style="fill:#9a93ad">${this.tf==="M"?b.d.slice(0,7):b.d.slice(2)}</text>`}
     // ── 副圖：標題列在圖外，內含隨 K 棒顯示的指標數值
-    const ci=this.sel, cur=ci!=null&&ci>=vs&&ci<ve?ci:ve-1;
+    const ci=this.sel, cur=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;   /* 副圖數值跟上方資訊欄同一根（點選的 K 棒在畫面外也一樣），避免兩邊日期不同 */
     const f2=v=>v==null?"—":(Math.abs(v)>=100?v.toFixed(1):v.toFixed(2));
     subs.forEach((k,si)=>{
       const top=mainH+si*(SH+SHEAD+SGAP)+SHEAD,bot=top+SH;
