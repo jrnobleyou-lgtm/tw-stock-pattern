@@ -404,14 +404,21 @@ const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["stat
 function sortList(list){
   const tv=s=>s.close*s.vol;
   const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
-    state:(a,b)=>STATES.indexOf(a.state)-STATES.indexOf(b.state)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
+    state:(a,b)=>STATES.indexOf(a.state)-STATES.indexOf(b.state)||tv(b)-tv(a),
+    dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
   return list.sort(f);
 }
 function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select></div>`}
-function stockTable(list,withGroup,showVal){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th><th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
+/* DMI 篩選頁的兩欄：DMI差值（+DI − -DI，正＝買方占優勢，紅；負＝賣方，綠）、ADX（數值＋和 3 天前比的方向，ADX<20 標「弱」＝趨勢偏弱、訊號容易騙人） */
+function dmiCells(s){
+  if(!s.dmi) return `<td class="cc">-</td><td class="cc">-</td>`;
+  const [df,ax,dr]=s.dmi, arr=dr>0?'<span style="color:#facc15">▲</span>':dr<0?'<span style="color:#8b84a3">▼</span>':'<span style="color:#8b84a3">平</span>';
+  return `<td class="cc dmic" style="color:${df>0?"var(--up)":df<0?"var(--down)":"inherit"}">${df>0?"+":""}${df.toFixed(1)}</td><td class="cc dmic">${ax.toFixed(1)} ${arr}${ax<20?' <small class="mute">弱</small>':""}</td>`;
+}
+function stockTable(list,withGroup,showVal,dmiCols){
+  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td><td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -490,20 +497,25 @@ const FILTERS = [
   {k:"cdl", name:"K線反轉形態", f:s=>s.candle.length>0},
   {k:"kdlo", name:"KD低檔鈍化", f:s=>has(s,/KD低檔鈍化/)},
   {k:"kdhi", name:"KD高檔鈍化", f:s=>has(s,/KD高檔鈍化/)},
-  {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
-  {k:"dmis", name:"DMI空頭趨勢", f:s=>has(s,/DMI空頭趨勢/)},
   {k:"dmisoon", name:"DMI即將翻多", f:s=>has(s,/DMI即將翻多/)},
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
+  {k:"dmifu", name:"DMI多方趨勢成形", f:s=>has(s,/DMI多方趨勢成形/)},
+  {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
   {k:"dmidn", name:"DMI剛翻空", f:s=>has(s,/DMI剛翻空/)},
+  {k:"dmifd", name:"DMI空方趨勢成形", f:s=>has(s,/DMI空方趨勢成形/)},
+  {k:"dmis", name:"DMI空頭趨勢", f:s=>has(s,/DMI空頭趨勢/)},
 ];
+const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）", KD_DN="K 小於 D 或差距在 5 以內，且 K 不低於 20";
 const DMI_NOTE={
-  dmib:"<b>條件：</b>+DI 比 -DI 高出 5 以上，ADX 在 25 以上，而且 ADX 比 3 天前高（趨勢正在變強）。",
-  dmis:"<b>條件：</b>-DI 比 +DI 高出 5 以上，ADX 在 25 以上，而且 ADX 比 3 天前高。",
-  dmisoon:"<b>條件：</b>+DI 比 3 天前高（買方在變強）、-DI 比 3 天前低（賣方在變弱），+DI 還在 -DI 下面但相距 5 點以內，快要交叉；ADX 在 15 以上且沒比 3 天前低；KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）。<br><b>怎麼看：</b>買方線快追上賣方線，是提早觀察的訊號，還沒確認，可能不會真的交叉，要搭配成交量和型態一起看。",
-  dmiup:"<b>條件：</b>最近 2 天內 +DI 由下往上穿過 -DI；今天 +DI 在 20 以上且比 -DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80。<br><b>怎麼看：</b>買方線剛超過賣方線，KD 也同步、還沒過熱，可能是起漲初期；要搭配成交量和型態一起看。",
-  dmidn:"<b>條件：</b>最近 2 天內 -DI 由下往上穿過 +DI；今天 -DI 在 20 以上且比 +DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；K 小於 D 或差距在 5 以內，且 K 不低於 20。<br><b>怎麼看：</b>賣方線最近幾天剛超過買方線，KD 也同步轉弱，可能是起跌初期；要搭配成交量和型態一起看。"
+  dmisoon:`<b>階段 1／4（最早）</b>　<b>條件：</b>+DI 還在 -DI 下面，但相距 7 點以內；+DI 比 3 天前高、今天也沒比昨天低（買方在變強），-DI 比 3 天前低、今天也沒比昨天高（賣方在變弱）；${KD_UP}。<br><b>怎麼看：</b>買方線正在追上賣方線，還沒交叉，是提早觀察名單，可能不會真的交叉。看「DMI差值」越接近 0 越快交叉。`,
+  dmiup:`<b>階段 2／4</b>　<b>條件：</b>最近 2 天內 +DI 由下往上穿過 -DI；今天 +DI 比 -DI 大 2 以上，而且 +DI 比 3 天前高；${KD_UP}。<br><b>怎麼看：</b>節目說的「做多候選」。剛交叉時 ADX 通常還在往下（正常現象），所以不看 ADX 漲跌；但 ADX 低於 20（表格標「弱」）代表還在盤整，容易假訊號，要搭配成交量和型態。`,
+  dmifu:`<b>階段 3／4</b>　<b>條件：</b>最近 3 天內 ADX 從 20 以下升上 20 以上，今天還在往上；+DI 在 -DI 上面。<br><b>怎麼看：</b>節目說的「ADX 突破 20～25 且上升＝趨勢可能形成」，買方占優勢、趨勢剛開始變明顯。`,
+  dmib:`<b>階段 4／4（確認）</b>　<b>條件：</b>+DI 比 -DI 高出 5 以上；ADX 在 25 以上、而且比 3 天前高（趨勢正在變強）；<b>收盤站上前段高點</b>（最近一個波段高點：前後各 5 天都沒有更高的那天，60 天內找；找不到就用近 60 天最高價）。<br><b>怎麼看：</b>節目的「多方」定義：買方強、趨勢明顯、價格也突破前高，三個都成立。ADX 超過 45～50 常是末段過熱。`,
+  dmidn:`<b>空方 階段 1／3</b>　<b>條件：</b>最近 2 天內 -DI 由下往上穿過 +DI；今天 -DI 比 +DI 大 2 以上，而且 -DI 比 3 天前高；${KD_DN}。<br><b>怎麼看：</b>節目說的「做空候選」，可能是起跌初期；ADX 低於 20（標「弱」）容易假訊號。`,
+  dmifd:`<b>空方 階段 2／3</b>　<b>條件：</b>最近 3 天內 ADX 從 20 以下升上 20 以上，今天還在往上；-DI 在 +DI 上面。<br><b>怎麼看：</b>賣方占優勢、下跌趨勢可能正在形成。`,
+  dmis:`<b>空方 階段 3／3（確認）</b>　<b>條件：</b>-DI 比 +DI 高出 5 以上；ADX 在 25 以上、而且比 3 天前高；<b>收盤跌破前段低點</b>（最近一個波段低點，定義同多頭）。<br><b>怎麼看：</b>節目的「空方」定義：賣方強、趨勢明顯、價格也跌破前低。`
 };
-const DMI_HELP='<details class="dmihelp"><summary>ⓘ 什麼是 DMI？</summary><p>DMI 用三條線看趨勢：<b>+DI</b> 是買方力道，<b>-DI</b> 是賣方力道，誰在上面誰占優勢；<b>ADX</b> 看趨勢強不強，不分漲跌。ADX 在 25 以上，表示正在走明顯的趨勢，數字往上代表越走越強；低於 20 多半是盤整，訊號容易來回騙人。ADX 超過 45～50 常是趨勢末段過熱，要小心。標籤以收盤為準，盤中數字會跳動。K 線圖上按「DMI趨勢」就能看到這三條線。</p></details>';
+const DMI_HELP='<details class="dmihelp"><summary>ⓘ 什麼是 DMI？</summary><p>DMI 用三條線看趨勢：<b>+DI</b> 是買方力道，<b>-DI</b> 是賣方力道，誰在上面誰占優勢；<b>ADX</b> 看趨勢強不強，不分漲跌。ADX 在 25 以上，表示正在走明顯的趨勢，數字往上代表越走越強；低於 20 多半是盤整，訊號容易來回騙人。ADX 超過 45～50 常是趨勢末段過熱，要小心。</p><p><b>多方四個階段：</b>即將翻多（兩線靠近）→ 剛翻多（+DI 穿過 -DI）→ 多方趨勢成形（ADX 升上 20）→ 多頭趨勢（ADX 25 以上＋突破前高）。空方三個階段相反。</p><p><b>表格兩欄：</b>「DMI差值」＝+DI 減 -DI，正數（紅）買方占優勢、負數（綠）賣方占優勢；「ADX」後面的 ▲ 是比 3 天前上升、▼ 下降、「平」差不多，「弱」表示 ADX 低於 20。標籤以收盤為準，盤中數字會跳動。K 線圖上按「DMI趨勢」就能看到這三條線。</p></details>';
 function screener(key){
   key = key || "rb3";
   const cur = FILTERS.find(x=>x.k===key) || FILTERS[0];
@@ -516,7 +528,8 @@ function screener(key){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
     h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${turnover(s)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
-  } else h += sortBar()+stockTable(list,false,true);
+  } else if(DMI_NOTE[cur.k]) h += sortBar([["dmid","DMI差值"],["adx","ADX"]])+stockTable(list,false,true,true);
+  else h += sortBar()+stockTable(list,false,true);
   if(DMI_NOTE[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${DMI_NOTE[cur.k]}</p>${DMI_HELP}<div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
@@ -757,7 +770,7 @@ class Chart{
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
-    if(/^scr-dmi(b|s|up|dn|soon)$/.test(baseRaw||"")) this.ind.dmi=1;
+    if(/^scr-dmi(b|s|up|dn|soon|fu|fd)$/.test(baseRaw||"")) this.ind.dmi=1;
     if(/^scr-dmi(up|dn|soon)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
@@ -1347,7 +1360,9 @@ class Chart{
       }else if(k==="dmi"){
         const M=this.get("dmi");let mx=20;for(let i=vs;i<ve;i++)for(const a of [M.pdi,M.mdi,M.adx])if(a[i]!=null)mx=Math.max(mx,a[i]);
         mx=Math.ceil(mx/10)*10;yy=v=>bot-(v/mx)*SH;
-        head=[["DMI(14)","#9a93ad"],[`+DI ${f2(M.pdi[cur])}`,"#ef4444"],[`−DI ${f2(M.mdi[cur])}`,"#22c55e"],[`ADX ${f2(M.adx[cur])}`,"#facc15"]];
+        const dDf=M.pdi[cur]!=null&&M.mdi[cur]!=null?M.pdi[cur]-M.mdi[cur]:null, aCh=cur>=3&&M.adx[cur]!=null&&M.adx[cur-3]!=null?M.adx[cur]-M.adx[cur-3]:null;
+        head=[["DMI(14)","#9a93ad"],[`+DI ${f2(M.pdi[cur])}`,"#ef4444"],[`−DI ${f2(M.mdi[cur])}`,"#22c55e"],[`ADX ${f2(M.adx[cur])}${aCh==null?"":aCh>0.5?" ▲":aCh<-0.5?" ▼":" 平"}`,"#facc15"]];
+        if(dDf!=null) head.push([`差值 ${dDf>0?"+":""}${dDf.toFixed(1)}`,dDf>0?"#ef4444":dDf<0?"#22c55e":"#9a93ad"]);   /* 差值＝+DI − -DI；ADX 箭頭＝和 3 天前比 */
         body+=`<text x="${W-pr+4}" y="${top+10}">${mx}</text><text x="${W-pr+4}" y="${bot}">0</text>`+path(M.pdi,"#ef4444")+path(M.mdi,"#22c55e")+path(M.adx,"#facc15",1.6);
         dots=[[M.pdi,"#ef4444"],[M.mdi,"#22c55e"],[M.adx,"#facc15"]];
       }else{

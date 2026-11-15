@@ -90,11 +90,27 @@ def dmi_series(bars, n=14):
     return pdi, mdi, adx
 
 
+def prev_swing(bars, T, hi=True, w=5, look=60):
+    """前段高點／低點：最近一個「前後各 w 根都沒有更高（低）」的波段高（低）點，限 look 根內、而且已經確認（離今天至少 w 根）。
+    找不到（一路漲／跌沒有波段）就用最近 look 根（不含最近 w 根）的最高／最低價。"""
+    k = "h" if hi else "l"
+    for j in range(T - w, max(T - look, w) - 1, -1):
+        seg = [b[k] for b in bars[j - w:j + w + 1]]
+        if bars[j][k] == (max(seg) if hi else min(seg)):
+            return bars[j][k]
+    seg = [b[k] for b in bars[max(0, T - look):T - w + 1]]
+    return (max(seg) if hi else min(seg)) if seg else None
+
+
 def dmi_tags(bars, Ks, Ds):
-    """DMI 標籤（11/15 使用者定 ADX 標準 25，剛翻多／空公式由 Opus 顧問建議，使用者同意方向）：
-    多頭趨勢：+DI > -DI 且差 ≥5，ADX ≥25 且比 3 天前高。空頭趨勢：反過來。
-    剛翻多：近 2 日 +DI 由下往上穿過 -DI，今天 +DI ≥20 且比 -DI 大 ≥2，ADX ≥15 且不低於 3 天前，K≥D 或差 ≤5、K<80（近 3 日也沒到過 80）。即將翻多：+DI 比 3 天前高、-DI 比 3 天前低、+DI 仍低於 -DI 但差 ≤5，KD 條件同上。
-    剛翻空：對稱（-DI 上穿 +DI，-DI ≥20 且大 ≥2，ADX ≥15 且不低於 3 天前，K<D 且 20<K≤50，近 3 日 K 沒到過 20）。K 棒不足 60 根不標。"""
+    """DMI 標籤（11/15 晚 Opus 版重新設計，對應使用者參考的電視節目做法；KD 條件沿用舊的，等使用者另訂）。
+    多頭的四個階段：即將翻多 → 剛翻多 → 多方趨勢成形 → 多頭趨勢；空頭：剛翻空 → 空方趨勢成形 → 空頭趨勢。
+    即將翻多：+DI 仍在 -DI 下面、相距 7 點以內；+DI 比 3 天前高且今天沒比昨天低、-DI 比 3 天前低且今天沒比昨天高（兩線正在靠近）；KD 條件。
+    剛翻多：近 2 日 +DI 由下往上穿過 -DI，今天 +DI 比 -DI 大 ≥2、+DI 比 3 天前高；KD 條件。（不再要求 ADX 上升：剛交叉時 ADX 幾乎都在下降，
+            實測 11/13 剛交叉的 240 檔有 217 檔 ADX 比 3 天前低；ADX 改成列表的欄位，ADX<20 標「弱」提醒假訊號。）
+    多方趨勢成形：近 3 日 ADX 由 20 以下升上 20 以上、今天還在上升，+DI > -DI（節目：ADX 突破 20～25 且上升＝趨勢可能形成）。
+    多頭趨勢：+DI 比 -DI 大 ≥5、ADX ≥25 且比 3 天前高，而且收盤站上前段高點（prev_swing，節目：價格突破前段高點）。
+    空方都對稱（剛翻空用 kd_dn）。K 棒不足 60 根不標。"""
     out = []
     if len(bars) < 60:
         return out
@@ -103,26 +119,43 @@ def dmi_tags(bars, Ks, Ds):
     if None in (pdi[T], mdi[T], adx[T], adx[T - 3], pdi[T - 3], mdi[T - 3]):
         return out
     p, m, a = pdi[T], mdi[T], adx[T]
+    c = bars[T]["c"]
     if a >= 25 and a > adx[T - 3]:
         if p - m >= 5:
-            out.append("DMI多頭趨勢")
+            ph = prev_swing(bars, T, True)
+            if ph is not None and c > ph:
+                out.append("DMI多頭趨勢")
         elif m - p >= 5:
-            out.append("DMI空頭趨勢")
+            pl = prev_swing(bars, T, False)
+            if pl is not None and c < pl:
+                out.append("DMI空頭趨勢")
+    if a >= 20 and a > adx[T - 1] and min(adx[T - 3:T]) < 20:
+        out.append("DMI多方趨勢成形" if p > m else "DMI空方趨勢成形")
     k, d = Ks[T], Ds[T]
     k3 = Ks[T - 2:T + 1]
-    if a >= 15 and a >= adx[T - 3]:
-        kd_up = (k >= d or d - k <= 5) and k < 80 and max(k3) < 80          # 11/15 使用者：K 不用大於 D、不設 50 下限，快相交也行；排除高檔
-        kd_dn = (k <= d or k - d <= 5) and k > 20 and min(k3) > 20
-        crossed_up = p > m and any(pdi[T - j] <= mdi[T - j] for j in (1, 2))
-        if crossed_up and p >= 20 and p - m >= 2 and kd_up:
-            out.append("DMI剛翻多")
-        crossed_dn = m > p and any(mdi[T - j] <= pdi[T - j] for j in (1, 2))
-        if crossed_dn and m >= 20 and m - p >= 2 and kd_dn:
-            out.append("DMI剛翻空")
-        # 即將翻多（使用者 11/15）：+DI 上升、-DI 下降，還沒交叉但相距 5 點以內
-        if p < m and m - p <= 5 and p > pdi[T - 3] and m < mdi[T - 3] and kd_up:
-            out.append("DMI即將翻多")
+    kd_up = (k >= d or d - k <= 5) and k < 80 and max(k3) < 80          # KD 條件維持 11/15 中午的版本（使用者之後自己訂）
+    kd_dn = (k <= d or k - d <= 5) and k > 20 and min(k3) > 20
+    crossed_up = p > m and any(pdi[T - j] <= mdi[T - j] for j in (1, 2))
+    if crossed_up and p - m >= 2 and p > pdi[T - 3] and kd_up:
+        out.append("DMI剛翻多")
+    crossed_dn = m > p and any(mdi[T - j] <= pdi[T - j] for j in (1, 2))
+    if crossed_dn and m - p >= 2 and m > mdi[T - 3] and kd_dn:
+        out.append("DMI剛翻空")
+    if p < m and m - p <= 7 and p > pdi[T - 3] and p >= pdi[T - 1] and m < mdi[T - 3] and m <= mdi[T - 1] and kd_up:
+        out.append("DMI即將翻多")
     return out
+
+
+def dmi_now(bars):
+    """列表用的 DMI 數字：[差值（+DI − -DI）, ADX, ADX 方向（1 上升／0 持平／-1 下降，和 3 天前比、差 0.5 以內算持平）]。"""
+    if len(bars) < 60:
+        return None
+    pdi, mdi, adx = dmi_series(bars)
+    T = len(bars) - 1
+    if None in (pdi[T], mdi[T], adx[T], adx[T - 3]):
+        return None
+    ch = adx[T] - adx[T - 3]
+    return [round(pdi[T] - mdi[T], 1), round(adx[T], 1), 1 if ch > 0.5 else -1 if ch < -0.5 else 0]
 
 
 def fetch_inst():
@@ -310,6 +343,9 @@ def main():
             "chg": r2((raw[T]["c"] / raw[T - 1]["c"] - 1) * 100) if T else 0,
             "vol": round(raw[T]["v"] / 1000),
         }
+        dn_ = dmi_now(bars)
+        if dn_:
+            st["dmi"] = dn_                              # DMI 篩選頁的「DMI差值」「ADX」欄
         if draw_upd:
             st["drawUpd"] = draw_upd                     # 系統的形態已經把管理者的線往後補完（「我的畫線」顯示「型態已更新！」）
         d_T = bars[T]["d"]
