@@ -186,6 +186,7 @@ svg text{fill:var(--fg);font-size:11px}
   .hs3 .hsx{position:relative}.hs3 .hsx>.hsa{position:sticky;top:45vh;float:right;margin-bottom:-36px;z-index:5;width:34px;height:34px;border-radius:50%;background:rgba(124,58,237,.75);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
   .hs3 .hsx.hse>.hsa{opacity:0;pointer-events:none}
 }
+.hsh0{display:none}@media(max-width:900px){.hsh0{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#c4b5fd;margin:8px 2px -6px}.hsh0 b{font-size:15px;animation:hsb 1.6s ease-in-out infinite}}
 @keyframes hsb{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
 /* 頂端／底部按鈕透明度（window.TTA：1 半透明底／2 全透明只留框／3 平時淡、碰到才亮） */
 .ta1 .ttb{background:rgba(20,12,48,.35)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
@@ -1567,12 +1568,14 @@ $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value
 /* 強弱族群：點族群名稱進族群頁（11/15 使用者）；手機表格左右滑動提示 */
 document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(!t)return;const i=D.groups.findIndex(x=>x.name===t.dataset.swg);if(i>=0)location.hash="g-"+i});
 (function(){
-  const v=window.SLV||2; document.documentElement.classList.add("hs"+v,"ta"+(window.TTA||2));
+  const v=window.SLV||1; document.documentElement.classList.add("hs"+v,"ta"+(window.TTA||2));
   const mark=()=>{ if(innerWidth>900) return;
+    const sm=document.querySelector("#app .sum");      /* 五種型態卡片列：上方加一行左右箭頭提示（11/15 使用者） */
+    if(sm&&sm.scrollWidth>sm.clientWidth+4&&!(sm.previousElementSibling||{}).classList?.contains("hsh0")) sm.insertAdjacentHTML("beforebegin",'<div class="hsh0"><b>◀</b><span>左右滑動看五種型態</span><b>▶</b></div>');
     document.querySelectorAll("#app .tw").forEach(tw=>{
       if(tw.scrollWidth<=tw.clientWidth+4) return;
       let w=tw.parentElement; if(!w.classList.contains("hsx")){w=document.createElement("div");w.className="hsx";tw.parentNode.insertBefore(w,tw);w.appendChild(tw);
-        if(v===1) w.insertAdjacentHTML("afterbegin",'<div class="hsh"><b>◀</b><span>表格可左右滑動，右邊還有標記</span><b>▶</b></div>');
+        if(v===1) w.insertAdjacentHTML("afterbegin",'<div class="hsh"><b>◀</b><span>左右滑動看更多</span><b>▶</b></div>');
         if(v===3){w.insertAdjacentHTML("afterbegin",'<div class="hsa">▶</div>');w.firstChild.onclick=()=>tw.scrollBy({left:200,behavior:"smooth"})}
         tw.addEventListener("scroll",()=>{const end=tw.scrollLeft+tw.clientWidth>=tw.scrollWidth-4;tw.classList.toggle("hse",end);w.classList.toggle("hse",end)},{passive:true});}
     })};
