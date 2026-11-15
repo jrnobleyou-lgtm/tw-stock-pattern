@@ -343,7 +343,8 @@ function swPanel(){
 /* ───────── 首頁：族群統計 ───────── */
 function home(){
   const tot = D.total, all = STATES.reduce((a,s)=>a+tot[s],0);
-  let h = swPanel() + `<div class="sum">` + STATES.map(s=>`<div class="chip click" data-st="${s}" title="點擊列出全部${s}的股票">${s}<b class="c-${CLS[s]}">${tot[s]}</b><span class="mute"> ${pct(tot[s],all)}</span></div>`).join("") + `<div class="chip">共<b>${all}</b>檔</div></div>`;
+  let h = `<div class="sum">` + STATES.map(s=>`<div class="chip click" data-st="${s}" title="點擊列出全部${s}的股票">${s}<b class="c-${CLS[s]}">${tot[s]}</b><span class="mute"> ${pct(tot[s],all)}</span></div>`).join("") + `<div class="chip">共<b>${all}</b>檔</div></div>`;
+  h += swPanel();      /* 股票型態統計（置頂）在最上面，盤後一眼看懂放它下面（使用者 11/15） */
   h += `<div class="tw"><table class="ctr"><thead><tr><th>族群</th><th>檔數</th>` + STATES.map(s=>`<th class="c-${CLS[s]}">${s}</th>`).join("") + `<th class="hide-s">分布</th><th>突破第1根</th><th>止跌反彈</th></tr></thead><tbody>`;
   for(const g of D.groups){
     const small = g.n < 5;
