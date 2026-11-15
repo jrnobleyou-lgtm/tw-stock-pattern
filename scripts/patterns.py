@@ -185,6 +185,11 @@ def head_shoulders(B, T, P):
                     break
             kind, d = "頭肩頂", "bear"
         c = B[T]["c"]
+        # 成形後頭被破（頭肩底：收盤跌破頭的低點；頭肩頂：收盤突破頭的高點）→ 形態作廢
+        if any((B[x]["c"] < p3) if up else (B[x]["c"] > p3) for x in range(i5 + 1, T + 1)):
+            out.append({"kind": kind, "dir": d, "status": "failed", "day": None, "neck": round(neck_T, 2),
+                        "pts": [[i, p] for i, p, _ in seg]})
+            continue
         if j is not None:
             day = T - j + 1
             failed = (up and c < neck_T * 0.98) or ((not up) and c > neck_T * 1.02)
@@ -292,7 +297,7 @@ def rounded(B, T):
                 d = None
                 st = "near" if c >= rim * 0.9 else "forming"
             out.append({"kind": "圓弧底", "dir": "bull", "status": st, "day": d, "neck": round(rim, 2),
-                        "pts": curve, "r2": round(r2, 2), "depth": round(depth, 3)})
+                        "pts": curve, "pivots": [ext_i], "r2": round(r2, 2), "depth": round(depth, 3)})
         else:
             rim = left
             if c <= rim * 1.03:
@@ -303,7 +308,7 @@ def rounded(B, T):
                 d = None
                 st = "forming"
             out.append({"kind": "圓弧頂", "dir": "bear", "status": st, "day": d, "neck": round(rim, 2),
-                        "pts": curve, "r2": round(r2, 2), "depth": round(depth, 3)})
+                        "pts": curve, "pivots": [ext_i], "r2": round(r2, 2), "depth": round(depth, 3)})
     return out
 
 
@@ -361,6 +366,7 @@ def cup_handle(B, T):
     curve = [[a0 + k, qa * k * k + qb * k + qc] for k in sorted(set(list(range(0, W, max(1, W // 10))) + [W]))]
     return [{"kind": "杯柄", "dir": "bull", "status": st, "day": d, "neck": round(rim, 2),
              "pts": curve + [[r, rim], [hl, B[hl]["l"]]],
+             "pivots": [left_hi_i, r, hl],
              "r2": round(r2, 2), "depth": round(depth, 3), "hdepth": round(hdepth, 3)}]
 
 
@@ -628,8 +634,8 @@ def resolve_conflicts(gs, T):
     """不同形態打架時只留一個（11/14 使用者定）：
     兩個形態最多共用 1 個轉折點（前一個的結尾＝後一個的開頭）就都留；共用 2 個以上、或時間重疊超過較短者的一半 → 只留較重要的。
     重要性：已突破 > 接近突破 > 成形中 > 舊的／失敗；同級留比較完整的、再來比較新的。回傳依重要性排序。"""
-    def piv(g):
-        return {i for i, _ in g["pts"] if i != T}
+    def piv(g):                                   # 圓弧、杯柄的曲線取樣點不算轉折點，只算極值／左右緣／柄
+        return set(g["pivots"]) - {T} if g.get("pivots") else {i for i, _ in g["pts"] if i != T}
     def span(g):
         idx = [i for i, _ in g["pts"]] + (list(g["rect"][:2]) if g.get("rect") else [])
         return min(idx), max(idx)

@@ -212,10 +212,10 @@ def scan_after(B, box, b, T):
     if c > hi:
         sig = B[b]["v"] >= VOL_MULT * box["avgvol"]
         ev.update(dir="up", signal=sig)
-        after = [B[i]["c"] for i in range(b + 1, min(b + CONFIRM_DAYS, T) + 1)]
+        after = [B[i]["c"] for i in range(b + 1, min(b + CONFIRM_DAYS - 1, T) + 1)]
         if any(x <= hi for x in after):
             ev["state"] = "false_breakout"
-        elif T >= b + CONFIRM_DAYS:
+        elif T >= b + CONFIRM_DAYS - 1:
             ev["state"] = "confirmed"
         else:
             ev["state"] = "confirming"
