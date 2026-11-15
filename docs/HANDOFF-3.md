@@ -54,3 +54,11 @@
 - **AI 用 Gemini 免費 API**（使用者不要花錢；Claude API 不用）。金鑰已用 request_credential 存本環境（generativelanguage.googleapis.com，OpenAI 相容端點 `/v1beta/openai/chat/completions`，Bearer）。GitHub Actions 要用需使用者另貼 Secrets（GEMINI_API_KEY）。使用者截圖曾外流一把金鑰，已請他刪掉重建。
 - 實測（11/16）：工商、經濟 RSS 抓得到、內文用 `<p>` 擷取可用；12 篇一次送 gemini-3.5-flash 約 15 秒、10.6K 輸入 token，判斷品質好（看內文不被標題誤導、會略過選股清單文）。經濟日報部分文章只有約 200 字（付費／摘要）。測試腳本在 /tmp/n（非版控）。
 - 關鍵字規則（D）最後才考慮。Cloudflare 金鑰沒有 Workers AI 權限。
+
+## 2026-11-16 深夜：個股新聞上線（▲▼ 先隱藏）
+- 使用者選消息分頁**版本 2**。使用者已把 Gemini 金鑰貼到 GitHub Secrets `GEMINI_API_KEY`；不花錢，額度不夠改用其他免費 AI（已接 GitHub Models，用 Actions 的 GITHUB_TOKEN，`permissions: models: read`）。Grok、GPT 都沒有免費 API 額度（使用者確認 xAI 0 元）。
+- `scripts/news.py`：經濟日報（股市 5590／產業 5591／要聞 5588，排除 vipstory）、工商（livenews/stock）、鉅亨（API，payment=0）、MoneyDJ（排除 5850web）、中央社（afe／asc 列表）、優分析（首頁）、科技新報（finance feed）。trafilatura 2.3.1 抽內文；抓不到全文＝付費／會員，跳過（經濟日報比對「本文共N字」）；DIGITIMES、財訊、自由抓不到先不做。內文沒有任何上市櫃名稱／代號就不送 AI。每批 ≤10 篇或 3 萬字、每篇 ≤6000 字、每輪 ≤80 篇、批間 7 秒、429 先等 50 秒；Gemini flash → flash-lite → GitHub gpt-4.1-mini → gpt-4.1；全部用完記 `quota_until` 3 小時。股票比對：名稱或代號必須出現在文中、名稱與代號矛盾丟掉、撞名清單 AMBIG 要代號佐證。同標題多家轉載只留一則。輸出 news-data 分支（每次單一提交強制推送）：`s/<h%64>.json`、items/seen/tries/meta.json。
+- 提示詞多回傳 kind（事件／法人／點名／盤面）；之後「近期消息偏多／偏空」標籤建議只算事件＋法人（Fable 建議），同檔同天同方向只算一次。
+- `.github/workflows/news.yml`（workflow_dispatch）；Worker `jobsAt()` 台灣 06:00–23:30 平日每 30 分、週末每小時觸發；新聞觸發不寫 `cron/last`。
+- Worker `/api/news?c=`：讀 raw.githubusercontent.com news-data 分包（快取 200→300 秒、404→60 秒）。前端 `loadNews`：▲▼＋理由只在 `?nwdir=1` 或 `window.NWDIR` 顯示（使用者確認準度後再打開，並顯示「AI 自動整理，非投資建議」）；只有日期的文章不顯示時分。
+- Fable 審查（11/16）抓到並已修：非 UTF-8 網頁讓整輪當掉、AI 格式防呆、篇號錯位、限流當額度用完、2500 字截斷、工商時間解析失敗、seen 到期重判、暫時抓不到被永久跳過、前端把讀不到當沒新聞、javascript: 連結。待做：各家連續 0 篇的監控顯示在設定頁、重訊／月營收／EPS（左欄目前只在有 f/<代號>.json 時出現）。

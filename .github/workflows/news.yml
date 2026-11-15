@@ -1,35 +1,40 @@
 name: news
-# 個股新聞：7 家媒體免費文章 → Gemini 判斷上修／持平／下修 → 存到 news-data 分支（網站 /api/news 讀它）
-# 觸發：Cloudflare Worker 的排程（jobsAt）每 30 分呼叫一次；也可在 GitHub 手動執行
+# 個股新聞：7 家媒體免費文章 → AI 判斷上修／持平／下修 → 存到 news-data 分支（網站 /api/news 讀它）
+# 觸發：Cloudflare Worker 的排程（jobsAt）平日每 30 分、週末每小時；也可在 GitHub 手動執行
+# AI：Gemini 免費 API（Secrets 的 GEMINI_API_KEY），額度不夠改用 GitHub Models 免費額度（GITHUB_TOKEN）
 on:
   workflow_dispatch:
 permissions:
   contents: write
+  models: read
 concurrency:
   group: news
   cancel-in-progress: false
 jobs:
   news:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -q trafilatura
-      - name: 取出 news-data 分支（沒有就新建）
+      - run: pip install -q trafilatura==2.3.1
+      - name: 取出 news-data 分支的最新資料（沒有就從空的開始）
         run: |
-          git fetch origin news-data && git worktree add nd origin/news-data || { git worktree add --detach nd && cd nd && git checkout --orphan news-data-new && git rm -rfq . ; }
+          git clone -q --depth 1 --branch news-data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" nd || mkdir -p nd
       - name: 抓新聞並判斷
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/news.py nd
-      - name: 存回 news-data 分支
+      - name: 存回 news-data 分支（只留一個版本，分支不會越長越大）
         run: |
           cd nd
+          rm -rf .git
+          git init -q -b news-data
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -qm "新聞 $(TZ=Asia/Taipei date '+%m/%d %H:%M')" || exit 0
-          git push origin HEAD:news-data
+          git commit -qm "新聞 $(TZ=Asia/Taipei date '+%m/%d %H:%M')"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/news-data

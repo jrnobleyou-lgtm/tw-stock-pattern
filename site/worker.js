@@ -351,7 +351,7 @@ async function runSchedule(env, when) {
       body: JSON.stringify({ ref: "main" }) });
     res.push(`${wf} ${r.status}`);
   }
-  if (env.US) await env.US.put("cron/last", JSON.stringify({ at: new Date(when).toISOString(), res }));
+  if (env.US && jobs.some(j => j !== "news.yml")) await env.US.put("cron/last", JSON.stringify({ at: new Date(when).toISOString(), res }));   // 新聞每 30 分觸發，不蓋掉收盤更新的紀錄
 }
 
 // ── 管理者畫線清單（台股，公開）：分析程式用來以管理者的判斷取代系統的形態
@@ -443,9 +443,9 @@ export default {
       if (!/^[0-9]{4,6}[A-Z]?$/.test(c)) return new Response(JSON.stringify({ error: "bad code" }), { status: 400, headers: { "content-type": "application/json" } });
       let h = 0; for (const ch of c) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
       try {
-        const r = await fetch(`https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/s/${h % 64}.json`, { cf: { cacheTtl: 300, cacheEverything: true } });
+        const r = await fetch(`https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/s/${h % 64}.json`, { cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 300, "404": 60, "500-599": 0 } } });
         if (!r.ok) throw 0;
-        const items = ((await r.json())[c] || []).slice(0, 60);
+        const items = ((await r.json())[c] || []).filter(x => /^https:\/\//.test(x.link || "")).slice(0, 60);
         return new Response(JSON.stringify({ items }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=300" } });
       } catch (e) { return new Response(JSON.stringify({ items: [], error: "unavailable" }), { status: 200, headers: { "content-type": "application/json" } }); }
     }
