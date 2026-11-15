@@ -303,7 +303,15 @@ function mktCards(){
     const bar=(t,k)=>`<div class="mki"><span>${t}</span><span class="swtr"><i class="${I[k]>=0?"bg-s":"bg-w"}" style="width:${Math.abs(I[k])/mx*100}%"></i></span><span class="${c(I[k])}">${f(I[k])}</span></div>`;
     return `<div class="mkc mkx"${old?' style="opacity:.6"':""}>${nm}<span class="mkd">${I.date.slice(5).replace("-","/")} 上市${old?"（前一日）":""}</span></div><div class="mkv ${c(I.total)}">${f(I.total)} 億</div>${bar("外資","foreign")}${bar("投信","trust")}${bar("自營商","dealer")}</div>`;
   };
-  const h=(D.market==="US"?"":inst());
+  const fut=()=>{
+    const F=D.fut, nm=`<div class="mute">外資台指期淨未平倉（大台）`;
+    if(!F) return `<div class="mkc">${nm}</div><div class="mute">約 15:00～16:00 公布，稍後更新</div></div>`;
+    const old=F.date!==D.asof, short=F.net<0, cls=short?"c-weak":"c-strong", fx=v=>Math.abs(v).toLocaleString("en-US");
+    let chg='<div class="mute">較前日：資料不足</div>';
+    if(F.chg!=null){const more=(F.chg<0)===short; chg=F.chg===0?'<div class="mute">較前日持平</div>':`<div class="${(F.chg<0)?"c-weak":"c-strong"}">較前日${short?"空單":"多單"}${more?"增":"減"} ${fx(F.chg)} 口</div>`}
+    return `<div class="mkc"${old?' style="opacity:.6"':""}>${nm}<span class="mkd">${F.date.slice(5).replace("-","/")} 日盤後${old?"（前一日）":""}</span></div><div class="mkv ${cls}">${short?"淨空":"淨多"} ${fx(F.net)} 口</div>${chg}</div>`;
+  };
+  const h=(D.market==="US"?"":inst()+fut());
   return h?`<div class="mkr">${h}</div>`:"";
 }
 /* ───────── 盤後一眼看懂：匯率、原油、美債（美股頁：美股指數＋VIX）。資料來自 Worker /api/macro（Yahoo），標資料時間 ───────── */

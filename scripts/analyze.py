@@ -1,5 +1,5 @@
 """讀取行情 + 族群表，算出每檔的四種型態與每個族群的統計，輸出 site/data.js。"""
-import csv, json, os, sys, collections
+import time, csv, json, os, sys, collections
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import engine as E
 import patterns as PT
@@ -129,9 +129,15 @@ def fetch_inst():
     """三大法人現貨買賣超（證交所 BFI82U，只含上市，單位換成億元）。抓不到回傳 None（網頁會顯示「稍後更新」，不放舊數字）。"""
     import urllib.request
     try:
-        j = json.loads(urllib.request.urlopen(urllib.request.Request(
-            "https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&response=json", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
-        if j.get("stat") != "OK":
+        j = None
+        for k in range(3):                       # 偶爾連線被重設，重試 3 次
+            try:
+                j = json.loads(urllib.request.urlopen(urllib.request.Request(
+                    "https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&response=json", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
+                break
+            except Exception:
+                time.sleep(2)
+        if not j or j.get("stat") != "OK":
             return None
         v = {r[0]: float(r[3].replace(",", "")) / 1e8 for r in j["data"]}
         d = j["date"]
@@ -143,6 +149,59 @@ def fetch_inst():
     except Exception as e:
         print("讀不到三大法人（略過）", repr(e)[:80])
         return None
+
+
+def fetch_fut_foreign():
+    """外資及陸資在臺股期貨（大台 TX）的未平倉淨口數（負數＝淨空），與前一交易日的增減。
+    來源：期交所「三大法人－區分各期貨契約」。先抓網頁 CSV（可指定日期區間，才有前一日）；擋掉時改用開放資料（只有最新一日，沒有前日就不顯示增減）。
+    抓不到回傳 None（網頁顯示「稍後更新」，不放舊數字）。"""
+    import urllib.request, datetime, io
+    def rows(text):
+        return list(csv.DictReader(io.StringIO(text.lstrip("\ufeff"))))
+    def pick(rs):
+        out = {}
+        for x in rs:
+            if x.get("商品名稱") == "臺股期貨" and x.get("身份別") == "外資及陸資":
+                d = x["日期"].replace("/", "")
+                out[f"{d[:4]}-{d[4:6]}-{d[6:]}"] = int(x["多空未平倉口數淨額"].replace(",", ""))
+        return out
+    hdr = {"User-Agent": "Mozilla/5.0"}
+    got = {}
+    today = datetime.date.today()
+    for back in range(0, 6):                     # 結束日不能晚於期交所最新資料日，從今天往前試
+        end = today - datetime.timedelta(days=back)
+        if end.weekday() >= 5:
+            continue
+        try:
+            url = ("https://www.taifex.com.tw/cht/3/futContractsDateDown?queryStartDate=%s&queryEndDate=%s&commodityId=TXF"
+                   % ((end - datetime.timedelta(days=12)).strftime("%Y%%2F%m%%2F%d"), end.strftime("%Y%%2F%m%%2F%d")))
+            b = urllib.request.urlopen(urllib.request.Request(url, headers=hdr), timeout=30).read()
+            if b[:1] == b"<":
+                continue
+            for enc in ("utf-8-sig", "big5", "cp950"):
+                try:
+                    got = pick(rows(b.decode(enc)))
+                    if got:
+                        break
+                except Exception:
+                    continue
+            if got:
+                break
+        except Exception as e:
+            print("期交所網頁抓不到（改用開放資料）", repr(e)[:80])
+            break
+    if not got:
+        try:
+            b = urllib.request.urlopen(urllib.request.Request("https://openapi.taifex.com.tw/v1/MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate", headers=hdr), timeout=30).read()
+            got = pick(rows(b.decode("utf-8-sig")))
+        except Exception as e:
+            print("讀不到外資台指期未平倉（略過）", repr(e)[:80])
+            return None
+    if not got:
+        return None
+    ds = sorted(got)
+    d = ds[-1]
+    return {"date": d, "net": got[d], "chg": (got[d] - got[ds[-2]]) if len(ds) >= 2 else None}
 
 
 def r2(x):
@@ -315,6 +374,9 @@ def main():
         inst = fetch_inst()
         if inst:
             out["inst"] = inst
+        fut = fetch_fut_foreign()
+        if fut:
+            out["fut"] = fut
     if us:
         out["market"] = "US"
     with open(os.path.join(OUT, "data.js"), "w", encoding="utf-8") as f:
