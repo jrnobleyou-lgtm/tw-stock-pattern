@@ -1,0 +1,35 @@
+name: news
+# 個股新聞：7 家媒體免費文章 → Gemini 判斷上修／持平／下修 → 存到 news-data 分支（網站 /api/news 讀它）
+# 觸發：Cloudflare Worker 的排程（jobsAt）每 30 分呼叫一次；也可在 GitHub 手動執行
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: news
+  cancel-in-progress: false
+jobs:
+  news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -q trafilatura
+      - name: 取出 news-data 分支（沒有就新建）
+        run: |
+          git fetch origin news-data && git worktree add nd origin/news-data || { git worktree add --detach nd && cd nd && git checkout --orphan news-data-new && git rm -rfq . ; }
+      - name: 抓新聞並判斷
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python3 scripts/news.py nd
+      - name: 存回 news-data 分支
+        run: |
+          cd nd
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "新聞 $(TZ=Asia/Taipei date '+%m/%d %H:%M')" || exit 0
+          git push origin HEAD:news-data

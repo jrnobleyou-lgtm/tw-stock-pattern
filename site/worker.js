@@ -312,6 +312,7 @@ function jobsAt(t) {                                       // t 為 UTC 時間�
   if (wk && hm >= 1320 && hm <= 1410 && hm % 30 === 0) jobs.push("update.yml");     // 台灣 隔天 06:00–07:30 上市收盤資料
   if (d >= 2 && d <= 6 && hm === 10) jobs.push("us.yml");                          // 台灣 08:10 美股（等 KV 每日寫入額度在台灣 08:00 重置後）
   if (d === 6 && hm === 1260) jobs.push("weekly-adjust.yml");                       // 台灣 週日 05:00 除權息檢查
+  if ((hm >= 1320 || hm <= 930) && hm % ((hm >= 1320 ? d <= 4 : wk) ? 30 : 60) === 0) jobs.push("news.yml");   // 台灣 06:00–23:30 個股新聞：平日每 30 分、週末每小時
   return jobs;
 }
 // ── 部署看門狗：GitHub deploy 分支有新版，但 Cloudflare 超過 4 分鐘沒開始部署 → 自動觸發一次（Worker secret CF_BUILD_TOKEN）
@@ -436,6 +437,17 @@ export default {
       };
       const items = await Promise.all(SY.map(one));
       return new Response(JSON.stringify({ items }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
+    }
+    if (u.pathname === "/api/news") {                                    // 個股新聞：scripts/news.py 每 30 分整理（7 家媒體免費文章＋Gemini 判斷），存在 GitHub news-data 分支，依代號分 64 包
+      const c = u.searchParams.get("c") || "";
+      if (!/^[0-9]{4,6}[A-Z]?$/.test(c)) return new Response(JSON.stringify({ error: "bad code" }), { status: 400, headers: { "content-type": "application/json" } });
+      let h = 0; for (const ch of c) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
+      try {
+        const r = await fetch(`https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/s/${h % 64}.json`, { cf: { cacheTtl: 300, cacheEverything: true } });
+        if (!r.ok) throw 0;
+        const items = ((await r.json())[c] || []).slice(0, 60);
+        return new Response(JSON.stringify({ items }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=300" } });
+      } catch (e) { return new Response(JSON.stringify({ items: [], error: "unavailable" }), { status: 200, headers: { "content-type": "application/json" } }); }
     }
     if (u.pathname !== "/api/quote") return new Response("Not found", { status: 404 });
     const sym = u.searchParams.get("s") || "";
