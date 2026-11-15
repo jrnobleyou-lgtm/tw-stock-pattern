@@ -610,7 +610,7 @@ def detect_geometry(B, T):
     for r in res:
         k = r["kind"]
         key = lambda x: x.get("key_i", x["pts"][-1][0])
-        if k not in uniq or key(r) > key(uniq[k]):
+        if k not in uniq or (RANK.get(r["status"], 5), -key(r)) < (RANK.get(uniq[k]["status"], 5), -key(uniq[k])):
             uniq[k] = r
     # 雙重底、雙重頂若用到同一段波段點（W 和 M 疊在一起），只留比較新的那個
     if uniq.get("雙重底") and uniq.get("雙重底（不對稱）"):
