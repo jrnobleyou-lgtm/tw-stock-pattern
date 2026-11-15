@@ -1105,7 +1105,7 @@ class Chart{
           if(!this.pb) blk.push({t1:"回檔起點",t2:fmt(H),yy:yH,top:yH-12,c:"#ffffff"});
           rbk.push(...blk);
           for(const yv of [yH,yL,...blk.map(b=>b.yy)]) occ.push({x:pl,y:yv-2,w:xb-pl,h:4});
-          const txt=C<=Lo?"還在創低，尚無反彈":`反彈 +${up.toFixed(1)}%\n已回補 ${rec.toFixed(0)}%`;
+          const txt=C<=Lo?"還在創低，尚無反彈":`反彈 +${up.toFixed(1)}%\n已回補跌幅 ${rec.toFixed(0)}%`;
           if(RV===3){            // 右側「尺」：低點到高點一條細長條，刻度＝黃金分割，三角標記＝現價位置
             const bx=xb-14;
             o+=`<rect x="${bx}" y="${yH}" width="7" height="${yL-yH}" fill="#000" fill-opacity=".55" stroke="#9AA3B2" stroke-width="1"/><rect x="${bx}" y="${yC}" width="7" height="${yL-yC}" fill="${AM}" fill-opacity=".85"/>`;
