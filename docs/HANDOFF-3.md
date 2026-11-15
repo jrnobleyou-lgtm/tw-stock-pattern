@@ -31,3 +31,12 @@
 - 強弱族群可點進族群頁（`data-swg`，名稱旁「›」）。
 - 族群：低軌衛星補漏 7 檔（兆赫、璟德、元晶、義隆電、敬鵬、群創、宏捷科），低軌衛星族群 21 檔。
 - 本對話之後都能直接 `git push origin HEAD:main`（使用者加了 `.claude/settings.json`）；`-f` 會被擋。
+
+## 2026-11-15 深夜：盤中整頁更新、美股推送、新聞／財報／重訊規劃（Fable 審過，尚未開工）
+- 盤中首頁每 2 分鐘整頁重畫（`swLiveTick` → `home()`，保留捲動位置，滑動提示 `window.__hsMark` 先插好再瞬間回位）。
+- 美股 11/15 晚手動跑 us.yml 兩次（KV 當天寫入 24 次起算，額度充足）：DMI 新版、島型反轉、短線過熱勿追、面板（道瓊／標普／那斯達克／費半／VIX）、強弱族群都已帶上。使用者刪了 AMD、NET、RKLB、U 的畫線，系統形態已補上（AMD 為島型反轉底）。INTC 族群在 KV 早已是晶圓代工+IC設計。
+- FinMind 金鑰已用 request_credential 存在本雲端環境（api.finmindtrade.com，proxy 注入）；免費 register 等級只能逐檔查，不能全市場一次查。GitHub Actions 若要用，使用者需到 GitHub Secrets 貼（FINMIND_TOKEN_1／_2，第一把優先）。
+- **使用者已定規格**：先做台股；個股 K 線視窗加「消息」分頁（重訊、新聞 30 天，月營收 6 個月，EPS 3 季）；篩選頁加「今天有重訊」；新標籤「月營收創新高」＝近 12 個月新高、「年增新高」＝月營收創歷史新高且年增 > 0（使用者選 B）；新聞只放標題＋連結；重訊每 30 分、財報每天晚上。
+- **實測資料源**：證交所 `t187ap04_L`（重訊，只當天、常 connection reset）、`t187ap05_L`（月營收，只最新月）、`t187ap14_L`（EPS，最新季、累計值）；櫃買 `mopsfin_t187ap04_O`、`mopsfin_t187ap05_O`、`mopsfin_t187ap06_O_ci/basi/bd/fh/ins/mim`（EPS 欄「基本每股盈餘（元）」全形）。mops/mopsov 在本容器被擋。Yahoo 個股新聞 RSS `https://tw.stock.yahoo.com/rss?s=2330.TW`（約 15KB、20 則、無媒體名）。
+- **Fable 規劃要點**：不新增 workflow；`scripts/mops.py` 由 `analyze.py` 呼叫（30 分節流、失敗沿用舊資料、例外吞掉），盤中不 commit，`update.yml` 提交 `data/mops.json`（30 天，去重鍵＝代號＋發言日期＋時間＋主旨）；`jobsAt()` 加 18:10～22:10 每小時；個股明細放 `site/f/<代號>.json`（不要塞 `site/s`）；新聞 Worker `/api/news?c=` 讀 Yahoo RSS，`cf.cacheTtl 1800`；月營收回補建議 2016 起（先試 MOPS 全市場彙總表，GitHub 抓不到才用 FinMind，約 1,980 次）；EPS 存單季（官方累計減前季，固定檢查：台泥 115Q3 0.63＝0.10+0.29+0.24），回補 8 季；`update.yml` push 前加 `git pull --rebase`；開工順序：新聞 → 重訊觀察 2～3 天 → 重訊上線 → 月營收 → EPS。
+- **待使用者決定**：①「今天有重訊」是否含「上一交易日收盤後到現在」（建議含）②連續重複公告只算第一次（建議）③月營收回補 10 年（建議）④不足 13 個月不標創新高、不足 36 個月不標年增新高（建議）⑤新聞來源只能標「Yahoo奇摩股市」可否。「消息」分頁外觀先做 2～3 版截圖。
