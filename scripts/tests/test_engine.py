@@ -19,3 +19,20 @@ class Engine(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ApplyPatterns(unittest.TestCase):
+    BEAR = [{"kind": "V形頂", "dir": "bear", "status": "confirmed", "day": 2, "neck": None}]
+
+    def test_strong_stays_strong_with_warning(self):
+        # 11/15 使用者：轉強優先於走弱；看跌形態只加警示標籤
+        st, tags, sub = EN.apply_patterns("轉強", ["站回5/10日線"], None, self.BEAR)
+        self.assertEqual(st, "轉強")
+        self.assertIn("⚠V形頂", tags)
+        self.assertIn("站回5/10日線", tags)
+        self.assertIsNone(sub)
+
+    def test_bear_pattern_still_weakens_when_not_strong(self):
+        st, tags, sub = EN.apply_patterns("盤整", [], None, self.BEAR)
+        self.assertEqual(st, "走弱")
+        self.assertEqual(sub, "回檔走弱")

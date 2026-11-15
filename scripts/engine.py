@@ -433,7 +433,14 @@ def apply_patterns(state, tags, sub, geo):
     bull = [g for g in geo if g["status"] == "confirmed" and g["dir"] == "bull" and not g["kind"].startswith("單日")]
     bear.sort(key=lambda g: g["day"] or 99)
     bull.sort(key=lambda g: g["day"] or 99)
-    if bear and (not bull or (bear[0]["day"] or 99) < (bull[0]["day"] or 99)):
+    bear_first = bool(bear) and (not bull or (bear[0]["day"] or 99) < (bull[0]["day"] or 99))
+    if bear_first and state == "轉強":
+        # 11/15 使用者（Opus 顧問確認）：轉強優先於走弱——站回均線、突破、急漲成立時，看跌形態只加警示標籤，不改型態
+        g = bear[0]
+        tags.append("⚠" + (f"{dn(g['kind'])}跌破" if g["neck"] else dn(g["kind"])))
+        bear_first = False
+        bull = []
+    if bear_first:
         g = bear[0]
         state, sub = "走弱", sub if state == "走弱" and sub == "破底走弱" else "回檔走弱"
         tags = [t for t in tags if t != "多頭回檔"]
