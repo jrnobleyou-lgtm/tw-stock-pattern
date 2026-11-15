@@ -419,6 +419,24 @@ export default {
       const arr = await misBatch(u.searchParams.get("ex_ch") || "");
       return new Response(JSON.stringify(arr ? { msgArray: arr } : { error: "unavailable" }), { status: arr ? 200 : 502, headers: { "content-type": "application/json", "cache-control": "no-store" } });
     }
+    if (u.pathname === "/api/macro") {                                   // 盤後一眼看懂：匯率、原油、美債、美股指數（Yahoo，公開資料，快取 60 秒）
+      const SY = u.searchParams.get("m") === "US"
+        ? [["^DJI", "道瓊"], ["^GSPC", "標普500"], ["^IXIC", "那斯達克"], ["^SOX", "費城半導體"], ["^VIX", "VIX恐慌指數"]]
+        : [["TWD=X", "美元／台幣"], ["CL=F", "原油 WTI"], ["^TNX", "美債10年殖利率"]];
+      const one = async ([sy, name]) => {
+        try {
+          const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sy)}?interval=1d&range=5d`, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 60, cacheEverything: true } });
+          if (!r.ok) return { s: sy, name, error: 1 };
+          const j = await r.json(), res = j.chart && j.chart.result && j.chart.result[0];
+          const cl = ((res.indicators.quote[0] || {}).close || []).filter(x => x != null), m = res.meta || {};
+          const price = m.regularMarketPrice != null ? m.regularMarketPrice : cl[cl.length - 1];
+          const prev = cl.length >= 2 ? cl[cl.length - 2] : m.chartPreviousClose;
+          return { s: sy, name, price, prev, t: m.regularMarketTime, tz: m.exchangeTimezoneName };
+        } catch (e) { return { s: sy, name, error: 1 }; }
+      };
+      const items = await Promise.all(SY.map(one));
+      return new Response(JSON.stringify({ items }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
+    }
     if (u.pathname !== "/api/quote") return new Response("Not found", { status: 404 });
     const sym = u.searchParams.get("s") || "";
     if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });

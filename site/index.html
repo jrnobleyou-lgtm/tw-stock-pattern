@@ -298,6 +298,22 @@ function mktCards(){
   const h=one("TWII","加權指數")+one("OTC","櫃買指數");
   return h?`<div class="mkr">${h}</div>`:"";
 }
+/* ───────── 盤後一眼看懂：匯率、原油、美債（美股頁：美股指數＋VIX）。資料來自 Worker /api/macro（Yahoo），標資料時間 ───────── */
+function loadMacro(){
+  const el=document.getElementById("macro"); if(!el) return;
+  const US=D.market==="US";
+  fetch("/api/macro?m="+(US?"US":"TW")).then(r=>r.json()).then(j=>{
+    el.innerHTML=(j.items||[]).map(x=>{
+      if(x.error||x.price==null) return `<div class="mkc"><div class="mute">${x.name}</div><div class="mute">資料暫時取不到</div></div>`;
+      const d=x.price-x.prev, r=d/x.prev*100, cls=d>0?"c-strong":d<0?"c-weak":"mute";
+      const dec=x.s==="^TNX"?3:2, fx=v=>v.toLocaleString("en-US",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+      const tm=x.t?new Date(x.t*1000).toLocaleString("zh-TW",{timeZone:US?"America/New_York":"Asia/Taipei",month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit",hour12:false}):"";
+      const unit=x.s==="^TNX"?"%":"", pt=x.s==="^TNX"||x.s==="TWD=X"||x.s==="CL=F";
+      const extra=x.s==="TWD=X"?(d>0?"（台幣貶）":d<0?"（台幣升）":""):"";
+      return `<div class="mkc"><div class="mute">${x.name}<span class="mkd">${tm?"截至 "+(US?"美東 ":"")+tm:""}</span></div><div class="mkv">${fx(x.price)}${unit}</div><div class="${cls}">${d>0?"▲":d<0?"▼":""}${fx(Math.abs(d))}${unit}（${d>0?"+":""}${r.toFixed(2)}%）${extra}</div>${x.s==="CL=F"?'<div class="mute">美元／桶</div>':""}</div>`;
+    }).join("");
+  }).catch(()=>{});
+}
 function swPanel(){
   let {strong,weak,rows}=swGroups(), f=x=>(x>0?"+":"")+x.toFixed(2)+"%", note="";
   const rel=(list,sortf,n)=>{const out=[];for(const r of rows.slice().sort(sortf)){if(out.some(o=>{let k=0;for(const c of r.set) if(o.set.has(c)) k++;return k>0.5*Math.min(r.set.size,o.set.size)})) continue;out.push(r);if(out.length>=n)break}return out};
@@ -310,7 +326,7 @@ function swPanel(){
     :V===3?`<div class="swbar"><b>${r.name}</b><span class="swtr"><i class="${isS?"bg-s":"bg-w"}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
     :`<div class="swr"><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`;
   const col=(title,cls,list,isS,isRel)=>`<div class="swc"><h3 class="${cls}">${title}${isRel?'<span class="mute" style="font-weight:400;font-size:12px">（沒有族群達 6 成，列相對'+(isS?'最強':'最弱')+' 3 個）</span>':""}</h3>${V===2?`<div class="swchips">${list.map(r=>item(r,cls,isS)).join("")}</div>`:list.map(r=>item(r,cls,isS)).join("")}</div>`;
-  return `<div class="swp"><div class="swh">盤後一眼看懂</div>`+mktCards()+`<div class="swh" style="margin-top:12px">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span></div><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+`</div></div>`;
+  return `<div class="swp"><div class="swh">盤後一眼看懂</div>`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div><div class="swh" style="margin-top:12px">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span></div><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+`</div></div>`;
 }
 
 /* ───────── 首頁：族群統計 ───────── */
@@ -328,7 +344,7 @@ function home(){
       `<td>${rb? rb : '<span class="mute">-</span>'}</td></tr>`;
   }
   h += `</tbody></table></div><p class="note">族群樣本少於 5 檔時，百分比參考價值低，不顯示。顏色採台股習慣：紅＝強、綠＝弱。</p>`;
-  $("#app").innerHTML = h;
+  $("#app").innerHTML = h; loadMacro();
   document.querySelectorAll(".chip[data-st]").forEach(c=>c.onclick=()=>{location.hash="st-"+encodeURIComponent(c.dataset.st)});
   document.querySelectorAll("tr.row").forEach(r=>r.onclick=()=>{location.hash="g-"+D.groups.findIndex(x=>x.name===r.dataset.g)});
 }
