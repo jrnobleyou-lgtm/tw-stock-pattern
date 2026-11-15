@@ -110,6 +110,7 @@ svg text{fill:var(--fg);font-size:11px}
 .ichip:hover{border-color:var(--mute)}
 .ichip b{font-variant-numeric:tabular-nums;font-size:14px}
 .swhint{display:none}
+.dmihelp{margin:6px 0;font-size:13px}.dmihelp summary{cursor:pointer;color:#4D7CFF;font-weight:700}.dmihelp p{margin:6px 0;line-height:1.7}
 .sortbar{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:4px 0 6px;font-size:13px;color:#a5b4fc}.sortbar select{background:#161227;color:#e5e7eb;border:1px solid #3b3566;border-radius:8px;padding:5px 8px;font-size:13px}
 .stt .tvm{display:none}
 @media(max-width:900px){
@@ -389,7 +390,18 @@ const FILTERS = [
   {k:"cdl", name:"K線反轉形態", f:s=>s.candle.length>0},
   {k:"kdlo", name:"KD低檔鈍化", f:s=>has(s,/KD低檔鈍化/)},
   {k:"kdhi", name:"KD高檔鈍化", f:s=>has(s,/KD高檔鈍化/)},
+  {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
+  {k:"dmis", name:"DMI空頭趨勢", f:s=>has(s,/DMI空頭趨勢/)},
+  {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
+  {k:"dmidn", name:"DMI剛翻空", f:s=>has(s,/DMI剛翻空/)},
 ];
+const DMI_NOTE={
+  dmib:"<b>條件：</b>+DI 比 -DI 高出 5 以上，ADX 在 25 以上，而且 ADX 比 3 天前高（趨勢正在變強）。",
+  dmis:"<b>條件：</b>-DI 比 +DI 高出 5 以上，ADX 在 25 以上，而且 ADX 比 3 天前高。",
+  dmiup:"<b>條件：</b>最近 3 天內 +DI 由下往上穿過 -DI；今天 +DI 在 20 以上且比 -DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；KD 的 K 大於 D、K 在 50～80 之間，且最近 3 天 K 沒到過 80。<br><b>怎麼看：</b>買方線最近幾天剛超過賣方線，KD 也同步轉強、還沒過熱，可能是起漲初期；趨勢還沒確認，要搭配成交量和型態一起看。",
+  dmidn:"<b>條件：</b>最近 3 天內 -DI 由下往上穿過 +DI；今天 -DI 在 20 以上且比 +DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；K 小於 D、K 在 20～50 之間，且最近 3 天 K 沒到過 20。<br><b>怎麼看：</b>賣方線最近幾天剛超過買方線，KD 也同步轉弱，可能是起跌初期；要搭配成交量和型態一起看。"
+};
+const DMI_HELP='<details class="dmihelp"><summary>ⓘ 什麼是 DMI？</summary><p>DMI 用三條線看趨勢：<b>+DI</b> 是買方力道，<b>-DI</b> 是賣方力道，誰在上面誰占優勢；<b>ADX</b> 看趨勢強不強，不分漲跌。ADX 在 25 以上，表示正在走明顯的趨勢，數字往上代表越走越強；低於 20 多半是盤整，訊號容易來回騙人。ADX 超過 45～50 常是趨勢末段過熱，要小心。標籤以收盤為準，盤中數字會跳動。K 線圖上按「DMI趨勢」就能看到這三條線。</p></details>';
 function screener(key){
   key = key || "rb3";
   const cur = FILTERS.find(x=>x.k===key) || FILTERS[0];
@@ -403,6 +415,7 @@ function screener(key){
     h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${turnover(s)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else h += sortBar()+stockTable(list,false,true);
+  if(DMI_NOTE[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${DMI_NOTE[cur.k]}</p>${DMI_HELP}<div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
   document.querySelectorAll(".filters .btn").forEach(b=>b.onclick=()=>{location.hash="scr-"+b.dataset.k});
@@ -641,7 +654,9 @@ class Chart{
     this.tf="D"; this.geo=true; this.sup=true; this.pb=false; this.rb=false; this.adjOn=false;
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
-    if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
+    if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
+    if(/^scr-dmi(b|s|up|dn)$/.test(baseRaw||"")) this.ind.dmi=1;
+    if(/^scr-dmi(up|dn)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
     this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[];

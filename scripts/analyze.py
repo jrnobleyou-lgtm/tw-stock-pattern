@@ -61,6 +61,65 @@ def load_prices(path):
     return by, mk
 
 
+def dmi_series(bars, n=14):
+    """DMI(14) Wilder，與網頁 K 線圖 calcDMI 同一套算法（還原價）。回傳 (+DI, -DI, ADX) 三個清單（沒有值是 None）。"""
+    N = len(bars)
+    pdi, mdi, adx = [None] * N, [None] * N, [None] * N
+    if N <= n * 2:
+        return pdi, mdi, adx
+    P, M, T = [0.0] * N, [0.0] * N, [0.0] * N
+    for i in range(1, N):
+        up = bars[i]["h"] - bars[i - 1]["h"]
+        dn = bars[i - 1]["l"] - bars[i]["l"]
+        P[i] = up if up > dn and up > 0 else 0.0
+        M[i] = dn if dn > up and dn > 0 else 0.0
+        T[i] = max(bars[i]["h"] - bars[i]["l"], abs(bars[i]["h"] - bars[i - 1]["c"]), abs(bars[i]["l"] - bars[i - 1]["c"]))
+    sp, sm, st = sum(P[1:n + 1]), sum(M[1:n + 1]), sum(T[1:n + 1])
+    dx = [0.0] * N
+    for i in range(n, N):
+        if i > n:
+            sp = sp - sp / n + P[i]; sm = sm - sm / n + M[i]; st = st - st / n + T[i]
+        pdi[i] = 100 * sp / st if st else 0.0
+        mdi[i] = 100 * sm / st if st else 0.0
+        dx[i] = 100 * abs(pdi[i] - mdi[i]) / (pdi[i] + mdi[i]) if (pdi[i] + mdi[i]) else 0.0
+    a = sum(dx[n:2 * n]) / n
+    adx[2 * n - 1] = a
+    for i in range(2 * n, N):
+        a = (a * (n - 1) + dx[i]) / n
+        adx[i] = a
+    return pdi, mdi, adx
+
+
+def dmi_tags(bars, Ks, Ds):
+    """DMI 標籤（11/15 使用者定 ADX 標準 25，剛翻多／空公式由 Opus 顧問建議，使用者同意方向）：
+    多頭趨勢：+DI > -DI 且差 ≥5，ADX ≥25 且比 3 天前高。空頭趨勢：反過來。
+    剛翻多：近 3 日 +DI 由下往上穿過 -DI，今天 +DI ≥20 且比 -DI 大 ≥2，ADX ≥15 且不低於 3 天前，K>D 且 50≤K<80，近 3 日 K 沒到過 80（沒有高檔鈍化）。
+    剛翻空：對稱（-DI 上穿 +DI，-DI ≥20 且大 ≥2，ADX ≥15 且不低於 3 天前，K<D 且 20<K≤50，近 3 日 K 沒到過 20）。K 棒不足 60 根不標。"""
+    out = []
+    if len(bars) < 60:
+        return out
+    pdi, mdi, adx = dmi_series(bars)
+    T = len(bars) - 1
+    if None in (pdi[T], mdi[T], adx[T], adx[T - 3], pdi[T - 3], mdi[T - 3]):
+        return out
+    p, m, a = pdi[T], mdi[T], adx[T]
+    if a >= 25 and a > adx[T - 3]:
+        if p - m >= 5:
+            out.append("DMI多頭趨勢")
+        elif m - p >= 5:
+            out.append("DMI空頭趨勢")
+    k, d = Ks[T], Ds[T]
+    k3 = Ks[T - 2:T + 1]
+    if a >= 15 and a >= adx[T - 3]:
+        crossed_up = p > m and any(pdi[T - j] <= mdi[T - j] for j in (1, 2, 3))
+        if crossed_up and p >= 20 and p - m >= 2 and k > d and 50 <= k < 80 and max(k3) < 80:
+            out.append("DMI剛翻多")
+        crossed_dn = m > p and any(mdi[T - j] <= pdi[T - j] for j in (1, 2, 3))
+        if crossed_dn and m >= 20 and m - p >= 2 and k < d and 20 < k <= 50 and min(k3) > 20:
+            out.append("DMI剛翻空")
+    return out
+
+
 def r2(x):
     return None if x is None else round(x, 2)
 
@@ -140,18 +199,21 @@ def main():
         # KD(9,3,3) 高低檔鈍化：K 值連續 ≥3 日在 80 以上／20 以下（以還原價計算）
         k_, d_ = 50.0, 50.0
         run_hi = run_lo = 0
+        Ks, Ds = [], []
         for i in range(len(bars)):
             lo9 = min(b["l"] for b in bars[max(0, i - 8): i + 1])
             hi9 = max(b["h"] for b in bars[max(0, i - 8): i + 1])
             rsv = 50.0 if hi9 == lo9 else (bars[i]["c"] - lo9) / (hi9 - lo9) * 100
             k_ = 2 / 3 * k_ + rsv / 3
             d_ = 2 / 3 * d_ + k_ / 3
+            Ks.append(k_); Ds.append(d_)
             run_hi = run_hi + 1 if k_ >= 80 else 0
             run_lo = run_lo + 1 if k_ <= 20 else 0
         if run_hi >= 1:                              # 11/14 使用者：K 一碰到 80 以上就算高檔鈍化（不用連 3 天）
             tags.append("KD高檔鈍化")
         if run_lo >= 1:                              # K 一跌到 20 以下就算低檔鈍化
             tags.append("KD低檔鈍化")
+        tags += dmi_tags(bars, Ks, Ds)               # DMI 標籤（11/15 使用者＋Opus 顧問定的公式，見 dmi_tags）
         if len(bars) >= 10:                          # 11/14 使用者：近 10 個交易日最低點到現價漲 ≥30%＝近日反彈強勁（額外標籤，不改變原有型態／標籤）
             lo10 = min(b["l"] for b in bars[-10:])
             if lo10 > 0 and bars[-1]["c"] / lo10 - 1 >= 0.30:
