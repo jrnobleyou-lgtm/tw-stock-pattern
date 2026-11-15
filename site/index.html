@@ -641,6 +641,7 @@ class Chart{
     this.tf="D"; this.geo=true; this.sup=true; this.pb=false; this.rb=false; this.adjOn=false;
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
+    if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
     this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[];
