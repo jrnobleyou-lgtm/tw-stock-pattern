@@ -293,7 +293,7 @@ function swPanel(){
   let wRel=false,sRel=false;
   if(!weak.length){weak=rel(weak,(a,b)=>a.med-b.med,3);wRel=true}      /* 使用者 11/15：沒有族群達標時，仍列相對最弱 3 個（標明未達 6 成下跌） */
   if(!strong.length){strong=rel(strong,(a,b)=>b.med-a.med,3);sRel=true}
-  const V=window.SWV??1, mx=Math.max(1,...strong.concat(weak).map(r=>Math.abs(r.med)));
+  const V=window.SWV??3, mx=Math.max(1,...strong.concat(weak).map(r=>Math.abs(r.med)));
   const sub=(r,isS)=>`${isS?r.up:r.dn}/${r.n} 檔${isS?"漲":"跌"}・${isS?"領漲":"領跌"} ${(isS?r.best:r.worst).name}`;
   const item=(r,cls,isS)=>V===2?`<span class="swchip"><b>${r.name}</b> <span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></span>`
     :V===3?`<div class="swbar"><b>${r.name}</b><span class="swtr"><i class="${isS?"bg-s":"bg-w"}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
