@@ -168,6 +168,14 @@ svg text{fill:var(--fg);font-size:11px}
   .stt td.sn1{white-space:nowrap;overflow-wrap:normal;max-width:none}.stt td.sn1 .sn{display:inline-block;max-width:7.5em;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
   .stt td.tg{min-width:170px;padding-left:10px}.stt th.tg{padding-left:10px}.stt .tag{white-space:nowrap}
   .hr{width:100%;margin-left:0;gap:6px}.sf{flex:1 1 100%}.sf input{width:auto;flex:1;max-width:none}.fz{flex-basis:auto;margin-left:auto}}
+/* 回到頂端（右下）／到底部（右上，頁首正下方）：固定在畫面上，隨捲動跟著走；K 線視窗打開時被蓋在下面 */
+.ttb{position:fixed;right:14px;z-index:40;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s;font:700 14px/1 inherit;user-select:none;-webkit-tap-highlight-color:transparent}
+.ttb.show{opacity:1;pointer-events:auto}
+#ttTop{bottom:calc(18px + env(safe-area-inset-bottom))}
+.tt1 .ttb{width:46px;height:46px;border-radius:50%;background:#7c3aed;color:#fff;border:0;box-shadow:0 4px 14px rgba(0,0,0,.45);font-size:20px}
+.tt2 .ttb{padding:9px 14px;border-radius:999px;background:rgba(20,12,48,.88);color:#e9e4ff;border:1px solid #8b5cf6;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.tt3 .ttb{width:40px;height:40px;border-radius:10px;background:rgba(9,5,26,.6);color:#c4b5fd;border:1px solid rgba(196,181,253,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-size:18px}
+@media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
 </style>
 </head>
 <body>
@@ -1541,6 +1549,19 @@ renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
+/* 回到頂端／到底部按鈕（11/15 使用者）：樣式 window.TTV（1 圓形實心／2 膠囊文字／3 半透明方形） */
+(function(){
+  const v=window.TTV||1, h=document.documentElement; h.classList.add("tt"+v);
+  const lab=v===2?["▲ 頂端","▼ 底部"]:["▲","▼"];
+  const mk=(id,t,title,fn)=>{const b=document.createElement("button");b.id=id;b.className="ttb";b.textContent=t;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;document.body.appendChild(b);return b};
+  const top=mk("ttTop",lab[0],"回到頂端",()=>scrollTo({top:0,behavior:"smooth"}));
+  const bot=mk("ttBot",lab[1],"到底部",()=>scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"}));
+  const upd=()=>{const hd=document.querySelector("header");bot.style.top=((hd?hd.getBoundingClientRect().bottom:0)+10)+"px";
+    const y=scrollY,rest=document.documentElement.scrollHeight-innerHeight-y;
+    top.classList.toggle("show",y>300); bot.classList.toggle("show",rest>300)};
+  addEventListener("scroll",upd,{passive:true}); addEventListener("resize",upd); addEventListener("hashchange",()=>setTimeout(upd,300));
+  new MutationObserver(()=>requestAnimationFrame(upd)).observe($("#app"),{childList:true}); upd();
+})();
 window.onhashchange = route; route();
 </script>
 </body>
