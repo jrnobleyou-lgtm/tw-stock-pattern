@@ -1568,7 +1568,7 @@ $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value
 /* 強弱族群：點族群名稱進族群頁（11/15 使用者）；手機表格左右滑動提示 */
 document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(!t)return;const i=D.groups.findIndex(x=>x.name===t.dataset.swg);if(i>=0)location.hash="g-"+i});
 (function(){
-  const v=window.SLV||1; document.documentElement.classList.add("hs"+v,"ta"+(window.TTA||2));
+  const v=window.SLV??0;   /* 使用者選只保留五種型態卡片列上方的箭頭（表格上方提示關閉，0）*/ document.documentElement.classList.add("hs"+v,"ta"+(window.TTA||2));
   const mark=()=>{ if(innerWidth>900) return;
     const sm=document.querySelector("#app .sum");      /* 五種型態卡片列：上方加一行左右箭頭提示（11/15 使用者） */
     if(sm&&sm.scrollWidth>sm.clientWidth+4&&!(sm.previousElementSibling||{}).classList?.contains("hsh0")) sm.insertAdjacentHTML("beforebegin",'<div class="hsh0"><b>◀</b><span>左右滑動看五種型態</span><b>▶</b></div>');
