@@ -340,7 +340,10 @@ def main():
             tags.append("KD高檔鈍化")
         if run_lo >= 1:                              # K 一跌到 20 以下就算低檔鈍化
             tags.append("KD低檔鈍化")
-        tags += dmi_tags(bars, Ks, Ds)               # DMI 標籤（11/15 使用者＋Opus 顧問定的公式，見 dmi_tags）
+        tags += dmi_tags(bars, Ks, Ds)
+        # 11/15 使用者：短線急漲又 KD 高檔＝過熱、不要追（只標在個股，不放篩選頁）：有「3日急漲」（≥20%）且 KD高檔鈍化
+        if "KD高檔鈍化" in tags and any(t.startswith("3日急漲") for t in tags):
+            tags.append("短線過熱勿追")               # DMI 標籤（11/15 使用者＋Opus 顧問定的公式，見 dmi_tags）
         if len(bars) >= 10:                          # 11/14 使用者：近 10 個交易日最低點到現價漲 ≥30%＝近日反彈強勁（額外標籤，不改變原有型態／標籤）
             lo10 = min(b["l"] for b in bars[-10:])
             if lo10 > 0 and bars[-1]["c"] / lo10 - 1 >= 0.30:
