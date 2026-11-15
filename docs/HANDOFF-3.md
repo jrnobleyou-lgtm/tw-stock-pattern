@@ -47,3 +47,10 @@
 - **FinMind 使用時間**：使用者平日自己的台股程式會用 FinMind，**我們的回補要在晚上 6 點（台灣）以後跑**。
 - 新聞 API 已寫好（未上線）：`worker.js` `/api/news?c=代號`（Yahoo RSS，近 30 天，快取 30 分；上櫃用 .TW 也抓得到）。前端「K線圖／消息」分頁原型三版（`window.NWV` 1 單欄、2 左財報右消息、3 小分頁），截圖給使用者挑中。原型假資料 `site/f/2330.json`、`site/f/3617.json` 不要提交。
 - 已有官方重訊時，Yahoo 轉貼的【公告】新聞不重複列。
+
+## 2026-11-16：新聞改多家媒體＋AI 判斷上修／持平／下修（規劃中）
+- 使用者選消息分頁**版本 2**（電腦手機都用）。新聞來源照使用者另一個排程：主要 經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析；補充 科技新報、自由財經、DIGITIMES（免費文）、財訊；排除經濟 VIP、MoneyDJ 付費版 5850web。Yahoo 不用。
+- 每則新聞標 ▲上修（紅）／－持平（灰）／▼下修（綠）＋一行理由；個股標籤「近期消息偏多／偏空」看近 7 天；篩選頁一顆「近 7 天消息偏多」。盤中每 30 分也跑（每篇只判一次）。
+- **AI 用 Gemini 免費 API**（使用者不要花錢；Claude API 不用）。金鑰已用 request_credential 存本環境（generativelanguage.googleapis.com，OpenAI 相容端點 `/v1beta/openai/chat/completions`，Bearer）。GitHub Actions 要用需使用者另貼 Secrets（GEMINI_API_KEY）。使用者截圖曾外流一把金鑰，已請他刪掉重建。
+- 實測（11/16）：工商、經濟 RSS 抓得到、內文用 `<p>` 擷取可用；12 篇一次送 gemini-3.5-flash 約 15 秒、10.6K 輸入 token，判斷品質好（看內文不被標題誤導、會略過選股清單文）。經濟日報部分文章只有約 200 字（付費／摘要）。測試腳本在 /tmp/n（非版控）。
+- 關鍵字規則（D）最後才考慮。Cloudflare 金鑰沒有 Workers AI 權限。
