@@ -437,6 +437,22 @@ export default {
       const items = await Promise.all(SY.map(one));
       return new Response(JSON.stringify({ items }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
     }
+    if (u.pathname === "/api/news") {                                    // 個股新聞：Yahoo奇摩股市 RSS（只回標題、連結、時間；近 30 天；邊緣快取 30 分）
+      const c = u.searchParams.get("c") || "";
+      if (!/^[0-9]{4,6}[A-Z]?$/.test(c)) return new Response(JSON.stringify({ error: "bad code" }), { status: 400, headers: { "content-type": "application/json" } });
+      try {
+        const r = await fetch(`https://tw.stock.yahoo.com/rss?s=${c}.TW`, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 1800, cacheEverything: true } });
+        if (!r.ok) throw 0;
+        const x = await r.text(), lim = Date.now() - 30 * 86400000, items = [];
+        const pick = (b, t) => { const m = b.match(new RegExp(`<${t}>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${t}>`)); return m ? m[1].trim() : ""; };
+        for (const m of x.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+          const t = Date.parse(pick(m[1], "pubDate")), link = pick(m[1], "link");
+          if (!(t >= lim) || !/^https:\/\/(tw\.stock|tw\.news)\.yahoo\.com\//.test(link)) continue;
+          items.push({ t: Math.floor(t / 1000), title: pick(m[1], "title").replace(/<[^>]+>/g, "").slice(0, 200), link });
+        }
+        return new Response(JSON.stringify({ items, src: "Yahoo奇摩股市" }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=900" } });
+      } catch (e) { return new Response(JSON.stringify({ error: "unavailable" }), { status: 502, headers: { "content-type": "application/json" } }); }
+    }
     if (u.pathname !== "/api/quote") return new Response("Not found", { status: 404 });
     const sym = u.searchParams.get("s") || "";
     if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });

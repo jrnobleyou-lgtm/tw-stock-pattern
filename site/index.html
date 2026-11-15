@@ -192,6 +192,21 @@ svg text{fill:var(--fg);font-size:11px}
 .ta1 .ttb{background:rgba(20,12,48,.35)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
 .ta2 .ttb{background:transparent!important;box-shadow:none!important;text-shadow:0 1px 3px #000}
 .ta3 .ttb.show{opacity:.45}.ta3 .ttb.show:hover,.ta3 .ttb.show:active{opacity:1}
+.mtabs{display:flex;gap:4px}.mtabs .btn.on{background:#4c1d95;border-color:#a78bfa;color:#fff}
+#newsp{flex:1;min-height:0;overflow:auto;display:none;padding:2px 4px 10px;color:#e5e7eb;font-size:14px}
+.nw h4{margin:14px 0 6px;font-size:14px;color:#c4b5fd;font-weight:600}.nw h4 small{color:var(--mute);font-weight:400;margin-left:6px}
+.nw .it{display:flex;gap:10px;padding:6px 2px;border-bottom:1px solid #222}.nw .it .dt{flex:none;width:86px;color:var(--mute);font-size:12px;padding-top:2px}
+.nw .it a{color:#e5e7eb;text-decoration:none}.nw .it a:hover{text-decoration:underline;color:#fff}
+.nw .mk{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;margin-right:6px;vertical-align:1px}.nw .mk.mo{background:#f0d34a;color:#241c00}.nw .mk.td{background:#dc2626;color:#fff}
+.nw table{border-collapse:collapse;width:auto;min-width:300px}.nw td,.nw th{padding:5px 12px;border-bottom:1px solid #222;text-align:right}.nw td:first-child,.nw th:first-child{text-align:left}
+.nw .up{color:#f87171}.nw .dn{color:#4ade80}.nw .src{font-size:11px;color:var(--mute);margin-top:6px}
+.nw .eps{display:flex;gap:8px;flex-wrap:wrap}.nw .eps div{border:1px solid #333;border-radius:8px;padding:6px 14px;text-align:center;min-width:80px}.nw .eps b{display:block;font-size:18px}.nw .eps span{font-size:11px;color:var(--mute)}
+.nw .hib{display:inline-block;background:#7c2d12;color:#fed7aa;border-radius:999px;padding:1px 9px;font-size:12px;margin-right:6px}
+.nw2{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:22px}
+.nw .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:16px}.nw .bars div{flex:1;background:#6d28d9;border-radius:4px 4px 0 0;position:relative;min-width:22px}
+.nw .bars div i{position:absolute;top:-16px;left:0;right:0;text-align:center;font-style:normal;font-size:11px;color:#ddd}.nw .bl{display:flex;gap:8px}.nw .bl span{flex:1;text-align:center;font-size:11px;color:var(--mute);min-width:22px}
+.nw .sub{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}
+@media(max-width:900px){.mhead .mtabs .btn{padding:3px 8px;font-size:12px}.mhead .mtabs{gap:3px}.mhead .mtitle b{white-space:nowrap}.nw2{grid-template-columns:1fr;gap:6px}.nw .it .dt{width:70px}#newsp{font-size:13px}}
 </style>
 </head>
 <body>
@@ -575,6 +590,43 @@ function closeModal(){
   if(modalEl){modalEl.remove();modalEl=null;chart=null}
   document.body.style.overflow="";
 }
+/* ───────── 消息分頁：重訊、新聞、月營收、EPS ───────── */
+function revTxt(v){return v>=1e5?(v/1e5).toFixed(2)+"億":Math.round(v/10).toLocaleString()+"萬"}
+function pctTxt(x){return x==null?"—":`<span class="${x>0?"up":x<0?"dn":""}">${x>0?"+":""}${x}%</span>`}
+async function loadNews(s,np){
+  np.innerHTML='<div class="mute" style="padding:30px;text-align:center">載入中…</div>';
+  const [f,n]=await Promise.all([fetch("f/"+s.code+".json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),fetch("/api/news?c="+s.code).then(r=>r.ok?r.json():null).catch(()=>null)]);
+  const today=D.dates[D.dates.length-1];
+  const mops=(f&&f.mops||[]).map(m=>({d:m.d,t:m.t,title:m.s,mo:1}));
+  const news=(n&&n.items||[]).filter(x=>!(f&&f.mops&&/^【公告】/.test(x.title))).map(x=>{const d=new Date((x.t+28800)*1000).toISOString();return{d:d.slice(0,10),t:d.slice(11,16),title:x.title,link:x.link}});
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+  const row=x=>`<div class="it"><div class="dt">${x.d.slice(5).replace("-","/")} ${x.t}</div><div>${x.mo?`<span class="mk mo">重訊</span>`:""}${x.mo&&x.d>=today?`<span class="mk td">今天</span>`:""}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}</div></div>`;
+  const empty=t=>`<div class="mute" style="padding:6px 2px">${t}</div>`;
+  const src=`<div class="src">新聞來源：Yahoo奇摩股市（點標題開原文）　重訊來源：公開資訊觀測站</div>`;
+  const hi=f?`${f.revHi?'<span class="hib">月營收創新高</span>':""}${f.yoyHi?'<span class="hib">年增新高</span>':""}`:"";
+  const rev=f&&f.rev||[], eps=f&&f.eps||[];
+  const revTable=rev.length?`<table><tr><th>月份</th><th>營收</th><th>年增</th></tr>${rev.map(r=>`<tr><td>${r[0].replace("-","/")}</td><td>${revTxt(r[1])}</td><td>${pctTxt(r[2])}</td></tr>`).join("")}</table>`:empty("尚無資料");
+  const mx=Math.max(1,...rev.map(r=>r[1]));
+  const revBars=rev.length?`<div class="bars">${rev.slice().reverse().map(r=>`<div style="height:${Math.max(6,r[1]/mx*100)}%"><i>${revTxt(r[1]).replace("億","")}</i></div>`).join("")}</div><div class="bl">${rev.slice().reverse().map(r=>`<span>${+r[0].slice(5)}月<br>${pctTxt(r[2])}</span>`).join("")}</div><div class="src">單位：億元；下排為年增率</div>`:empty("尚無資料");
+  const epsHTML=eps.length?`<div class="eps">${eps.map(e=>`<div><b class="${e[1]<0?"dn":""}">${e[1]}</b><span>${e[0].replace("Q"," 第")}季</span></div>`).join("")}</div><div class="src">單季 EPS（元）</div>`:empty("尚無資料");
+  const V=window.NWV||1;
+  if(V===1){
+    np.innerHTML=`<div class="nw">${hi?`<div style="margin:6px 0 2px">${hi}</div>`:""}
+      <h4>重大訊息<small>近 30 天</small></h4>${mops.length?mops.map(row).join(""):empty("近 30 天沒有重大訊息")}
+      <h4>新聞<small>近 30 天</small></h4>${news.length?news.map(row).join(""):empty("近 30 天沒有新聞")}
+      <h4>月營收<small>近 6 個月</small></h4>${revTable}
+      <h4>EPS<small>近 3 季</small></h4>${epsHTML}${src}</div>`;
+  }else if(V===2){
+    const all=mops.concat(news).sort((a,b)=>(b.d+b.t).localeCompare(a.d+a.t));
+    np.innerHTML=`<div class="nw nw2"><div>${hi?`<div style="margin:8px 0 0">${hi}</div>`:""}<h4>月營收<small>近 6 個月</small></h4>${revBars}<h4>EPS<small>近 3 季</small></h4>${epsHTML}</div>
+      <div><h4>重訊＋新聞<small>近 30 天，依時間排列</small></h4>${all.length?all.map(row).join(""):empty("近 30 天沒有消息")}${src}</div></div>`;
+  }else{
+    const tabs=[["mo",`重訊 ${mops.length}`],["nw",`新聞 ${news.length}`],["rev","月營收"],["eps","EPS"]];
+    const body={mo:mops.length?mops.map(row).join(""):empty("近 30 天沒有重大訊息"),nw:news.length?news.map(row).join(""):empty("近 30 天沒有新聞"),rev:revTable,eps:epsHTML};
+    np.innerHTML=`<div class="nw">${hi?`<div style="margin:6px 0 2px">${hi}</div>`:""}<div class="sub">${tabs.map(([k,t],i)=>`<button class="btn ${i?"":"on"}" data-ns="${k}">${t}</button>`).join("")}</div><div id="nsb">${body.mo}</div>${src}</div>`;
+    np.querySelectorAll("[data-ns]").forEach(b=>b.onclick=()=>{np.querySelectorAll("[data-ns]").forEach(x=>x.classList.toggle("on",x===b));np.querySelector("#nsb").innerHTML=body[b.dataset.ns]});
+  }
+}
 function notesHTML(s){
   let h="";
   if(s.box) h+=`<p>盤整區間：${s.box.s} ～ ${s.box.e}<br>上緣 ${s.box.hi}　下緣 ${s.box.lo}<br>${s.ev?`事件：${s.ev.date} ${evText(s.ev)}`:"價格仍在區間內"}</p>`;
@@ -587,7 +639,10 @@ function mountModal(s, headHTML, opts){
   closeModal();
   document.body.style.overflow="hidden";
   const el=document.createElement("div"); el.className="modal";
-  el.innerHTML=`<div class="mpanel"><div class="mhead">${headHTML}<button class="btn" id="mclose">✕ 關閉（ESC）</button></div><div id="chart"></div></div>`;
+  const nt=opts&&opts.news?`<span class="mtabs"><button class="btn on" data-mt="k">K線圖</button><button class="btn" data-mt="n">消息</button></span>`:"";
+  el.innerHTML=`<div class="mpanel"><div class="mhead">${headHTML}${nt}<button class="btn" id="mclose">✕ 關閉（ESC）</button></div><div id="chart"></div><div id="newsp"></div></div>`;
+  if(nt) el.querySelectorAll("[data-mt]").forEach(b=>b.onclick=()=>{const n=b.dataset.mt==="n";el.querySelectorAll("[data-mt]").forEach(x=>x.classList.toggle("on",x===b));
+    el.querySelector("#chart").style.display=n?"none":"";const np=el.querySelector("#newsp");np.style.display=n?"block":"none";if(n&&!np.dataset.ok){np.dataset.ok=1;loadNews(s,np)}});
   el.addEventListener("click",e=>{ if(e.target===el) goBack(); });                       // 點視窗外：關閉返回
   el.querySelector(".mpanel").addEventListener("click",e=>{ if(!e.target.closest("#cv") && !e.target.closest("button") && !e.target.closest("input,textarea,select,label")) chart && chart.clear(); });   // 圖以外的空白處（含右側欄、下方資訊欄）點一下就關閉 K 棒資訊
   el.querySelector("#mclose").onclick=goBack;
@@ -652,7 +707,7 @@ function openStock(code){
     return;
   }
   const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
-  mountModal(s, head, {notes:notesHTML(s)});
+  mountModal(s, head, {notes:notesHTML(s),news:D.market!=="US"&&/^\d/.test(s.code)});
   startLive(chart, D.market==="US"?code:code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
 function openIndex(key){
