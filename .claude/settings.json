@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push origin HEAD:main)",
+      "Bash(git push origin claude/trusting-fermi-4kivzc:main)",
+      "Bash(git push origin main)"
+    ]
+  }
+}
