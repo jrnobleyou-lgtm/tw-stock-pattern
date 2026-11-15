@@ -4,6 +4,7 @@
 
 @docs/HANDOFF.md
 @docs/HANDOFF-2.md
+@docs/HANDOFF-3.md
 
 ## 跟使用者溝通
 - 一律用**繁體中文**回覆，不要夾英文句子（使用者看不懂英文）。專有名詞可附英文。
