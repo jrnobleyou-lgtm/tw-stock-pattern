@@ -368,10 +368,17 @@ function swLiveTick(){
   if(wd<1||wd>5||m<540||m>815) return;
   fetch("data.js?t="+Date.now(),{cache:"no-store"}).then(r=>r.text()).then(t=>{
     const i=t.indexOf("{"); const nd=JSON.parse(t.slice(i).replace(/;\s*$/,""));
-    for(const c in nd.stocks){const a=D.stocks[c],b=nd.stocks[c]; if(a){a.chg=b.chg;a.close=b.close;a.vol=b.vol}}
-    D.inst=nd.inst; D.fut=nd.fut; D.live=nd.live; D.asof=nd.asof;
-    const el=document.getElementById("swwrap"); if(!el) return;
-    const w=document.createElement("div"); w.innerHTML=swPanel(); el.replaceWith(w.firstElementChild); loadMacro(); mkBtnText(); grpBtnText();
+    /* 11/15 使用者：盤中整個首頁都跟著更新（五種型態統計、盤後一眼看懂、強弱族群、族群表），保留捲動位置 */
+    for(const k of ["total","groups","stocks","live","asof","asofM","inst","fut","index","dates"]) if(nd[k]!==undefined) D[k]=nd[k];
+    const am=D.asofM||{}; $("#asof").textContent = D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (am.TWSE&&am.TPEX&&am.TWSE!==am.TPEX) ? `資料日期　上市 ${am.TWSE.slice(5)}・上櫃 ${am.TPEX.slice(5)}` : "資料日期 " + D.asof;
+    if(!document.getElementById("swwrap")) return;
+    const y=scrollY, sx=(document.querySelector("#app .sum")||{}).scrollLeft||0;
+    const app=$("#app"); app.style.minHeight=app.offsetHeight+"px";              /* 重畫時先撐住高度，避免捲動位置跳動 */
+    const mc=($("#macro")||{}).innerHTML||"";
+    home(); if(mc&&$("#macro")&&!$("#macro").innerHTML) $("#macro").innerHTML=mc;   /* 匯率油價卡片先沿用舊的，新資料到了再換 */
+    if(window.__hsMark) window.__hsMark();                                          /* 先把滑動提示插好，再回到原本位置（瞬間，不要平滑捲動） */
+    scrollTo({top:y,behavior:"instant"}); const sm=document.querySelector("#app .sum"); if(sm) sm.scrollLeft=sx;
+    setTimeout(()=>{app.style.minHeight=""},1500);
   }).catch(()=>{});
 }
 function swLiveStart(){ if(swTimer) clearInterval(swTimer); swTimer=setInterval(swLiveTick,120000); }
@@ -1579,7 +1586,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(
         if(v===3){w.insertAdjacentHTML("afterbegin",'<div class="hsa">▶</div>');w.firstChild.onclick=()=>tw.scrollBy({left:200,behavior:"smooth"})}
         tw.addEventListener("scroll",()=>{const end=tw.scrollLeft+tw.clientWidth>=tw.scrollWidth-4;tw.classList.toggle("hse",end);w.classList.toggle("hse",end)},{passive:true});}
     })};
-  new MutationObserver(()=>requestAnimationFrame(mark)).observe($("#app"),{childList:true}); addEventListener("resize",mark); setTimeout(mark,300);
+  window.__hsMark=mark; new MutationObserver(()=>requestAnimationFrame(mark)).observe($("#app"),{childList:true}); addEventListener("resize",mark); setTimeout(mark,300);
 })();
 /* 回到頂端／到底部按鈕（11/15 使用者）：樣式 window.TTV（使用者選 2 膠囊文字；1 圓形實心／3 半透明方形保留可切） */
 (function(){
