@@ -346,7 +346,7 @@ def main(out):
             continue
         todo.append(a)
     print(f"新文章 {len(new)} 篇：送 AI {len(todo)}（本輪最多 {RUN_MAX}）、跳過 {nskip}（付費／會員／太舊／沒提到上市櫃）")
-    todo = todo[:RUN_MAX]
+    todo = sorted(todo, key=lambda a: -(a["t"] or now))[:RUN_MAX]   # 新的先判，舊的留下一輪
 
     batches, cur, size = [], [], 0
     for a in todo:
@@ -383,6 +383,8 @@ def main(out):
                 for s in x.get("stocks") or []:
                     c = resolve(s, a, names, codes)
                     d = {"上修": 1, "持平": 0, "下修": -1}.get(s.get("dir")) if isinstance(s, dict) else None
+                    if c and d is not None and str(s.get("kind")) == "盤面" and d == 0:
+                        continue                        # 只是盤勢文章裡提到、沒有利多利空：不收
                     if c and d is not None and c not in [y["c"] for y in ss]:
                         ss.append({"c": c, "d": d, "k": str(s.get("kind") or "")[:4], "w": str(s.get("why") or "")[:40]})
                 seen[a["k"]] = now
