@@ -1549,9 +1549,9 @@ renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
-/* 回到頂端／到底部按鈕（11/15 使用者）：樣式 window.TTV（1 圓形實心／2 膠囊文字／3 半透明方形） */
+/* 回到頂端／到底部按鈕（11/15 使用者）：樣式 window.TTV（使用者選 2 膠囊文字；1 圓形實心／3 半透明方形保留可切） */
 (function(){
-  const v=window.TTV||1, h=document.documentElement; h.classList.add("tt"+v);
+  const v=window.TTV||2, h=document.documentElement; h.classList.add("tt"+v);
   const lab=v===2?["▲ 頂端","▼ 底部"]:["▲","▼"];
   const mk=(id,t,title,fn)=>{const b=document.createElement("button");b.id=id;b.className="ttb";b.textContent=t;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;document.body.appendChild(b);return b};
   const top=mk("ttTop",lab[0],"回到頂端",()=>scrollTo({top:0,behavior:"smooth"}));
