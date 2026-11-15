@@ -42,7 +42,7 @@ nav a{color:var(--fg);text-decoration:none;padding:4px 12px;border:1px solid var
 nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 .mute{color:var(--mute)}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}
-.swp{margin:14px 0;padding:12px 14px;border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.7)}.swh{font-weight:800;font-size:16px;margin-bottom:8px}.swh .mute{font-weight:400;font-size:12px}.mkr{display:flex;gap:12px;flex-wrap:wrap}.mkc{flex:1 1 220px;padding:10px 14px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5);display:flex;flex-direction:column;gap:3px}.mkv{font-size:26px;font-weight:800;letter-spacing:.5px}.mkc>.mute:first-child{color:#fff;font-weight:800;font-size:15px}.mkd{margin-left:8px;font-size:12px;font-weight:400;color:#a5b4fc}.swbar b,.swr b,.swchip b{color:#fff;font-weight:800}.swbar small.mute,.swr>.mute,.swchip small.mute{color:#fff;font-size:13px}.mki{display:grid;grid-template-columns:48px 1fr 56px;gap:8px;align-items:center;font-size:13px;color:#fff}.mki .swtr{height:8px;background:#1c1738;border-radius:4px;overflow:hidden}.mki .swtr i{display:block;height:100%}.mki>span:last-child{text-align:right}.swchips{display:flex;flex-wrap:wrap;gap:8px}.swchip{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5)}.swchip b{font-size:15px}.swchip small{font-size:12px}.swbar{display:grid;grid-template-columns:96px 1fr 64px;gap:2px 8px;align-items:center;padding:5px 0;border-top:1px solid #2a2450}.swbar .swtr{height:10px;background:#1c1738;border-radius:5px;overflow:hidden}.swbar .swtr i{display:block;height:100%}.bg-s{background:var(--s-strong)}.bg-w{background:var(--s-weak)}.swbar small{grid-column:1/4}.swbar>span:nth-child(3){text-align:right}.swg{display:grid;grid-template-columns:1fr 1fr;gap:14px}.swc h3{margin:0 0 6px;font-size:14px}.swr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 0;border-top:1px solid #2a2450}.swr b{font-size:15px}.swr .mute{grid-column:1/3;font-size:12px}@media(max-width:640px){.swg{grid-template-columns:1fr}}
+.swp{margin:14px 0;padding:12px 14px;border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.7)}.swh{font-weight:800;font-size:16px;margin-bottom:8px}.swh .mute{font-weight:400;font-size:12px}.mkr{display:flex;gap:12px;flex-wrap:wrap}.mkc{flex:1 1 220px;padding:10px 14px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5);display:flex;flex-direction:column;gap:3px}.mkv{font-size:26px;font-weight:800;letter-spacing:.5px}.mkc>.mute:first-child{color:#fff;font-weight:800;font-size:15px}.mkd{margin-left:8px;font-size:12px;font-weight:400;color:#a5b4fc}.swbar b,.swr b,.swchip b{color:#fff;font-weight:800}.swbar small.mute,.swr>.mute,.swchip small.mute{color:#fff;font-size:13px}.mki{display:grid;grid-template-columns:48px 1fr 56px;gap:8px;align-items:center;font-size:13px;color:#fff}.mki .swtr{height:8px;background:#1c1738;border-radius:4px;overflow:hidden}.mki .swtr i{display:block;height:100%}.mki>span:last-child{text-align:right}.mkbtn{display:none;margin:8px 0 0;width:100%}@media(max-width:640px){.mkbtn{display:block}.swp.mkcol .mkmore{display:none}}.swchips{display:flex;flex-wrap:wrap;gap:8px}.swchip{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5)}.swchip b{font-size:15px}.swchip small{font-size:12px}.swbar{display:grid;grid-template-columns:96px 1fr 64px;gap:2px 8px;align-items:center;padding:5px 0;border-top:1px solid #2a2450}.swbar .swtr{height:10px;background:#1c1738;border-radius:5px;overflow:hidden}.swbar .swtr i{display:block;height:100%}.bg-s{background:var(--s-strong)}.bg-w{background:var(--s-weak)}.swbar small{grid-column:1/4}.swbar>span:nth-child(3){text-align:right}.swg{display:grid;grid-template-columns:1fr 1fr;gap:14px}.swc h3{margin:0 0 6px;font-size:14px}.swr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 0;border-top:1px solid #2a2450}.swr b{font-size:15px}.swr .mute{grid-column:1/3;font-size:12px}@media(max-width:640px){.swg{grid-template-columns:1fr}}
 .sum{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;position:sticky;top:var(--hh,0px);z-index:25;padding:8px 0;background:rgba(9,5,26,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 @media(max-width:640px){.sum{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:10px -10px;padding:6px 10px}.sum::-webkit-scrollbar{display:none}.sum .chip{flex:0 0 auto}}
 .chip.click{cursor:pointer}.chip.click:hover{border-color:var(--mute)}
@@ -297,11 +297,11 @@ function mktCards(){
   };
   const inst=()=>{
     const I=D.inst, nm=`<div class="mute">三大法人買賣超（僅上市）`;
-    if(!I) return `<div class="mkc">${nm}</div><div class="mute">約 15:00～16:00 公布，稍後更新</div></div>`;
+    if(!I) return `<div class="mkc mkmore">${nm}</div><div class="mute">約 15:00～16:00 公布，稍後更新</div></div>`;
     const old=I.date!==D.asof, f=v=>(v>0?"+":"")+v.toFixed(1), c=v=>v>0?"c-strong":v<0?"c-weak":"mute";
     const mx=Math.max(1,...["foreign","trust","dealer"].map(k=>Math.abs(I[k])));
     const bar=(t,k)=>`<div class="mki"><span>${t}</span><span class="swtr"><i class="${I[k]>=0?"bg-s":"bg-w"}" style="width:${Math.abs(I[k])/mx*100}%"></i></span><span class="${c(I[k])}">${f(I[k])}</span></div>`;
-    return `<div class="mkc"${old?' style="opacity:.6"':""}>${nm}<span class="mkd">${I.date.slice(5).replace("-","/")} 上市${old?"（前一日）":""}</span></div><div class="mkv ${c(I.total)}">${f(I.total)} 億</div>${bar("外資","foreign")}${bar("投信","trust")}${bar("自營商","dealer")}</div>`;
+    return `<div class="mkc mkmore"${old?' style="opacity:.6"':""}>${nm}<span class="mkd">${I.date.slice(5).replace("-","/")} 上市${old?"（前一日）":""}</span></div><div class="mkv ${c(I.total)}">${f(I.total)} 億</div>${bar("外資","foreign")}${bar("投信","trust")}${bar("自營商","dealer")}</div>`;
   };
   const h=one("TWII","加權指數")+one("OTC","櫃買指數")+(D.market==="US"?"":inst());
   return h?`<div class="mkr">${h}</div>`:"";
@@ -322,6 +322,9 @@ function loadMacro(){
     }).join("");
   }).catch(()=>{});
 }
+function mkColState(){try{return localStorage.getItem("mkcol")==="1"}catch(_){return false}}
+function toggleMk(){const el=document.querySelector(".swp"); if(!el) return; const c=el.classList.toggle("mkcol"); try{localStorage.setItem("mkcol",c?"1":"0")}catch(_){} mkBtnText()}
+function mkBtnText(){const el=document.querySelector(".swp"),b=document.querySelector(".mkbtn"); if(el&&b) b.textContent=el.classList.contains("mkcol")?"▾ 展開（三大法人、匯率、原油、美債）":"▴ 收合"}
 function swPanel(){
   let {strong,weak,rows}=swGroups(), f=x=>(x>0?"+":"")+x.toFixed(2)+"%", note="";
   const rel=(list,sortf,n)=>{const out=[];for(const r of rows.slice().sort(sortf)){if(out.some(o=>{let k=0;for(const c of r.set) if(o.set.has(c)) k++;return k>0.5*Math.min(r.set.size,o.set.size)})) continue;out.push(r);if(out.length>=n)break}return out};
@@ -330,11 +333,11 @@ function swPanel(){
   if(!strong.length){strong=rel(strong,(a,b)=>b.med-a.med,3);sRel=true}
   const V=window.SWV??3, mx=Math.max(1,...strong.concat(weak).map(r=>Math.abs(r.med)));
   const sub=(r,isS)=>`${isS?r.up:r.dn}/${r.n} 檔${isS?"漲":"跌"}・${isS?"領漲":"領跌"} ${(isS?r.best:r.worst).name}`;
-  const item=(r,cls,isS)=>V===2?`<span class="swchip"><b>${r.name}</b> <span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></span>`
-    :V===3?`<div class="swbar"><b>${r.name}</b><span class="swtr"><i class="${isS?"bg-s":"bg-w"}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
-    :`<div class="swr"><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`;
+  const item=(r,cls0,isS)=>{const cls=r.med>0?"c-strong":r.med<0?"c-weak":"mute", bgc=r.med>0?"bg-s":"bg-w"; return V===2?`<span class="swchip"><b>${r.name}</b> <span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></span>`
+    :V===3?`<div class="swbar"><b>${r.name}</b><span class="swtr"><i class="${bgc}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
+    :`<div class="swr"><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`};
   const col=(title,cls,list,isS,isRel)=>`<div class="swc"><h3 class="${cls}">${title}${isRel?'<span class="mute" style="font-weight:400;font-size:12px">（沒有族群達 6 成，列相對'+(isS?'最強':'最弱')+' 3 個）</span>':""}</h3>${V===2?`<div class="swchips">${list.map(r=>item(r,cls,isS)).join("")}</div>`:list.map(r=>item(r,cls,isS)).join("")}</div>`;
-  return `<div class="swp"><div class="swh">盤後一眼看懂</div>`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div><div class="swh" style="margin-top:12px">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span></div><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+`</div></div>`;
+  return `<div class="swp${mkColState()?" mkcol":""}"><div class="swh">盤後一眼看懂</div>`+mktCards()+`<div class="mkr mkmore" id="macro" style="margin-top:10px"></div><button class="btn mkbtn" onclick="toggleMk()"></button><div class="swh" style="margin-top:12px">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span></div><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+`</div></div>`;
 }
 
 /* ───────── 首頁：族群統計 ───────── */
@@ -352,7 +355,7 @@ function home(){
       `<td>${rb? rb : '<span class="mute">-</span>'}</td></tr>`;
   }
   h += `</tbody></table></div><p class="note">族群樣本少於 5 檔時，百分比參考價值低，不顯示。顏色採台股習慣：紅＝強、綠＝弱。</p>`;
-  $("#app").innerHTML = h; loadMacro();
+  $("#app").innerHTML = h; loadMacro(); mkBtnText();
   document.querySelectorAll(".chip[data-st]").forEach(c=>c.onclick=()=>{location.hash="st-"+encodeURIComponent(c.dataset.st)});
   document.querySelectorAll("tr.row").forEach(r=>r.onclick=()=>{location.hash="g-"+D.groups.findIndex(x=>x.name===r.dataset.g)});
 }
