@@ -93,7 +93,7 @@ def dmi_series(bars, n=14):
 def dmi_tags(bars, Ks, Ds):
     """DMI 標籤（11/15 使用者定 ADX 標準 25，剛翻多／空公式由 Opus 顧問建議，使用者同意方向）：
     多頭趨勢：+DI > -DI 且差 ≥5，ADX ≥25 且比 3 天前高。空頭趨勢：反過來。
-    剛翻多：近 3 日 +DI 由下往上穿過 -DI，今天 +DI ≥20 且比 -DI 大 ≥2，ADX ≥15 且不低於 3 天前，K>D 且 50≤K<80，近 3 日 K 沒到過 80（沒有高檔鈍化）。
+    剛翻多：近 2 日 +DI 由下往上穿過 -DI，今天 +DI ≥20 且比 -DI 大 ≥2，ADX ≥15 且不低於 3 天前，K≥D 或差 ≤5、K<80（近 3 日也沒到過 80）。即將翻多：+DI 比 3 天前高、-DI 比 3 天前低、+DI 仍低於 -DI 但差 ≤5，KD 條件同上。
     剛翻空：對稱（-DI 上穿 +DI，-DI ≥20 且大 ≥2，ADX ≥15 且不低於 3 天前，K<D 且 20<K≤50，近 3 日 K 沒到過 20）。K 棒不足 60 根不標。"""
     out = []
     if len(bars) < 60:
@@ -111,12 +111,17 @@ def dmi_tags(bars, Ks, Ds):
     k, d = Ks[T], Ds[T]
     k3 = Ks[T - 2:T + 1]
     if a >= 15 and a >= adx[T - 3]:
-        crossed_up = p > m and any(pdi[T - j] <= mdi[T - j] for j in (1, 2, 3))
-        if crossed_up and p >= 20 and p - m >= 2 and k > d and 50 <= k < 80 and max(k3) < 80:
+        kd_up = (k >= d or d - k <= 5) and k < 80 and max(k3) < 80          # 11/15 使用者：K 不用大於 D、不設 50 下限，快相交也行；排除高檔
+        kd_dn = (k <= d or k - d <= 5) and k > 20 and min(k3) > 20
+        crossed_up = p > m and any(pdi[T - j] <= mdi[T - j] for j in (1, 2))
+        if crossed_up and p >= 20 and p - m >= 2 and kd_up:
             out.append("DMI剛翻多")
-        crossed_dn = m > p and any(mdi[T - j] <= pdi[T - j] for j in (1, 2, 3))
-        if crossed_dn and m >= 20 and m - p >= 2 and k < d and 20 < k <= 50 and min(k3) > 20:
+        crossed_dn = m > p and any(mdi[T - j] <= pdi[T - j] for j in (1, 2))
+        if crossed_dn and m >= 20 and m - p >= 2 and kd_dn:
             out.append("DMI剛翻空")
+        # 即將翻多（使用者 11/15）：+DI 上升、-DI 下降，還沒交叉但相距 5 點以內
+        if p < m and m - p <= 5 and p > pdi[T - 3] and m < mdi[T - 3] and kd_up:
+            out.append("DMI即將翻多")
     return out
 
 

@@ -392,14 +392,16 @@ const FILTERS = [
   {k:"kdhi", name:"KD高檔鈍化", f:s=>has(s,/KD高檔鈍化/)},
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
   {k:"dmis", name:"DMI空頭趨勢", f:s=>has(s,/DMI空頭趨勢/)},
+  {k:"dmisoon", name:"DMI即將翻多", f:s=>has(s,/DMI即將翻多/)},
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
   {k:"dmidn", name:"DMI剛翻空", f:s=>has(s,/DMI剛翻空/)},
 ];
 const DMI_NOTE={
   dmib:"<b>條件：</b>+DI 比 -DI 高出 5 以上，ADX 在 25 以上，而且 ADX 比 3 天前高（趨勢正在變強）。",
   dmis:"<b>條件：</b>-DI 比 +DI 高出 5 以上，ADX 在 25 以上，而且 ADX 比 3 天前高。",
-  dmiup:"<b>條件：</b>最近 3 天內 +DI 由下往上穿過 -DI；今天 +DI 在 20 以上且比 -DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；KD 的 K 大於 D、K 在 50～80 之間，且最近 3 天 K 沒到過 80。<br><b>怎麼看：</b>買方線最近幾天剛超過賣方線，KD 也同步轉強、還沒過熱，可能是起漲初期；趨勢還沒確認，要搭配成交量和型態一起看。",
-  dmidn:"<b>條件：</b>最近 3 天內 -DI 由下往上穿過 +DI；今天 -DI 在 20 以上且比 +DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；K 小於 D、K 在 20～50 之間，且最近 3 天 K 沒到過 20。<br><b>怎麼看：</b>賣方線最近幾天剛超過買方線，KD 也同步轉弱，可能是起跌初期；要搭配成交量和型態一起看。"
+  dmisoon:"<b>條件：</b>+DI 比 3 天前高（買方在變強）、-DI 比 3 天前低（賣方在變弱），+DI 還在 -DI 下面但相距 5 點以內，快要交叉；ADX 在 15 以上且沒比 3 天前低；KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）。<br><b>怎麼看：</b>買方線快追上賣方線，是提早觀察的訊號，還沒確認，可能不會真的交叉，要搭配成交量和型態一起看。",
+  dmiup:"<b>條件：</b>最近 2 天內 +DI 由下往上穿過 -DI；今天 +DI 在 20 以上且比 -DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80。<br><b>怎麼看：</b>買方線剛超過賣方線，KD 也同步、還沒過熱，可能是起漲初期；要搭配成交量和型態一起看。",
+  dmidn:"<b>條件：</b>最近 2 天內 -DI 由下往上穿過 +DI；今天 -DI 在 20 以上且比 +DI 大 2 以上；ADX 在 15 以上且沒比 3 天前低；K 小於 D 或差距在 5 以內，且 K 不低於 20。<br><b>怎麼看：</b>賣方線最近幾天剛超過買方線，KD 也同步轉弱，可能是起跌初期；要搭配成交量和型態一起看。"
 };
 const DMI_HELP='<details class="dmihelp"><summary>ⓘ 什麼是 DMI？</summary><p>DMI 用三條線看趨勢：<b>+DI</b> 是買方力道，<b>-DI</b> 是賣方力道，誰在上面誰占優勢；<b>ADX</b> 看趨勢強不強，不分漲跌。ADX 在 25 以上，表示正在走明顯的趨勢，數字往上代表越走越強；低於 20 多半是盤整，訊號容易來回騙人。ADX 超過 45～50 常是趨勢末段過熱，要小心。標籤以收盤為準，盤中數字會跳動。K 線圖上按「DMI趨勢」就能看到這三條線。</p></details>';
 function screener(key){
@@ -655,8 +657,8 @@ class Chart{
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
-    if(/^scr-dmi(b|s|up|dn)$/.test(baseRaw||"")) this.ind.dmi=1;
-    if(/^scr-dmi(up|dn)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
+    if(/^scr-dmi(b|s|up|dn|soon)$/.test(baseRaw||"")) this.ind.dmi=1;
+    if(/^scr-dmi(up|dn|soon)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
     this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[];
