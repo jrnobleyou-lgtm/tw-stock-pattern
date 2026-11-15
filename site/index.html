@@ -42,6 +42,7 @@ nav a{color:var(--fg);text-decoration:none;padding:4px 12px;border:1px solid var
 nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 .mute{color:var(--mute)}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}
+.swp{margin:14px 0;padding:12px 14px;border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.7)}.swh{font-weight:800;font-size:16px;margin-bottom:8px}.swh .mute{font-weight:400;font-size:12px}.swg{display:grid;grid-template-columns:1fr 1fr;gap:14px}.swc h3{margin:0 0 6px;font-size:14px}.swr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 0;border-top:1px solid #2a2450}.swr b{font-size:15px}.swr .mute{grid-column:1/3;font-size:12px}@media(max-width:640px){.swg{grid-template-columns:1fr}}
 .sum{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;position:sticky;top:var(--hh,0px);z-index:25;padding:8px 0;background:rgba(9,5,26,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 @media(max-width:640px){.sum{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:10px -10px;padding:6px 10px}.sum::-webkit-scrollbar{display:none}.sum .chip{flex:0 0 auto}}
 .chip.click{cursor:pointer}.chip.click:hover{border-color:var(--mute)}
@@ -267,10 +268,35 @@ async function pollIdx(){
   $("#asof").innerHTML=base+(q0?`<span style="color:#f0d34a">　${twMarketOpen()?"盤中":"即時"} ${q0.date.slice(5)} ${q0.hms||""}</span>`:"");
   idxTimer=setTimeout(pollIdx,(twMarketOpen()||txSession())?10000:120000);
 }
+/* ───────── 強弱族群（盤後一眼看懂 第一塊）─────────
+   Opus 顧問建議、使用者同意方向：族群內個股漲跌幅「中位數」排名；至少 5 檔（成交值太小的不算）；
+   強要 ≥60% 上漲、弱要 ≥60% 下跌；兩個上榜族群成員重疊超過一半只留排名高的；強 5 弱 5。 */
+function swGroups(){
+  const MINV=1e7, med=a=>{const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2};
+  const rows=[];
+  for(const g of D.groups){
+    const L=g.stocks.map(c=>D.stocks[c]).filter(s=>s&&s.chg!=null&&s.close*s.vol*1000>=MINV);
+    if(L.length<5) continue;
+    const ch=L.map(s=>s.chg), up=ch.filter(x=>x>0).length, dn=ch.filter(x=>x<0).length;
+    const best=L.reduce((a,b)=>b.chg>a.chg?b:a), worst=L.reduce((a,b)=>b.chg<a.chg?b:a);
+    rows.push({name:g.name,n:L.length,med:med(ch),up,dn,best,worst,set:new Set(g.stocks)});
+  }
+  const pick=(list,ok)=>{const out=[];for(const r of list){if(!ok(r))continue;
+    if(out.some(o=>{let k=0;for(const c of r.set) if(o.set.has(c)) k++;return k>0.5*Math.min(r.set.size,o.set.size)})) continue;
+    out.push(r);if(out.length>=5)break}return out};
+  return {strong:pick([...rows].sort((a,b)=>b.med-a.med),r=>r.up/r.n>=0.6&&r.med>0),
+          weak:pick([...rows].sort((a,b)=>a.med-b.med),r=>r.dn/r.n>=0.6&&r.med<0)};
+}
+function swPanel(){
+  const {strong,weak}=swGroups(), f=x=>(x>0?"+":"")+x.toFixed(2)+"%";
+  const col=(title,cls,list,isS)=>`<div class="swc"><h3 class="${cls}">${title}</h3>`+(list.length?list.map(r=>`<div class="swr"><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${isS?r.up:r.dn}/${r.n} 檔${isS?"漲":"跌"}・${isS?"領漲":"領跌"} ${(isS?r.best:r.worst).name}</span></div>`).join(""):'<p class="mute">今天沒有符合條件的族群</p>')+`</div>`;
+  return `<div class="swp"><div class="swh">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span></div><div class="swg">`+col("強勢族群","c-strong",strong,true)+col("弱勢族群","c-weak",weak,false)+`</div></div>`;
+}
+
 /* ───────── 首頁：族群統計 ───────── */
 function home(){
   const tot = D.total, all = STATES.reduce((a,s)=>a+tot[s],0);
-  let h = `<div class="sum">` + STATES.map(s=>`<div class="chip click" data-st="${s}" title="點擊列出全部${s}的股票">${s}<b class="c-${CLS[s]}">${tot[s]}</b><span class="mute"> ${pct(tot[s],all)}</span></div>`).join("") + `<div class="chip">共<b>${all}</b>檔</div></div>`;
+  let h = swPanel() + `<div class="sum">` + STATES.map(s=>`<div class="chip click" data-st="${s}" title="點擊列出全部${s}的股票">${s}<b class="c-${CLS[s]}">${tot[s]}</b><span class="mute"> ${pct(tot[s],all)}</span></div>`).join("") + `<div class="chip">共<b>${all}</b>檔</div></div>`;
   h += `<div class="tw"><table class="ctr"><thead><tr><th>族群</th><th>檔數</th>` + STATES.map(s=>`<th class="c-${CLS[s]}">${s}</th>`).join("") + `<th class="hide-s">分布</th><th>突破第1根</th><th>止跌反彈</th></tr></thead><tbody>`;
   for(const g of D.groups){
     const small = g.n < 5;
