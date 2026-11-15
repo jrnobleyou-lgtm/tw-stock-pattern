@@ -486,7 +486,7 @@ const FILTERS = [
   {k:"b1",  name:"突破第1根", f:s=>has(s,/突破第1根/)},
   {k:"up",  name:"轉強", f:s=>s.state==="轉強"},
   {k:"wup", name:"弱轉強（均線尚未排列向上）", f:s=>s.state==="弱轉強"},
-  {k:"rdy", name:"蓄勢待發／準備突破", f:s=>has(s,/蓄勢待發|準備突破/)},
+  {k:"rdy", name:"盤整蓄勢待發／準備突破", f:s=>has(s,/蓄勢待發|準備突破/)},
   {k:"cup", name:"杯柄", f:s=>s.geo.some(g=>g.kind==="杯柄")},
   {k:"rnd", name:"圓弧底", f:s=>s.geo.some(g=>g.kind==="圓弧底")},
   {k:"bot", name:"底部反轉（雙底・頭肩底・V底）", f:s=>s.geo.some(g=>["雙重底","雙重底（不對稱）","頭肩底","V形底"].includes(g.kind))},
@@ -498,24 +498,19 @@ const FILTERS = [
   {k:"kdlo", name:"KD低檔鈍化", f:s=>has(s,/KD低檔鈍化/)},
   {k:"kdhi", name:"KD高檔鈍化", f:s=>has(s,/KD高檔鈍化/)},
   {k:"dmisoon", name:"DMI即將翻多", f:s=>has(s,/DMI即將翻多/)},
+  {k:"dmipre", name:"DMI翻多前已轉強", f:s=>has(s,/DMI翻多前已轉強/)},
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
-  {k:"dmifu", name:"DMI多方趨勢成形", f:s=>has(s,/DMI多方趨勢成形/)},
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
-  {k:"dmidn", name:"DMI剛翻空", f:s=>has(s,/DMI剛翻空/)},
-  {k:"dmifd", name:"DMI空方趨勢成形", f:s=>has(s,/DMI空方趨勢成形/)},
-  {k:"dmis", name:"DMI空頭趨勢", f:s=>has(s,/DMI空頭趨勢/)},
 ];
-const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）", KD_DN="K 小於 D 或差距在 5 以內，且 K 不低於 20";
+const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）";
+const DMI_WATCH="<br><b>提醒：</b>用過去兩年資料算，前三種（即將翻多、翻多前已轉強、剛翻多）出現後平均和大盤差不多、略輸，適合先列觀察名單；真正比大盤強的是「DMI多頭趨勢」（股價突破前高）。最好搭配型態（盤整區間、底部形態）一起看。";
 const DMI_NOTE={
-  dmisoon:`<b>階段 1／4（最早）</b>　<b>條件：</b>+DI 還在 -DI 下面，但相距 7 點以內；+DI 比 3 天前高、今天也沒比昨天低（買方在變強），-DI 比 3 天前低、今天也沒比昨天高（賣方在變弱）；${KD_UP}。<br><b>怎麼看：</b>買方線正在追上賣方線，還沒交叉，是提早觀察名單，可能不會真的交叉。看「DMI差值」越接近 0 越快交叉。`,
-  dmiup:`<b>階段 2／4</b>　<b>條件：</b>最近 2 天內 +DI 由下往上穿過 -DI；今天 +DI 比 -DI 大 2 以上，而且 +DI 比 3 天前高；${KD_UP}。<br><b>怎麼看：</b>節目說的「做多候選」。剛交叉時 ADX 通常還在往下（正常現象），所以不看 ADX 漲跌；但 ADX 低於 20（表格標「弱」）代表還在盤整，容易假訊號，要搭配成交量和型態。`,
-  dmifu:`<b>階段 3／4</b>　<b>條件：</b>最近 3 天內 ADX 從 20 以下升上 20 以上，今天還在往上；+DI 在 -DI 上面。<br><b>怎麼看：</b>節目說的「ADX 突破 20～25 且上升＝趨勢可能形成」，買方占優勢、趨勢剛開始變明顯。`,
-  dmib:`<b>階段 4／4（確認）</b>　<b>條件：</b>+DI 比 -DI 高出 5 以上；ADX 在 25 以上、而且比 3 天前高（趨勢正在變強）；<b>收盤站上前段高點</b>（最近一個波段高點：前後各 5 天都沒有更高的那天，60 天內找；找不到就用近 60 天最高價）。<br><b>怎麼看：</b>節目的「多方」定義：買方強、趨勢明顯、價格也突破前高，三個都成立。ADX 超過 45～50 常是末段過熱。`,
-  dmidn:`<b>空方 階段 1／3</b>　<b>條件：</b>最近 2 天內 -DI 由下往上穿過 +DI；今天 -DI 比 +DI 大 2 以上，而且 -DI 比 3 天前高；${KD_DN}。<br><b>怎麼看：</b>節目說的「做空候選」，可能是起跌初期；ADX 低於 20（標「弱」）容易假訊號。`,
-  dmifd:`<b>空方 階段 2／3</b>　<b>條件：</b>最近 3 天內 ADX 從 20 以下升上 20 以上，今天還在往上；-DI 在 +DI 上面。<br><b>怎麼看：</b>賣方占優勢、下跌趨勢可能正在形成。`,
-  dmis:`<b>空方 階段 3／3（確認）</b>　<b>條件：</b>-DI 比 +DI 高出 5 以上；ADX 在 25 以上、而且比 3 天前高；<b>收盤跌破前段低點</b>（最近一個波段低點，定義同多頭）。<br><b>怎麼看：</b>節目的「空方」定義：賣方強、趨勢明顯、價格也跌破前低。`
+  dmisoon:`<b>蹲點名單（最早）</b>　<b>條件：</b>+DI 還在 -DI 下面，但相距 5 點以內；+DI 比 3 天前高（買方變強）、-DI 比 3 天前低（賣方變弱）；ADX 在 15 以上；${KD_UP}；而且近 10 天最低點到現在漲不到 10%（還沒漲上去）。<br><b>怎麼看：</b>買方線快追上賣方線，還沒交叉。過去兩年這種情況，5 天內真的交叉約 6 成。看「DMI差值」越接近 0 越快交叉。${DMI_WATCH}`,
+  dmipre:`<b>條件：</b>和「DMI即將翻多」一樣（還沒交叉、相距 5 點以內、兩條線正在靠近），但近 10 天最低點到現在已經漲了 10%～20%。漲超過 20% 已經不是蹲點位置，不列入（漲 30% 以上的可看「近日反彈強勁」）。<br><b>怎麼看：</b>股價先漲了、DMI 還沒翻多，位置比「即將翻多」高，追之前先看離前高多遠。${DMI_WATCH}`,
+  dmiup:`<b>條件：</b>最近 2 天內 +DI 由下往上穿過 -DI；今天 +DI 在 20 以上、比 -DI 大 2 以上；+DI 比 3 天前高、-DI 比 3 天前低；ADX 在 15 以上；${KD_UP}。<br><b>怎麼看：</b>節目說的「做多候選」。剛交叉時 ADX 常常還在往下，是正常現象；ADX 低於 20（表格標「弱」）代表還在盤整。${DMI_WATCH}`,
+  dmib:`<b>條件：</b>+DI 比 -DI 高出 5 以上；ADX 在 25 以上、而且比 3 天前高（趨勢正在變強）；<b>收盤站上前段高點</b>（最近一個波段高點：前後各 5 天都沒有更高的那天，60 天內找）。<br><b>怎麼看：</b>節目的「多方」定義：買方強、趨勢明顯、價格也突破前高。過去兩年 10 天後平均比大盤多約 1.3%。個股若另外標「DMI過熱」（ADX 45 以上又開始往下），表示趨勢走很久、力道開始退，不是蹲點位置，已持有的留意。`
 };
-const DMI_HELP='<details class="dmihelp"><summary>ⓘ 什麼是 DMI？</summary><p>DMI 用三條線看趨勢：<b>+DI</b> 是買方力道，<b>-DI</b> 是賣方力道，誰在上面誰占優勢；<b>ADX</b> 看趨勢強不強，不分漲跌。ADX 在 25 以上，表示正在走明顯的趨勢，數字往上代表越走越強；低於 20 多半是盤整，訊號容易來回騙人。ADX 超過 45～50 常是趨勢末段過熱，要小心。</p><p><b>多方四個階段：</b>即將翻多（兩線靠近）→ 剛翻多（+DI 穿過 -DI）→ 多方趨勢成形（ADX 升上 20）→ 多頭趨勢（ADX 25 以上＋突破前高）。空方三個階段相反。</p><p><b>表格兩欄：</b>「DMI差值」＝+DI 減 -DI，正數（紅）買方占優勢、負數（綠）賣方占優勢；「ADX」後面的 ▲ 是比 3 天前上升、▼ 下降、「平」差不多，「弱」表示 ADX 低於 20。標籤以收盤為準，盤中數字會跳動。K 線圖上按「DMI趨勢」就能看到這三條線。</p></details>';
+const DMI_HELP='<details class="dmihelp"><summary>ⓘ 什麼是 DMI？表格的「DMI差值」「ADX」怎麼看？</summary><p>DMI 用三條線看趨勢：<b>+DI</b> 是買方力道，<b>-DI</b> 是賣方力道，誰在上面誰占優勢；<b>ADX</b> 看趨勢強不強，不分漲跌。ADX 在 25 以上表示正在走明顯的趨勢，往上代表越走越強；低於 20 多半是盤整。</p><p><b>多方順序：</b>即將翻多（還沒漲）／翻多前已轉強（已先漲 10～20%）→ 剛翻多（+DI 穿過 -DI）→ 多頭趨勢（ADX 25 以上＋突破前高）。</p><p><b>DMI過熱 和 KD高檔鈍化 不一樣：</b>KD 鈍化看最近幾天，股價收在近 9 天高點附近就會出現；DMI過熱看整段趨勢，ADX 要連走好幾週才會到 45 以上，開始往下代表力道在退。</p><p><b>表格兩欄：</b>「DMI差值」＝+DI 減 -DI，正數（紅）買方占優勢、負數（綠）賣方占優勢；「ADX」後面的 ▲ 是比 3 天前上升、▼ 下降、「平」差不多，「弱」表示 ADX 低於 20。標籤以收盤為準。K 線圖上按「DMI趨勢」就能看到這三條線。</p></details>';
 function screener(key){
   key = key || "rb3";
   const cur = FILTERS.find(x=>x.k===key) || FILTERS[0];
@@ -770,8 +765,8 @@ class Chart{
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
-    if(/^scr-dmi(b|s|up|dn|soon|fu|fd)$/.test(baseRaw||"")) this.ind.dmi=1;
-    if(/^scr-dmi(up|dn|soon)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
+    if(/^scr-dmi(b|up|soon|pre)$/.test(baseRaw||"")) this.ind.dmi=1;
+    if(/^scr-dmi(up|soon|pre)$/.test(baseRaw||"")) this.ind.kd=1;      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
     this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
     this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[];

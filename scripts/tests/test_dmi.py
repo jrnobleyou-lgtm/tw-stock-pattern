@@ -33,10 +33,14 @@ class DMI(unittest.TestCase):
         self.assertIn("DMI剛翻多", t)
         self.assertEqual(A.dmi_now(B)[2], -1)          # ADX 方向：下降
 
-    def test_1409_about_to_cross(self):
-        # 新纖：+DI 23.2 < -DI 25.2（差 2），兩線正在靠近 → 即將翻多
-        t, _ = tags("1409")
-        self.assertIn("DMI即將翻多", t)
+    def test_1409_about_to_cross_but_already_up(self):
+        # 新纖：+DI 23.2 < -DI 25.2（差 2），兩線正在靠近；但近 10 日低點到收盤已漲 10～20%
+        # → 使用者 11/15 定：漲 10% 以內＝即將翻多、10～20%＝DMI翻多前已轉強
+        t, B = tags("1409")
+        g = B[-1]["c"] / min(b["l"] for b in B[-10:]) - 1
+        self.assertTrue(0.10 <= g < 0.20)
+        self.assertIn("DMI翻多前已轉強", t)
+        self.assertNotIn("DMI即將翻多", t)
         self.assertNotIn("DMI剛翻多", t)
 
     def test_1233_bull_needs_price_above_prev_high(self):

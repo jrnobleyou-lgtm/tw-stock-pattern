@@ -103,14 +103,15 @@ def prev_swing(bars, T, hi=True, w=5, look=60):
 
 
 def dmi_tags(bars, Ks, Ds):
-    """DMI 標籤（11/15 晚 Opus 版重新設計，對應使用者參考的電視節目做法；KD 條件沿用舊的，等使用者另訂）。
-    多頭的四個階段：即將翻多 → 剛翻多 → 多方趨勢成形 → 多頭趨勢；空頭：剛翻空 → 空方趨勢成形 → 空頭趨勢。
-    即將翻多：+DI 仍在 -DI 下面、相距 7 點以內；+DI 比 3 天前高且今天沒比昨天低、-DI 比 3 天前低且今天沒比昨天高（兩線正在靠近）；KD 條件。
-    剛翻多：近 2 日 +DI 由下往上穿過 -DI，今天 +DI 比 -DI 大 ≥2、+DI 比 3 天前高；KD 條件。（不再要求 ADX 上升：剛交叉時 ADX 幾乎都在下降，
-            實測 11/13 剛交叉的 240 檔有 217 檔 ADX 比 3 天前低；ADX 改成列表的欄位，ADX<20 標「弱」提醒假訊號。）
-    多方趨勢成形：近 3 日 ADX 由 20 以下升上 20 以上、今天還在上升，+DI > -DI（節目：ADX 突破 20～25 且上升＝趨勢可能形成）。
-    多頭趨勢：+DI 比 -DI 大 ≥5、ADX ≥25 且比 3 天前高，而且收盤站上前段高點（prev_swing，節目：價格突破前段高點）。
-    空方都對稱（剛翻空用 kd_dn）。K 棒不足 60 根不標。"""
+    """DMI 標籤（11/15 晚使用者定案，目的是找「可以先進去蹲」的股票；回測與門檻由 Fable 顧問提供）。
+    多方（篩選頁）：
+      即將翻多：+DI 仍在 -DI 下面且相距 ≤5、+DI 比 3 天前高、-DI 比 3 天前低、ADX ≥15、KD 條件，且近 10 日低點到收盤漲幅 <10%。
+                （不再要求 ADX 不低於 3 天前：兩線靠近時 ADX 本來就多半往下，那條把 156 檔濾到 16 檔。）
+      DMI翻多前已轉強：同上，但漲幅 10%～20%（20% 以上已不是蹲點位置，不列；30% 以上另有「近日反彈強勁」）。
+      剛翻多：近 2 日 +DI 上穿 -DI，+DI ≥20 且比 -DI 大 ≥2，+DI 比 3 天前高、-DI 比 3 天前低，ADX ≥15，KD 條件（漲幅不限）。
+      多頭趨勢：+DI 比 -DI 大 ≥5，ADX ≥25 且比 3 天前高 0.5 以上，收盤站上前段高點（電視節目的多方定義）。
+    只標在個股（不放篩選頁）：剛翻空、空頭趨勢（對稱）、DMI過熱（+DI 在上、ADX ≥45 且比 3 天前低 0.5 以上：趨勢走很久、力道開始退）。
+    KD 條件 kd_up／kd_dn 維持 11/15 中午版本，等使用者另訂。K 棒不足 60 根不標。"""
     out = []
     if len(bars) < 60:
         return out
@@ -120,7 +121,8 @@ def dmi_tags(bars, Ks, Ds):
         return out
     p, m, a = pdi[T], mdi[T], adx[T]
     c = bars[T]["c"]
-    if a >= 25 and a > adx[T - 3]:
+    a_up, a_dn = a - adx[T - 3] > 0.5, a - adx[T - 3] < -0.5
+    if a >= 25 and a_up:
         if p - m >= 5:
             ph = prev_swing(bars, T, True)
             if ph is not None and c > ph:
@@ -129,20 +131,28 @@ def dmi_tags(bars, Ks, Ds):
             pl = prev_swing(bars, T, False)
             if pl is not None and c < pl:
                 out.append("DMI空頭趨勢")
-    if a >= 20 and a > adx[T - 1] and min(adx[T - 3:T]) < 20:
-        out.append("DMI多方趨勢成形" if p > m else "DMI空方趨勢成形")
+    if p > m and a >= 45 and a_dn:
+        out.append("DMI過熱")
     k, d = Ks[T], Ds[T]
     k3 = Ks[T - 2:T + 1]
     kd_up = (k >= d or d - k <= 5) and k < 80 and max(k3) < 80          # KD 條件維持 11/15 中午的版本（使用者之後自己訂）
     kd_dn = (k <= d or k - d <= 5) and k > 20 and min(k3) > 20
-    crossed_up = p > m and any(pdi[T - j] <= mdi[T - j] for j in (1, 2))
-    if crossed_up and p - m >= 2 and p > pdi[T - 3] and kd_up:
-        out.append("DMI剛翻多")
-    crossed_dn = m > p and any(mdi[T - j] <= pdi[T - j] for j in (1, 2))
-    if crossed_dn and m - p >= 2 and m > mdi[T - 3] and kd_dn:
-        out.append("DMI剛翻空")
-    if p < m and m - p <= 7 and p > pdi[T - 3] and p >= pdi[T - 1] and m < mdi[T - 3] and m <= mdi[T - 1] and kd_up:
-        out.append("DMI即將翻多")
+    di_up = p > pdi[T - 3] and m < mdi[T - 3]                              # 買方變強、賣方變弱
+    di_dn = m > mdi[T - 3] and p < pdi[T - 3]
+    if a >= 15:
+        crossed_up = p > m and any(pdi[T - j] <= mdi[T - j] for j in (1, 2))
+        if crossed_up and p >= 20 and p - m >= 2 and di_up and kd_up:
+            out.append("DMI剛翻多")
+        crossed_dn = m > p and any(mdi[T - j] <= pdi[T - j] for j in (1, 2))
+        if crossed_dn and m >= 20 and m - p >= 2 and di_dn and kd_dn:
+            out.append("DMI剛翻空")
+        if p < m and m - p <= 5 and di_up and kd_up:
+            lo10 = min(b["l"] for b in bars[-10:])
+            gain = c / lo10 - 1 if lo10 > 0 else 0
+            if gain < 0.10:
+                out.append("DMI即將翻多")
+            elif gain < 0.20:
+                out.append("DMI翻多前已轉強")
     return out
 
 
