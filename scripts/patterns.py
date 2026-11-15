@@ -136,7 +136,7 @@ def double_bottom_top(B, T, P):
             out.append({"kind": "雙重底", "dir": "bull", "status": st, "day": d, "neck": p2, "key_i": i3,
                         "pts": pre + [[i1, p1], [i2, p2], [i3, p3]] + ([[T, B[T]["c"]]] if T > i3 else [])})
         elif t1 == "H" and t3 == "H":            # 雙重頂
-            if abs(p1 - p3) / max(p1, p3) > 0.04 or (min(p1, p3) - p2) / min(p1, p3) < 0.08:
+            if abs(p1 - p3) / max(p1, p3) > 0.08 or (min(p1, p3) - p2) / min(p1, p3) < 0.08:
                 continue
             if max(B[j]["h"] for j in range(i3, T + 1)) > max(p1, p3) * 1.03:
                 continue
