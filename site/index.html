@@ -176,6 +176,21 @@ svg text{fill:var(--fg);font-size:11px}
 .tt2 .ttb{padding:9px 14px;border-radius:999px;background:rgba(20,12,48,.88);color:#e9e4ff;border:1px solid #8b5cf6;box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .tt3 .ttb{width:40px;height:40px;border-radius:10px;background:rgba(9,5,26,.6);color:#c4b5fd;border:1px solid rgba(196,181,253,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-size:18px}
 @media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
+[data-swg]{cursor:pointer}.swgo{color:#a5b4fc;font-weight:400}@media(hover:hover){[data-swg]:hover{background:rgba(124,58,237,.15)}}
+/* 手機表格左右滑動提示（window.SLV：1 表格上方文字箭頭／2 標記欄標題箭頭＋右緣漸層／3 浮動箭頭鈕） */
+.hsh{display:none}
+@media(max-width:900px){
+  .hs1 .hsx>.hsh{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#c4b5fd;margin:2px 2px 4px}.hs1 .hsx>.hsh b{font-size:16px;animation:hsb 1.6s ease-in-out infinite}
+  .hs2 .hsx .tw{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}.hs2 .hsx .tw.hse{-webkit-mask-image:none;mask-image:none}
+  .hs2 .hsx th.tg::after{content:" ◀ ▶";color:#c4b5fd;font-size:11px}
+  .hs3 .hsx{position:relative}.hs3 .hsx>.hsa{position:sticky;top:45vh;float:right;margin-bottom:-36px;z-index:5;width:34px;height:34px;border-radius:50%;background:rgba(124,58,237,.75);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .hs3 .hsx.hse>.hsa{opacity:0;pointer-events:none}
+}
+@keyframes hsb{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}
+/* 頂端／底部按鈕透明度（window.TTA：1 半透明底／2 全透明只留框／3 平時淡、碰到才亮） */
+.ta1 .ttb{background:rgba(20,12,48,.35)!important;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.ta2 .ttb{background:transparent!important;box-shadow:none!important;text-shadow:0 1px 3px #000}
+.ta3 .ttb.show{opacity:.45}.ta3 .ttb.show:hover,.ta3 .ttb.show:active{opacity:1}
 </style>
 </head>
 <body>
@@ -367,9 +382,9 @@ function swPanel(){
   if(!strong.length){strong=rel(strong,(a,b)=>b.med-a.med,3);sRel=true}
   const V=window.SWV??3, mx=Math.max(1,...strong.concat(weak).map(r=>Math.abs(r.med)));
   const sub=(r,isS)=>`${isS?r.up:r.dn}/${r.n} 檔${isS?"漲":"跌"}・${isS?"領漲":"領跌"} ${(isS?r.best:r.worst).name}`;
-  const item=(r,cls0,isS)=>{const cls=r.med>0?"c-strong":r.med<0?"c-weak":"mute", bgc=r.med>0?"bg-s":"bg-w"; return V===2?`<span class="swchip"><b>${r.name}</b> <span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></span>`
-    :V===3?`<div class="swbar"><b>${r.name}</b><span class="swtr"><i class="${bgc}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
-    :`<div class="swr"><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`};
+  const item=(r,cls0,isS)=>{const cls=r.med>0?"c-strong":r.med<0?"c-weak":"mute", bgc=r.med>0?"bg-s":"bg-w", go=`data-swg="${r.name.replace(/"/g,"&quot;")}" title="點擊看 ${r.name.replace(/"/g,"")} 的股票"`; return V===2?`<span class="swchip" ${go}><b>${r.name}</b> <span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></span>`
+    :V===3?`<div class="swbar" ${go}><b>${r.name} <span class="swgo">›</span></b><span class="swtr"><i class="${bgc}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
+    :`<div class="swr" ${go}><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`};
   const col=(title,cls,list,isS,isRel)=>`<div class="swc"><h3 class="${cls}">${title}${isRel?'<span class="mute" style="font-weight:400;font-size:12px">（沒有族群達 6 成，列相對'+(isS?'最強':'最弱')+' 3 個）</span>':""}</h3>${V===2?`<div class="swchips">${list.map(r=>item(r,cls,isS)).join("")}</div>`:list.map(r=>item(r,cls,isS)).join("")}</div>`;
   return `<div id="swwrap"><div class="swp${mkColState()?" mkcol":""}"><div class="swh swhead">盤後一眼看懂<button class="btn mkbtn" onclick="toggleMk()"></button></div><div class="swbody">`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div></div></div><div class="swp swgrp${grpColState()?" mkcol":""}"><div class="swh swhead">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span><button class="btn mkbtn grpbtn" onclick="toggleGrp()"></button></div><div class="swbody"><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+`</div></div></div></div>`;
 }
@@ -1549,6 +1564,20 @@ renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
+/* 強弱族群：點族群名稱進族群頁（11/15 使用者）；手機表格左右滑動提示 */
+document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(!t)return;const i=D.groups.findIndex(x=>x.name===t.dataset.swg);if(i>=0)location.hash="g-"+i});
+(function(){
+  const v=window.SLV||1; document.documentElement.classList.add("hs"+v,"ta"+(window.TTA||1));
+  const mark=()=>{ if(innerWidth>900) return;
+    document.querySelectorAll("#app .tw").forEach(tw=>{
+      if(tw.scrollWidth<=tw.clientWidth+4) return;
+      let w=tw.parentElement; if(!w.classList.contains("hsx")){w=document.createElement("div");w.className="hsx";tw.parentNode.insertBefore(w,tw);w.appendChild(tw);
+        if(v===1) w.insertAdjacentHTML("afterbegin",'<div class="hsh"><b>◀</b><span>表格可左右滑動，右邊還有標記</span><b>▶</b></div>');
+        if(v===3){w.insertAdjacentHTML("afterbegin",'<div class="hsa">▶</div>');w.firstChild.onclick=()=>tw.scrollBy({left:200,behavior:"smooth"})}
+        tw.addEventListener("scroll",()=>{const end=tw.scrollLeft+tw.clientWidth>=tw.scrollWidth-4;tw.classList.toggle("hse",end);w.classList.toggle("hse",end)},{passive:true});}
+    })};
+  new MutationObserver(()=>requestAnimationFrame(mark)).observe($("#app"),{childList:true}); addEventListener("resize",mark); setTimeout(mark,300);
+})();
 /* 回到頂端／到底部按鈕（11/15 使用者）：樣式 window.TTV（使用者選 2 膠囊文字；1 圓形實心／3 半透明方形保留可切） */
 (function(){
   const v=window.TTV||2, h=document.documentElement; h.classList.add("tt"+v);
