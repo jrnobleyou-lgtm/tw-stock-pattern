@@ -336,14 +336,14 @@ function mkBtnText(){const el=document.querySelector(".swp"),b=document.querySel
 /* 盤中同步（使用者 11/15）：台股盤中（週一～五 09:00～13:35）停在首頁時，每 2 分鐘重新讀 data.js，只更新「盤後一眼看懂」要用的數字（個股漲跌幅／成交量、三大法人、外資期貨、盤中時間），不整頁重畫 */
 let swTimer=null;
 function swLiveTick(){
-  if(D.market==="US"||!document.querySelector(".swp")) return;
+  if(D.market==="US"||!document.getElementById("swwrap")) return;
   const tp=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Taipei"})), m=tp.getHours()*60+tp.getMinutes(), wd=tp.getDay();
   if(wd<1||wd>5||m<540||m>815) return;
   fetch("data.js?t="+Date.now(),{cache:"no-store"}).then(r=>r.text()).then(t=>{
     const i=t.indexOf("{"); const nd=JSON.parse(t.slice(i).replace(/;\s*$/,""));
     for(const c in nd.stocks){const a=D.stocks[c],b=nd.stocks[c]; if(a){a.chg=b.chg;a.close=b.close;a.vol=b.vol}}
     D.inst=nd.inst; D.fut=nd.fut; D.live=nd.live; D.asof=nd.asof;
-    const el=document.querySelector(".swp"); if(!el) return;
+    const el=document.getElementById("swwrap"); if(!el) return;
     const w=document.createElement("div"); w.innerHTML=swPanel(); el.replaceWith(w.firstElementChild); loadMacro(); mkBtnText();
   }).catch(()=>{});
 }
@@ -360,7 +360,7 @@ function swPanel(){
     :V===3?`<div class="swbar"><b>${r.name}</b><span class="swtr"><i class="${bgc}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
     :`<div class="swr"><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`};
   const col=(title,cls,list,isS,isRel)=>`<div class="swc"><h3 class="${cls}">${title}${isRel?'<span class="mute" style="font-weight:400;font-size:12px">（沒有族群達 6 成，列相對'+(isS?'最強':'最弱')+' 3 個）</span>':""}</h3>${V===2?`<div class="swchips">${list.map(r=>item(r,cls,isS)).join("")}</div>`:list.map(r=>item(r,cls,isS)).join("")}</div>`;
-  return `<div class="swp${mkColState()?" mkcol":""}"><div class="swh swhead">盤後一眼看懂<button class="btn mkbtn" onclick="toggleMk()"></button></div><div class="swbody">`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div><div class="swh" style="margin-top:12px">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span></div><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+`</div></div></div>`;
+  return `<div id="swwrap"><div class="swp${mkColState()?" mkcol":""}"><div class="swh swhead">盤後一眼看懂<button class="btn mkbtn" onclick="toggleMk()"></button></div><div class="swbody">`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div></div></div><div class="swp swgrp"><div class="swh">強弱族群<span class="mute"> ${D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span></div><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+`</div></div></div>`;
 }
 
 /* ───────── 首頁：族群統計 ───────── */
