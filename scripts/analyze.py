@@ -125,6 +125,26 @@ def dmi_tags(bars, Ks, Ds):
     return out
 
 
+def fetch_inst():
+    """三大法人現貨買賣超（證交所 BFI82U，只含上市，單位換成億元）。抓不到回傳 None（網頁會顯示「稍後更新」，不放舊數字）。"""
+    import urllib.request
+    try:
+        j = json.loads(urllib.request.urlopen(urllib.request.Request(
+            "https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&response=json", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
+        if j.get("stat") != "OK":
+            return None
+        v = {r[0]: float(r[3].replace(",", "")) / 1e8 for r in j["data"]}
+        d = j["date"]
+        return {"date": f"{d[:4]}-{d[4:6]}-{d[6:]}",
+                "foreign": round(v["外資及陸資(不含外資自營商)"] + v.get("外資自營商", 0), 1),
+                "trust": round(v["投信"], 1),
+                "dealer": round(v["自營商(自行買賣)"] + v["自營商(避險)"], 1),
+                "total": round(v["合計"], 1)}
+    except Exception as e:
+        print("讀不到三大法人（略過）", repr(e)[:80])
+        return None
+
+
 def r2(x):
     return None if x is None else round(x, 2)
 
@@ -291,6 +311,10 @@ def main():
     if full and not us and os.path.exists(mp):
         live = json.load(open(mp))
     out = {"live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
+    if mode == "all":
+        inst = fetch_inst()
+        if inst:
+            out["inst"] = inst
     if us:
         out["market"] = "US"
     with open(os.path.join(OUT, "data.js"), "w", encoding="utf-8") as f:
