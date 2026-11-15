@@ -300,7 +300,7 @@ def main():
         ma = {n: E.sma(closes, n) for n in (5, 10, 20, 60)}
         box, ev = E.current_box(bars, T)
         state, tags, sub = E.classify(bars, ma[5], ma[10], ma[20], ma[60], T, box, ev)
-        geo = [g for g in PT.detect_geometry(bars, T) if g["status"] in ("confirmed", "near", "forming")]
+        geo = [g for g in PT.detect_geometry(bars, T) if g["status"] in ("confirmed", "near", "forming", "hist")]   # hist＝島型反轉第 11～30 天，只畫在圖上
         draw_upd = []
         if code in adm:                                # 管理者畫過：比對時間範圍
             geo, draw_upd = filter_by_drawings(geo, bars, adm[code])

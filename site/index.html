@@ -556,7 +556,7 @@ function notesHTML(s){
   let h="";
   if(s.box) h+=`<p>盤整區間：${s.box.s} ～ ${s.box.e}<br>上緣 ${s.box.hi}　下緣 ${s.box.lo}<br>${s.ev?`事件：${s.ev.date} ${evText(s.ev)}`:"價格仍在區間內"}</p>`;
   else if(s.state) h+=`<p>目前沒有符合規則的盤整區間。</p>`;
-  if(s.geo&&s.geo.length) h+=`<p>形態（系統判斷）：`+s.geo.map(g=>`${dn(g.kind)}（${({confirmed:"剛成立",near:"接近頸線",forming:"成形中"})[g.status]}${g.neck?"，頸線 "+g.neck:""}${g.stop?"，停損參考 "+g.stop:""}${g.volup?"，量增":""}）`).join("、")+`</p>`;
+  if(s.geo&&s.geo.length) h+=`<p>形態（系統判斷）：`+s.geo.map(g=>`${dn(g.kind)}（${({confirmed:"剛成立",near:"接近頸線",forming:"成形中",hist:"成立超過 10 天，只標在圖上"})[g.status]}${g.neck?"，頸線 "+g.neck:""}${g.stop?"，停損參考 "+g.stop:""}${g.volup?"，量增":""}）`).join("、")+`</p>`;
   if(s.rebound) h+=`<p>止跌反彈：自高點跌 ${s.rebound.drop}%，谷底 ${fmt(s.rebound.low)}，已反彈 ${s.rebound.bounce}%，分數 ${s.rebound.score}。</p>`;
   return h;
 }

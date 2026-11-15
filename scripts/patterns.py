@@ -10,6 +10,7 @@ from __future__ import annotations
 import math
 
 BREAK_WINDOW = 3     # 頸線突破後幾日內算「剛成立」
+ISL_TAG, ISL_DRAW = 10, 30   # 島型反轉：標籤天數、K 線圖上畫的天數（11/15 使用者）
 
 
 # ───────────────────────── 基礎工具 ─────────────────────────
@@ -587,7 +588,8 @@ def island(B, T):
         x = max(c, key=lambda z: z["b"])
         day = T - x["b"] + 1
         n_isl = x["b"] - x["a"]
-        status = "confirmed" if (day <= BREAK_WINDOW and x["held"]) else ("failed" if not x["held"] else "old")
+        # 11/15 使用者：守在島外就標 10 天（ISL_TAG）；之後到第 30 天只畫在 K 線圖上（hist，不加標籤、不改型態）；跌回島內＝失敗
+        status = "failed" if not x["held"] else "confirmed" if day <= ISL_TAG else "hist" if day <= ISL_DRAW else "old"
         # 單日島嶼若沒有量能確認，只標示、不改變四種型態
         kind_out = kind if (n_isl >= 2 or x["volup"]) else "單日" + kind
         res.append({"kind": kind_out, "dir": x["dir"], "status": status, "day": day, "neck": None,
@@ -627,7 +629,7 @@ def detect_geometry(B, T):
     return resolve_conflicts(list(uniq.values()), T)
 
 
-RANK = {"confirmed": 0, "near": 1, "forming": 2, "old": 3, "failed": 4}
+RANK = {"confirmed": 0, "near": 1, "forming": 2, "hist": 2.8, "old": 3, "failed": 4}
 
 
 def resolve_conflicts(gs, T):

@@ -429,8 +429,11 @@ def apply_patterns(state, tags, sub, geo):
     """用幾何形態調整四種型態。
     頂部反轉成立（頸線剛被跌破）→ 走弱；底部反轉/杯柄突破（頸線剛被突破）→ 轉強。"""
     # 「單日島型」只標示、不改變四種型態
-    bear = [g for g in geo if g["status"] == "confirmed" and g["dir"] == "bear" and not g["kind"].startswith("單日")]
-    bull = [g for g in geo if g["status"] == "confirmed" and g["dir"] == "bull" and not g["kind"].startswith("單日")]
+    # 11/15 使用者：島型反轉標 10 天，但只有前 3 天（BREAK_WINDOW）會改變五種型態，第 4～10 天只加標籤
+    def moves(g):
+        return not g["kind"].startswith("單日") and not ("島型" in g["kind"] and (g.get("day") or 0) > 3)
+    bear = [g for g in geo if g["status"] == "confirmed" and g["dir"] == "bear" and moves(g)]
+    bull = [g for g in geo if g["status"] == "confirmed" and g["dir"] == "bull" and moves(g)]
     bear.sort(key=lambda g: g["day"] or 99)
     bull.sort(key=lambda g: g["day"] or 99)
     bear_first = bool(bear) and (not bull or (bear[0]["day"] or 99) < (bull[0]["day"] or 99))
@@ -452,7 +455,7 @@ def apply_patterns(state, tags, sub, geo):
             tags = [t for t in tags if t not in ("破底走弱", "回檔走弱", "空頭排列", "均線糾結")]
         tags.append(f"{dn(g['kind'])}突破" if g["neck"] else dn(g["kind"]))
     for g in geo:
-        if g["status"] == "confirmed" and g["kind"].startswith("單日島型"):
+        if g["status"] == "confirmed" and (g["kind"].startswith("單日島型") or ("島型" in g["kind"] and (g.get("day") or 0) > 3)):
             tags.append(g["kind"])
         if g["status"] == "confirmed" and "島型" in g["kind"] and g.get("volup"):
             tags.append("島型量增確認")
