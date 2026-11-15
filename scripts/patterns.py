@@ -223,7 +223,7 @@ def v_shape(B, T):
         drop = (B[top_i]["h"] - B[lo_i]["l"]) / B[top_i]["h"]
         reb = rb(top_i)
         if drop >= 0.15 and lo_i - top_i <= 12 and reb >= 0.5 and T - lo_i <= 15:
-            out.append({"kind": "V形底", "dir": "bull", "status": "confirmed" if reb >= 0.5 and T - lo_i <= 5 else "old",
+            out.append({"kind": "V形底", "dir": "bull", "status": "confirmed" if reb >= 0.5 and T - lo_i <= 10 else "old",
                         "day": T - lo_i + 1, "neck": None,
                         "pts": [[top_i, B[top_i]["h"]], [lo_i, B[lo_i]["l"]], [T, B[T]["c"]]]})
     # V 形頂
@@ -634,7 +634,12 @@ def resolve_conflicts(gs, T):
         idx = [i for i, _ in g["pts"]] + (list(g["rect"][:2]) if g.get("rect") else [])
         return min(idx), max(idx)
     # 同級：比較完整的（轉折點多，例：W 包含後半段的 V）優先，再來比較新的
-    order = sorted(gs, key=lambda g: (RANK.get(g["status"], 5), -len(piv(g)), -g.get("key_i", max(i for i, _ in g["pts"]))))
+    def rk(g):
+        # V 形底放寬到 10 天顯示後，超過 5 天的 V 只算「成形中」之下的等級，不蓋過其他形態（TSM 固定檢查）
+        if g["kind"] == "V形底" and g["status"] == "confirmed" and g.get("day", 0) > 6:
+            return 2.5
+        return RANK.get(g["status"], 5)
+    order = sorted(gs, key=lambda g: (rk(g), -len(piv(g)), -g.get("key_i", max(i for i, _ in g["pts"]))))
     keep = []
     for g in order:
         a0, a1 = span(g)
