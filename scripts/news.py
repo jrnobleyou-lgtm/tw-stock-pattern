@@ -205,6 +205,14 @@ class Quota(Exception):
     pass
 
 
+class BadBatch(Exception):
+    pass
+
+
+class Busy(Exception):
+    pass
+
+
 def providers():
     """（名稱, 網址, 金鑰, 模型）依序嘗試：Gemini → GitHub Models。"""
     out = []
@@ -218,13 +226,18 @@ def providers():
 
 def call(url, key, model, body):
     req = {"model": model, "messages": [{"role": "user", "content": body}], "response_format": {"type": "json_object"}}
-    r = subprocess.run(["curl", "-sS", "-m", "180", url, "-H", "Authorization: Bearer " + key, "-H", "Content-Type: application/json", "--data-binary", "@-"],
-                       input=json.dumps(req).encode(), capture_output=True)
-    out = r.stdout.decode("utf-8", "replace")
+    r = subprocess.run(["curl", "-sS", "-m", "180", url, "-H", "Authorization: Bearer " + key, "-H", "Content-Type: application/json", "--data-binary", "@-",
+                        "-w", "\n@@HTTP%{http_code}"], input=json.dumps(req).encode(), capture_output=True)
+    out, _, code = r.stdout.decode("utf-8", "replace").rpartition("\n@@HTTP")
+    if code[:1] == "5" or code == "000":
+        raise Busy(f"HTTP {code}")
     if '"code": 429' in out or '"code":429' in out or "RESOURCE_EXHAUSTED" in out or "RateLimitReached" in out or "rate limit" in out.lower():
         raise Quota(out[:300])
-    d = json.loads(out)
-    txt = d["choices"][0]["message"]["content"]
+    try:
+        d = json.loads(out)
+        txt = d["choices"][0]["message"]["content"]
+    except Exception:
+        raise ValueError(f"回應不是預期格式（HTTP {code}）：" + out[:200].replace("\n", " "))
     txt = re.sub(r"^```(?:json)?|```$", "", txt.strip()).strip()
     res = json.loads(txt)
     res = res.get("r") if isinstance(res, dict) else res
@@ -234,13 +247,15 @@ def call(url, key, model, body):
 
 
 def judge(batch, prov):
+    """回傳 (結果, 用哪個 AI)。額度用完換下一個 AI；回傳格式壞掉丟 BadBatch（呼叫端拆小再送），不換 AI。"""
     body = PROMPT + "".join(f"\n=== {a['id']}（{a['src']}）\n標題：{a['title']}\n內文：{a['text'][:TEXT_MAX]}\n" for a in batch)
     while prov:
         name, url, key, model = prov[0]
-        for tryno in range(3):
+        bad = 0
+        for tryno in range(4):
             try:
                 res = call(url, key, model, body)
-                if len(res) >= len(batch) * 0.8 or tryno == 2:   # 回來的篇數太少（可能被截斷）就重試
+                if len(res) >= len(batch) * 0.8 or tryno >= 2:   # 回來的篇數太少（可能被截斷）就重試
                     return res, f"{name} {model}"
             except Quota as e:
                 if tryno == 0:
@@ -248,8 +263,17 @@ def judge(batch, prov):
                     continue
                 print(f"{model} 額度用完：{e}", file=sys.stderr)
                 break
+            except Busy as e:                           # AI 伺服器暫時忙：等一下再試
+                print(f"{model} 暫時忙：{e}", file=sys.stderr)
+                time.sleep(20)
+                continue
             except Exception as e:
+                bad += 1
                 print(f"{model} 回傳有問題：{e}", file=sys.stderr)
+                if "不是預期格式" in str(e) and bad >= 2:
+                    break                               # 這個 AI 連線本身有問題：換下一個
+                if bad >= 2:
+                    raise BadBatch(str(e))
                 time.sleep(5)
         prov.pop(0)                                    # 這個模型今天不能用了，換下一個
     raise Quota("所有 AI 都不能用")
@@ -358,16 +382,25 @@ def main(out):
         size += n
     if cur:
         batches.append(cur)
-    done, used = 0, {}
-    for bi, batch in enumerate(batches):
+    done, used, bi = 0, {}, 0
+    while batches:
+        batch = batches.pop(0)
         for i, a in enumerate(batch):
             a["id"] = f"A{i + 1}"
         if bi:
             time.sleep(GAP)
+        bi += 1
         try:
             res, who = judge(batch, prov)
+        except BadBatch:
+            if len(batch) > 1:                          # 拆成兩半再送
+                h = len(batch) // 2
+                batches[:0] = [batch[:h], batch[h:]]
+            else:
+                seen[batch[0]["k"]] = now               # 單篇還是壞：跳過這篇
+            continue
         except Quota:
-            meta["quota_until"] = now + 3 * 3600                # 3 小時內不再抓內文，避免一直打媒體網站
+            meta["quota_until"] = now + 3600                # 1 小時內不再抓內文，避免一直打媒體網站
             print("AI 額度都用完，剩下的之後再判斷")
             break
         used[who] = used.get(who, 0) + 1
@@ -383,8 +416,8 @@ def main(out):
                 for s in x.get("stocks") or []:
                     c = resolve(s, a, names, codes)
                     d = {"上修": 1, "持平": 0, "下修": -1}.get(s.get("dir")) if isinstance(s, dict) else None
-                    if c and d is not None and str(s.get("kind")) == "盤面" and d == 0:
-                        continue                        # 只是盤勢文章裡提到、沒有利多利空：不收
+                    if c and d is not None and str(s.get("kind")) in ("盤面", "點名") and d == 0:
+                        continue                        # 盤勢文章或投顧點名、又沒有利多利空：不收
                     if c and d is not None and c not in [y["c"] for y in ss]:
                         ss.append({"c": c, "d": d, "k": str(s.get("kind") or "")[:4], "w": str(s.get("why") or "")[:40]})
                 seen[a["k"]] = now
