@@ -333,6 +333,21 @@ function loadMacro(){
 function mkColState(){try{return localStorage.getItem("mkcol")!=="0"}catch(_){return true}}      /* 預設收合（使用者 11/15），按展開後記住 */
 function toggleMk(){const el=document.querySelector(".swp"); if(!el) return; const c=el.classList.toggle("mkcol"); try{localStorage.setItem("mkcol",c?"1":"0")}catch(_){} mkBtnText()}
 function mkBtnText(){const el=document.querySelector(".swp"),b=document.querySelector(".mkbtn"); if(el&&b) b.textContent=el.classList.contains("mkcol")?"▾ 展開":"▴ 收合"}
+/* 盤中同步（使用者 11/15）：台股盤中（週一～五 09:00～13:35）停在首頁時，每 2 分鐘重新讀 data.js，只更新「盤後一眼看懂」要用的數字（個股漲跌幅／成交量、三大法人、外資期貨、盤中時間），不整頁重畫 */
+let swTimer=null;
+function swLiveTick(){
+  if(D.market==="US"||!document.querySelector(".swp")) return;
+  const tp=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Taipei"})), m=tp.getHours()*60+tp.getMinutes(), wd=tp.getDay();
+  if(wd<1||wd>5||m<540||m>815) return;
+  fetch("data.js?t="+Date.now(),{cache:"no-store"}).then(r=>r.text()).then(t=>{
+    const i=t.indexOf("{"); const nd=JSON.parse(t.slice(i).replace(/;\s*$/,""));
+    for(const c in nd.stocks){const a=D.stocks[c],b=nd.stocks[c]; if(a){a.chg=b.chg;a.close=b.close;a.vol=b.vol}}
+    D.inst=nd.inst; D.fut=nd.fut; D.live=nd.live; D.asof=nd.asof;
+    const el=document.querySelector(".swp"); if(!el) return;
+    const w=document.createElement("div"); w.innerHTML=swPanel(); el.replaceWith(w.firstElementChild); loadMacro(); mkBtnText();
+  }).catch(()=>{});
+}
+function swLiveStart(){ if(swTimer) clearInterval(swTimer); swTimer=setInterval(swLiveTick,120000); }
 function swPanel(){
   let {strong,weak,rows}=swGroups(), f=x=>(x>0?"+":"")+x.toFixed(2)+"%", note="";
   const rel=(list,sortf,n)=>{const out=[];for(const r of rows.slice().sort(sortf)){if(out.some(o=>{let k=0;for(const c of r.set) if(o.set.has(c)) k++;return k>0.5*Math.min(r.set.size,o.set.size)})) continue;out.push(r);if(out.length>=n)break}return out};
@@ -364,7 +379,7 @@ function home(){
       `<td>${rb? rb : '<span class="mute">-</span>'}</td></tr>`;
   }
   h += `</tbody></table></div><p class="note">族群樣本少於 5 檔時，百分比參考價值低，不顯示。顏色採台股習慣：紅＝強、綠＝弱。</p>`;
-  $("#app").innerHTML = h; loadMacro(); mkBtnText();
+  $("#app").innerHTML = h; loadMacro(); mkBtnText(); swLiveStart();
   document.querySelectorAll(".chip[data-st]").forEach(c=>c.onclick=()=>{location.hash="st-"+encodeURIComponent(c.dataset.st)});
   document.querySelectorAll("tr.row").forEach(r=>r.onclick=()=>{location.hash="g-"+D.groups.findIndex(x=>x.name===r.dataset.g)});
 }
