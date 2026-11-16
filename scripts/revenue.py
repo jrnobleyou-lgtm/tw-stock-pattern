@@ -89,9 +89,10 @@ def update():
             ly[ym_add(ym, -12)][c] = _num(r.get("營業收入-去年當月營收"))
         for ym, d in cur.items():
             print(u.rsplit("/", 1)[-1], ym, len(d), "檔，更新", save_month(ym, d))
-        for src in (prev, ly):
-            for ym, d in src.items():
-                save_month(ym, d, overwrite=False)
+        for ym, d in prev.items():                 # 上月營收：官方更正要蓋過去（Fable 11/16）
+            save_month(ym, d)
+        for ym, d in ly.items():                   # 去年同月只補洞
+            save_month(ym, d, overwrite=False)
 
 
 def fm_loop(todo, url_of, handle):
@@ -169,7 +170,7 @@ def summary(data=None):
     latest = collections.Counter(max(v) for v in data.values() if v)
     # 全市場最新月：至少 100 家公布的最新月份（月初只有少數公司先公布時，不會誤判）
     top = max([ym for ym, n in latest.items() if n >= 100] or [max(latest)])
-    ok_months = {top, ym_add(top, -1)}
+    ok_from = ym_add(top, -1)                     # 這檔最新月 ≥ 全市場最新月的前一月就標（月初先公布新月份的公司也算）
     out = {}
     for c, v in data.items():
         if not v:
@@ -184,7 +185,7 @@ def summary(data=None):
             yoy = round((v[ym] / ly - 1) * 100, 1) if ly else None
             rows.append([ym, v[ym], yoy])
         r = {"rev": rows, "revHi": False, "yoyHi": False}
-        if last in ok_months:
+        if last >= ok_from:
             cur = v[last]
             prev11 = [v[m] for m in (ym_add(last, -k) for k in range(1, 12)) if m in v]
             if len(v) >= 13 and len(prev11) >= 11 and cur > 0 and cur > max(prev11):
