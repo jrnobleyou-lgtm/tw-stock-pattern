@@ -255,7 +255,7 @@ html.lrn.lb3 .lcard{background:#000;border-color:#3b3566}html.lrn.lb3 .lix3{back
 /* 強弱族群三欄對齊（11/16 使用者：抗跌那欄沒跟左邊切齊）、收合鈕縮小 */
 .mkbtn{padding:2px 9px;font-size:12px}
 .swgrp>.swh{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.swgrp>.swh .mkbtn{margin-left:auto}
-@media(min-width:641px){.swg .swc h3{white-space:nowrap;overflow:hidden;height:21px;line-height:21px}}
+@media(min-width:641px){.swg .swc h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:1.5em;line-height:1.5em}}
 html.swl1 .swgrp:not(.mkcol)>.swh{padding-bottom:8px;border-bottom:1px solid #3b3566;margin-bottom:10px}
 html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}html.kdA .sw5{display:inline-block;margin-right:6px;padding:0 6px;border-radius:8px;font-size:11px;font-weight:400;background:rgba(34,197,94,.16);color:#86efac;vertical-align:1px}
 @media(min-width:641px){html.kdB .swg .swbar small{min-height:2.9em}}
@@ -464,11 +464,17 @@ function swLiveTick(){
 }
 function swLiveStart(){ if(swTimer) clearInterval(swTimer); swTimer=setInterval(swLiveTick,120000); }
 /* 11/16 使用者：強弱族群三欄表頭切齊——表頭一律一行，括號說明字自動縮到一行放得下（電腦版）；三欄都在標題列（收合鈕）下方，SWL 1＝中間加橫線 */
-function fitSw(){
-  document.querySelectorAll(".swg .swc h3").forEach(h=>{const m=h.querySelector(".mute");if(!m)return;m.style.fontSize="";
-    if(innerWidth<641) return; let f=12; while(h.scrollWidth>h.clientWidth+1&&f>8){f-=.5;m.style.fontSize=f+"px"}});
+let swRO=null;
+function fitSw(){   /* 11/16 修：表頭寬度一變（展開、A＋A−、盤中重畫、字型載入）就重算；縮到 8px 還放不下才用「…」 */
+  if(!swRO&&window.ResizeObserver) swRO=new ResizeObserver(es=>es.forEach(e=>fit1(e.target)));
+  document.querySelectorAll(".swg .swc h3").forEach(h=>{if(swRO&&!h.__ro){h.__ro=1;swRO.observe(h)}fit1(h)});
 }
-addEventListener("resize",()=>fitSw());
+function fit1(h){
+  const m=h.querySelector(".mute");if(!m)return;m.style.fontSize="";m.style.textOverflow="";
+  if(innerWidth<641||!h.clientWidth) return;
+  let f=parseFloat(getComputedStyle(m).fontSize)||12; while(h.scrollWidth>h.clientWidth+1&&f>8){f-=.5;m.style.fontSize=f+"px"}
+}
+addEventListener("resize",()=>fitSw()); if(document.fonts) document.fonts.ready.then(()=>fitSw());
 function swPanel(){
   let {strong,weak,rows}=swGroups(), f=x=>(x>0?"+":"")+x.toFixed(2)+"%", note="";
   const rel=(list,sortf,n)=>{const out=[];for(const r of rows.slice().sort(sortf)){if(out.some(o=>{let k=0;for(const c of r.set) if(o.set.has(c)) k++;return k>0.5*Math.min(r.set.size,o.set.size)})) continue;out.push(r);if(out.length>=n)break}return out};
