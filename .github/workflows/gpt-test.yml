@@ -11,6 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 tmp_test/run_gpt.py
+      - run: bash tmp_test/raw.sh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
