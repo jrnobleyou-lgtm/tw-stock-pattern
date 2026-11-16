@@ -8,7 +8,7 @@
     s/<0-63>.json      依股票代號分包（Worker 的 /api/news 讀這個）
     meta.json          本輪時間、各家篇數、額度用完到幾點
 規則（使用者定）：不花錢；付費、要登入會員的文章不抓（抓不到全文就整篇跳過）；Yahoo 不用；AI 要讀全文。
-AI：主力 Gemini 免費 API（GEMINI_API_KEY），額度不夠改用 GitHub Models 免費額度（GitHub Actions 的 GITHUB_TOKEN，不用另外申請）。
+AI：Gemini 免費 API（GEMINI_API_KEY），先 flash-lite、再 flash（11/16 實測：flash 偏樂觀；GitHub Models 已被 GitHub 停掉，Groq／Cloudflare 免費模型品質也不夠，都不用）。兩個都用完就當輪不判，等額度回來再補。
 2026-11-16 依 Fable 審查修正：編碼錯誤、AI 回傳格式防呆、股票比對（名稱／代號須出現在文中、撞名清單）、
 篇號用 A1…、限流等待、全文上限 6000 字、文章時間、先濾掉沒提到上市櫃的文章、每批存檔、同標題去重。"""
 import concurrent.futures as cf, csv, email.utils, hashlib, html, json, os, re, subprocess, sys, time
@@ -20,7 +20,6 @@ KEEP_DAYS, NSHARD = 30, 64
 BATCH_N, BATCH_CHARS, TEXT_MAX, RUN_MAX = 10, 30000, 6000, 80      # 每批最多 10 篇或 3 萬字；每篇最多 6000 字；每輪最多判 80 篇
 GAP, WAIT_429 = 7, 50                                               # 批與批之間等 7 秒；被限流先等 50 秒再試
 GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-GHM = "https://models.github.ai/inference/chat/completions"
 TW = timezone(timedelta(hours=8))
 AMBIG = {"三星", "世界", "統一", "大同", "國產", "聯合", "中華", "精華", "台灣", "全球", "亞洲", "大成", "中興", "國泰", "富邦", "新光",
          "遠東", "長榮", "華南", "第一", "台新", "永豐", "元大", "開發", "宏達", "光寶", "東元", "聲寶", "中鋼", "台塑", "南亞"}
@@ -200,7 +199,10 @@ PROMPT = """你是台股新聞分析助理。下面每篇是台灣財經新聞�
 持平＝中性、已公布的數字、好壞參半；只報導股價漲跌、沒有基本面原因的也算持平
 下修＝利空（獲利衰退、目標價下調、砍單、風險升高等）
 kind 填：事件（公司營運、財報、訂單、法說）／法人（外資、券商或投顧的研究報告有給明確目標價或調整評等、EPS 預估）／點名（節目或專欄的投顧、分析師推薦、題材，沒有給目標價）／盤面（股價漲跌、資金流向）。
-請以內文為準，不要被標題的聳動語氣誤導。code 填台股代號（4～6 碼，不確定就空字串）。理由用繁體中文 25 字內。
+請以內文為準，不要被標題的聳動語氣誤導。
+以下情況一律判持平：公司宣布投資、取得資產、簽約、試車或測試達標這類里程碑，內文沒有營收、獲利、訂單金額等財務結果；多空意見並陳；法人只是預估數字、沒有調高或調低評等或目標價。
+只有內文明確寫出營收／獲利成長、訂單增加、調升目標價或評等，才判上修；明確寫出衰退、砍單、調降目標價，才判下修。
+盤勢綜述、選股清單、整理很多檔股票的文章，只列文章真正主要在談的公司，沒有就給空陣列。code 填台股代號（4～6 碼，不確定就空字串）。理由用繁體中文 25 字內。
 只輸出 JSON：{"r":[{"id":"原樣的編號","stocks":[{"name":"公司簡稱","code":"代號","dir":"上修|持平|下修","kind":"事件|法人|點名|盤面","why":"理由"}]}]}，沒有主要公司就 stocks 給空陣列，每篇都要回。
 """
 
@@ -218,13 +220,11 @@ class Busy(Exception):
 
 
 def providers():
-    """（名稱, 網址, 金鑰, 模型）依序嘗試：Gemini → GitHub Models。"""
+    """（名稱, 網址, 金鑰, 模型）依序嘗試：Gemini flash-lite → flash。"""
     out = []
     gk = os.environ.get("GEMINI_API_KEY") or ("" if os.environ.get("CI") else "proxy-injected")   # 雲端測試環境：網路代理會換成真的金鑰
     if gk:
-        out += [("Gemini", GEMINI, gk, m) for m in ("gemini-3.5-flash", "gemini-3.5-flash-lite")]
-    if os.environ.get("GITHUB_TOKEN"):
-        out += [("GitHub", GHM, os.environ["GITHUB_TOKEN"], m) for m in ("openai/gpt-4.1-mini", "openai/gpt-4.1")]
+        out += [("Gemini", GEMINI, gk, m) for m in ("gemini-3.5-flash-lite", "gemini-3.5-flash")]
     return out
 
 

@@ -1,7 +1,7 @@
 name: news
 # 個股新聞：7 家媒體免費文章 → AI 判斷上修／持平／下修 → 存到 news-data 分支（網站 /api/news 讀它）
 # 觸發：Cloudflare Worker 的排程（jobsAt）平日每 30 分、週末每小時；也可在 GitHub 手動執行
-# AI：Gemini 免費 API（Secrets 的 GEMINI_API_KEY），額度不夠改用 GitHub Models 免費額度（GITHUB_TOKEN）
+# AI：Gemini 免費 API（Secrets 的 GEMINI_API_KEY），先 flash-lite、再 flash；都用完就當輪不判
 on:
   workflow_dispatch:
 permissions:
@@ -26,7 +26,6 @@ jobs:
       - name: 抓新聞並判斷
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ github.token }}
         run: python3 scripts/news.py nd
       - name: 存回 news-data 分支（只留一個版本，分支不會越長越大）
         run: |
