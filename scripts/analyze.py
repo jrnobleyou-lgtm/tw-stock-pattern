@@ -384,6 +384,7 @@ def main():
             "conf": g.get("把握度", "U"),
             "market": mk.get(code), "state": state, "sub": sub, "tags": tags,
             "close": raw[T]["c"], "pc": raw[T - 1]["c"] if T else None,     # 前一日收盤（前端算漲跌金額、漲跌停）
+            "r5": [r2((raw[i]["c"] / raw[i - 1]["c"] - 1) * 100) for i in range(max(1, T - 4), T + 1)],   # 近 5 日每日漲跌幅（相對抗跌族群的「近 5 日也抗跌」）
             "chg": r2((raw[T]["c"] / raw[T - 1]["c"] - 1) * 100) if T else 0,
             "vol": round(raw[T]["v"] / 1000),
         }
