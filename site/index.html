@@ -212,8 +212,7 @@ svg text{fill:var(--fg);font-size:11px}
 .chg2 .a{font-size:11px;opacity:.85}
 .cv2 .chg2 .p{font-weight:700;font-size:14px}
 .cv3 .chg2 span{display:inline-block;min-width:62px;text-align:center;border-radius:6px;background:rgba(255,255,255,.06);padding:1px 4px}.cv3 .chg2 .lm{min-width:62px}
-@media(min-width:641px){.stt .chg2{display:none}}
-@media(max-width:640px){.stt th.c-chg,.stt td.c-chg{display:none}}
+.stt th.c-chg,.stt td.c-chg{display:none}   /* 11/16 使用者選版本 2，電腦手機都用左邊的漲跌欄 */
 </style>
 </head>
 <body>
@@ -472,7 +471,7 @@ function dmiCells(s){
 function tick(p){return p<10?.01:p<50?.05:p<100?.1:p<500?.5:p<1000?1:5}
 function limPx(pc,up){const raw=pc*(up?1.1:.9),t=tick(raw);const v=up?Math.floor(raw/t+1e-9)*t:Math.ceil(raw/t-1e-9)*t;return +v.toFixed(2)}
 function chgCell(s){
-  const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||1;
+  const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||2;
   const lu=D.market!=="US"&&pc&&s.close>=limPx(pc,1)-1e-9, ld=D.market!=="US"&&pc&&s.close<=limPx(pc,0)+1e-9;
   const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
   const lm=lu?"lm u":ld?"lm d":"";
@@ -481,7 +480,7 @@ function chgCell(s){
 }
 function stockTable(list,withGroup,showVal,dmiCols){
   let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="chg2">漲跌</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
-  h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||1}">`);
+  h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
     h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
@@ -1539,7 +1538,7 @@ async function myDraw(){
     if(!codes.length){ h+=`<p class="note">還沒有畫線。</p>`; continue }
     const sameMkt=m===here, list=codes.map(c=>({c,s:sameMkt?D.stocks[c]:null,names:all[m][c]})).sort((a,b)=>((b.s?b.s.close*b.s.vol:0)-(a.s?a.s.close*a.s.vol:0))||a.c.localeCompare(b.c));
     h+=`<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="tg">我畫的型態</th><th class="cc">型態</th><th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
-  h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||1}">`);
+  h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
     for(const x of list){
       const href=sameMkt?"":(m==="US"?"/admin/#s-":"/#s-")+encodeURIComponent(x.c), s=x.s;
       h+=`<tr class="row" ${sameMkt?`data-c="${x.c}"`:`data-href="${href}"`}><td class="sn1"><b>${x.c}</b> <span class="sn">${s?s.name:""}</span></td><td class="tg">${x.names.map(n=>`<span class="tag" style="color:#f472b6;border-color:#f472b688">✏️${n||"未命名"}</span>`).join("")}${s&&s.drawUpd&&s.drawUpd.length?`<span class="tag hot" title="系統已經把這段型態往後補完，可以點進去確認後刪掉自己畫的線">型態已更新！</span>`:""}</td>`+
