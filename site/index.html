@@ -87,6 +87,7 @@ svg text{fill:var(--fg);font-size:11px}
 .filters .btn small{color:var(--mute);margin-left:4px}
 .filters .btn.on small{color:#241c00}
 .subf{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 12px;padding:8px 10px;border:1px solid rgba(167,139,250,.35);border-radius:10px;background:rgba(124,58,237,.10)}
+.subf-i{display:none}.filters .subf{margin:0;flex-basis:100%}@media(max-width:640px){.subf-i{display:flex}.subf-o{display:none}}
 .subf .btn{padding:3px 12px;font-size:13px;border-radius:999px}.subf .btn small{color:var(--mute);margin-left:4px}.subf .btn.on small{color:#241c00}
 .sect{margin:18px 0 6px;font-size:13px;color:var(--mute)}
 
@@ -661,20 +662,20 @@ const DMI_NOTE={
 };
 const DMI_HELP='<details class="dmihelp"><summary>ⓘ 什麼是 DMI？表格的「DMI差值」「ADX」怎麼看？</summary><p>DMI 用三條線看趨勢：<b>+DI</b> 是買方力道，<b>-DI</b> 是賣方力道，誰在上面誰占優勢；<b>ADX</b> 看趨勢強不強，不分漲跌。ADX 在 25 以上表示正在走明顯的趨勢，往上代表越走越強；低於 20 多半是盤整。</p><p><b>多方順序：</b>即將翻多（還沒漲）／翻多前已轉強（已先漲 10～20%）→ 剛翻多（+DI 穿過 -DI）→ 多頭趨勢（ADX 25 以上＋突破前高）。</p><p><b>DMI過熱 和 KD高檔鈍化 不一樣：</b>KD 鈍化看最近幾天，股價收在近 9 天高點附近就會出現；DMI過熱看整段趨勢，ADX 要連走好幾週才會到 45 以上，開始往下代表力道在退。</p><p><b>表格兩欄：</b>「DMI差值」＝+DI 減 -DI，正數（紅）買方占優勢、負數（綠）賣方占優勢；「ADX」後面的 ▲ 是比 3 天前上升、▼ 下降、「平」差不多，「弱」表示 ADX 低於 20。標籤以收盤為準。K 線圖上按「DMI趨勢」就能看到這三條線。</p></details>';
 const SUBF={   /* 11/16 使用者：底部反轉可以分開看（頁內小分類，原本的按鈕不動）；網址 #scr-bot.w */
-  bot:[["w","W雙重底",g=>g.kind==="雙重底"||g.kind==="雙重底（不對稱）"],["hs","頭肩底",g=>g.kind==="頭肩底"],["v","V形底",g=>g.kind==="V形底"],["isl","島型反轉底",g=>g.kind==="島型反轉底"&&g.status!=="hist"]]};
+  bot:[["w","W雙重底",g=>g.kind==="雙重底"||g.kind==="雙重底（不對稱）"],["hs","頭肩底",g=>g.kind==="頭肩底"],["v","V形底",g=>g.kind==="V形底"],["isl","島型反轉底",g=>g.kind==="島型反轉底"&&g.status!=="hist"]],
+  top:[["m","M雙重頂","雙重頂"],["hs","頭肩頂","頭肩頂"],["v","V形頂","V形頂"],["r","圓弧頂","圓弧頂"],["isl","島型反轉頂","島型反轉頂"],["dt","下降三角形","下降三角形"],["rw","上升楔形","上升楔形"]]
+    .map(([k,n,kind])=>[k,n,g=>g.kind===kind&&g.status==="confirmed"&&g.dir==="bear"])};   /* 頂部也分開（與「頂部反轉」同條件：已跌破、看跌） */
 function screener(key){
   key = key || "rb3";
   const [bk,sk] = key.split(".");
   const cur = FILTERS.find(x=>x.k===bk) || FILTERS[0];
   const all = Object.values(D.stocks);
-  let h = `<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button><div class="filters">` + FILTERS.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`).join("") + `</div>`;
   let list = all.filter(cur.f);
-  const subs=SUBF[cur.k];
-  if(subs){
-    const sb=subs.find(x=>x[0]===sk);
-    h += `<div class="subf"><button class="btn ${sb?"":"on"}" data-k="${cur.k}">全部<small>${list.length}</small></button>`+subs.map(([k,n,f])=>`<button class="btn ${sb&&sb[0]===k?"on":""}" data-k="${cur.k}.${k}">${n}<small>${list.filter(s=>s.geo.some(f)).length}</small></button>`).join("")+`</div>`;
-    if(sb) list=list.filter(s=>s.geo.some(sb[2]));
-  }
+  const subs=SUBF[cur.k], sb=subs&&subs.find(x=>x[0]===sk);
+  /* 小分類：電腦版放在所有按鈕下面（subf-o）；手機版接在被選的按鈕正下方（subf-i，11/16 使用者） */
+  const subH=c=>subs?`<div class="subf ${c}"><button class="btn ${sb?"":"on"}" data-k="${cur.k}">全部<small>${list.length}</small></button>`+subs.map(([k,n,f])=>`<button class="btn ${sb&&sb[0]===k?"on":""}" data-k="${cur.k}.${k}">${n}<small>${list.filter(s=>s.geo.some(f)).length}</small></button>`).join("")+`</div>`:"";
+  let h = `<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button><div class="filters">` + FILTERS.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`+(x.k===cur.k?subH("subf-i"):"")).join("") + `</div>` + subH("subf-o");
+  if(sb) list=list.filter(s=>s.geo.some(sb[2]));
   const tv=s=>s.close*s.vol;            // 成交值（收盤×成交張數）
   sortList(list);            // 預設依成交值由大到小，右上角可改排序
   if(cur.k==="rb3"||cur.k==="rb"){
