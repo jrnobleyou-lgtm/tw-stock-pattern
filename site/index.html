@@ -212,7 +212,10 @@ svg text{fill:var(--fg);font-size:11px}
 .chg2 .a{font-size:11px;opacity:.85}
 .cv2 .chg2 .p{font-weight:700;font-size:14px}
 .cv3 .chg2 span{display:inline-block;min-width:62px;text-align:center;border-radius:6px;background:rgba(255,255,255,.06);padding:1px 4px}.cv3 .chg2 .lm{min-width:62px}
-.stt th.c-chg,.stt td.c-chg{display:none}   /* 11/16 使用者選版本 2，電腦手機都用左邊的漲跌欄 */
+.stt th.c-chg,.stt td.c-chg{display:none}
+/* 11/16 使用者：股票／漲跌／族群標題與內容置中、欄寬貼合內容；標記欄加寬（電腦手機都用） */
+.stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
+@media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
 </style>
 </head>
 <body>
@@ -506,10 +509,10 @@ function chgCell(s){
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
 function stockTable(list,withGroup,showVal,dmiCols){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="chg2">漲跌</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">漲跌</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -613,7 +616,7 @@ function screener(key){
   sortList(list);            // 預設依成交值由大到小，右上角可改排序
   if(cur.k==="rb3"||cur.k==="rb"){
     h += `<p class="note">條件：近 20 日自高點跌 10% 以上，最近 3 天內出現 20 日新低，今天收紅或收在當日區間上緣、且比昨天強、離谷底反彈 2% 以上。分數＝收紅＋K線反轉形態＋量增 1.2 倍＋收復昨日高點（≥3 分為強勢）。</p>`;
-    h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th>股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
+    h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th class="sn1">股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${turnover(s)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else if(DMI_NOTE[cur.k]) h += sortBar([["dmid","DMI差值"],["adx","ADX"]])+stockTable(list,false,true,true);
   else h += sortBar()+stockTable(list,false,true);
@@ -1564,7 +1567,7 @@ async function myDraw(){
     h+=`<h3 style="margin:18px 0 6px">${nm}　<span class="mute">${codes.length} 檔</span></h3>`;
     if(!codes.length){ h+=`<p class="note">還沒有畫線。</p>`; continue }
     const sameMkt=m===here, list=codes.map(c=>({c,s:sameMkt?D.stocks[c]:null,names:all[m][c]})).sort((a,b)=>((b.s?b.s.close*b.s.vol:0)-(a.s?a.s.close*a.s.vol:0))||a.c.localeCompare(b.c));
-    h+=`<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="tg">我畫的型態</th><th class="cc">型態</th><th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+    h+=`<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="tg">我畫的型態</th><th class="cc">型態</th><th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
     for(const x of list){
       const href=sameMkt?"":(m==="US"?"/admin/#s-":"/#s-")+encodeURIComponent(x.c), s=x.s;
