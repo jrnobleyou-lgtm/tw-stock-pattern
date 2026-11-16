@@ -213,6 +213,17 @@ svg text{fill:var(--fg);font-size:11px}
 .cv2 .chg2 .p{font-weight:700;font-size:14px}
 .cv3 .chg2 span{display:inline-block;min-width:62px;text-align:center;border-radius:6px;background:rgba(255,255,255,.06);padding:1px 4px}.cv3 .chg2 .lm{min-width:62px}
 .stt th.c-chg,.stt td.c-chg{display:none}
+/* 型態介紹頁（#learn） */
+.lsb{position:sticky;top:0;z-index:20;background:rgba(18,16,26,.96);padding:8px 0;border-bottom:1px solid var(--line-t);margin:6px 0 4px}
+.lsb input{width:100%;padding:9px 12px;border-radius:10px;border:1px solid #3b3566;background:#1c1738;color:#fff;font-size:15px}
+.lch{display:flex;gap:6px;overflow-x:auto;margin-top:7px;scrollbar-width:none}.lch button{flex:none;padding:3px 11px;border-radius:14px;border:1px solid #3b3566;background:transparent;color:#cfc8e6;font-size:13px;cursor:pointer}.lch button.on{background:#4c3d99;color:#fff;border-color:#6d5ce0}
+.lsec{font-size:16px;font-weight:800;margin:20px 0 4px;color:#fff;border-left:4px solid #6d5ce0;padding-left:8px}
+.lcard{border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.78);padding:14px;margin:12px 0;display:grid;grid-template-columns:340px 1fr;gap:16px;scroll-margin-top:140px}.lcard .lhd{grid-column:1/3}
+.lcard h2{margin:0 0 2px;font-size:17px}.lal{color:var(--mute);font-size:12px}.ltag{display:inline-block;font-size:12px;padding:0 8px;border-radius:10px;margin-left:6px;vertical-align:2px}
+.ltag.bull{background:rgba(239,68,68,.18);color:#fca5a5}.ltag.bear{background:rgba(34,197,94,.16);color:#86efac}.ltag.neu{background:rgba(240,211,74,.15);color:#f0d34a}
+.lsv{display:block;width:100%;height:auto;background:#000;border-radius:8px}.ld{line-height:1.6}.ld h3{font-size:13px;color:#a5b4fc;margin:8px 0 2px}.ld h3:first-child{margin-top:0}.ld ul{margin:0;padding-left:18px}.ld li{margin:2px 0}
+.lgo{display:inline-block;margin-top:10px;color:#c4b5fd;font-size:13px}.learnb{margin:0 0 10px;border-color:#6d5ce0!important;color:#e9e3ff}
+@media(max-width:700px){.lsb input{width:calc(100% - 84px)}.lcard{grid-template-columns:1fr}.lcard .lhd{grid-column:auto}}
 /* 11/16 使用者：股票／漲跌／族群標題與內容置中、欄寬貼合內容；標記欄加寬（電腦手機都用） */
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
@@ -610,7 +621,7 @@ function screener(key){
   key = key || "rb3";
   const cur = FILTERS.find(x=>x.k===key) || FILTERS[0];
   const all = Object.values(D.stocks);
-  let h = `<div class="filters">` + FILTERS.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`).join("") + `</div>`;
+  let h = `<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button><div class="filters">` + FILTERS.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`).join("") + `</div>`;
   let list = all.filter(cur.f);
   const tv=s=>s.close*s.vol;            // 成交值（收盤×成交張數）
   sortList(list);            // 預設依成交值由大到小，右上角可改排序
@@ -1584,20 +1595,21 @@ async function myDraw(){
 let baseRaw=null;                 // 目前底層頁面的 hash（列表頁）
 function renderBase(h){
   baseRaw=h;
-  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&h!=="mydraw");
-  $("#n-scr").classList.toggle("on", h.startsWith("scr"));
+  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&h!=="mydraw"&&h!=="learn");
+  $("#n-scr").classList.toggle("on", h.startsWith("scr")||h==="learn");
   $("#n-draw").classList.toggle("on", h==="mydraw");
   if(h.startsWith("g-")) group((D.groups[+h.slice(2)]||{}).name);
   else if(h.startsWith("find-")) finder(h.slice(5));
   else if(h.startsWith("st-")) stateList(h.slice(3));
   else if(h.startsWith("scr")) screener(h.slice(4));
   else if(h==="mydraw") myDraw();
+  else if(h==="learn") learnPage();
   else home();
 }
 function goBack(){
   const h = decodeURIComponent(location.hash.slice(1));
   if(h.startsWith("s-")||h.startsWith("i-")) location.hash = baseRaw || "";
-  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw") location.hash = "";
+  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn") location.hash = "";
 }
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
@@ -1724,6 +1736,159 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(
   addEventListener("scroll",upd,{passive:true});addEventListener("resize",upd);document.addEventListener("scroll",e=>{if(e.target.classList&&e.target.classList.contains("tw"))upd()},{capture:true,passive:true});
   addEventListener("hashchange",()=>{cur=null;setTimeout(upd,50)});
 })();
+/* ───────── 型態介紹頁（#learn）：11/16 使用者選版本 1（左圖右文），示意圖本站自己畫（SVG） ───────── */
+const LV=(()=>{
+  const Y="#facc15", R="#ef4444", G="#22c55e", B="#a5b4fc", BOX="#f0d34a";
+  const svg=b=>`<svg class="lsv" viewBox="0 0 320 170">${b}</svg>`;
+  const L=p=>`<polyline fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${p}"/>`;
+  const P=d=>`<path fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round" d="${d}"/>`;
+  const N=(y,t,tx,ty,c=R,x1=10,x2=310,y2=y)=>`<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="2" stroke-dasharray="7 5"/>`+(t?T(tx,ty,t,c==R?"#fca5a5":c==G?"#86efac":c):"");
+  const T=(x,y,t,c=B)=>`<text x="${x}" y="${y}" fill="${c}" font-size="12">${t}</text>`;
+  const D=(x,y)=>`<circle cx="${x}" cy="${y}" r="5" fill="#4D7CFF"/>`;
+  /* 箭頭：從 (x,y) 往 (dx,dy) 方向，一律黃色（使用者 11/16：和紅綠線分開） */
+  const A=(x,y,dx,dy,t,tx,ty)=>{const l=Math.hypot(dx,dy),ux=dx/l,uy=dy/l,ex=x+dx,ey=y+dy,
+    a1=[ex-ux*10-uy*6,ey-uy*10+ux*6],a2=[ex-ux*10+uy*6,ey-uy*10-ux*6];
+    return `<path d="M${x} ${y}L${ex} ${ey}M${a1}L${ex} ${ey}L${a2}" fill="none" stroke="${Y}" stroke-width="3.5" stroke-linecap="round"/>`+(t?T(tx,ty,t,Y):"")};
+  /* K 棒：[開, 高, 低, 收]（價格 0～100，越大越高） */
+  const K=(arr,x0=40,w=22,gap=14,hl)=>{let s="";const y=v=>150-v*1.3;
+    arr.forEach((k,i)=>{const [o,h,l,c]=k,x=x0+i*(w+gap),col=c>=o?R:G,top=y(Math.max(o,c)),bh=Math.max(2,Math.abs(o-c)*1.3);
+      s+=`<line x1="${x+w/2}" y1="${y(h)}" x2="${x+w/2}" y2="${y(l)}" stroke="${col}" stroke-width="2"/><rect x="${x}" y="${top}" width="${w}" height="${bh}" fill="${col}"/>`});
+    if(hl){const [a,b]=hl;s=`<rect x="${x0+a*(w+gap)-7}" y="6" width="${(b-a+1)*(w+gap)}" height="158" rx="8" fill="rgba(250,204,21,.08)" stroke="${Y}" stroke-dasharray="4 4"/>`+s}
+    return s};
+  const S={
+    w:svg(N(62,"頸線",96,56)+L("15,25 50,60 85,135 120,62 155,130 190,62 230,40 300,22")+D(85,135)+D(155,130)+T(62,158,"第一個底")+T(132,155,"第二個底")+A(200,72,18,-26,"突破頸線",226,82)),
+    w2:svg(N(55,"頸線",92,49)+L("15,20 50,50 85,140 120,55 160,112 195,55 235,36 300,20")+D(85,140)+D(160,112)+T(62,162,"低的底")+T(140,134,"高一點的底")+A(205,66,18,-26,"突破頸線",231,76)),
+    hs:svg(N(58,"頸線",130,52)+L("12,30 45,105 80,58 125,145 170,58 205,108 240,58 270,38 305,22")+T(30,125,"左肩")+T(112,163,"頭")+T(192,128,"右肩")+A(250,70,16,-24,"突破頸線",262,82)),
+    v:svg(L("15,30 50,55 85,90 115,145 145,95 180,60 215,40 300,25")+D(115,145)+T(90,163,"急跌後的低點")+T(14,22,"左腳（下跌起點）")+A(160,100,22,-34,"快速反彈",190,110)),
+    rnd:svg(N(40,"碗口",24,33)+P("M20 38 C 70 160, 210 160, 260 40 L 300 20")+T(110,150,"慢慢打底（圓弧）")+A(250,62,16,-26,"突破碗口",226,84)),
+    cup:svg(N(40,"杯口",24,33)+P("M20 38 C 60 150, 170 150, 210 42 L 228 70 L 246 62 L 258 40 L 300 18")+T(100,155,"杯身（圓弧）")+T(214,92,"杯柄")),
+    isl:svg(K([[80,82,70,72],[72,74,62,64],[50,54,44,48],[48,52,42,50],[50,53,44,46],[66,76,65,74],[74,84,72,82]],30,22,12,[2,4])+T(96,22,"島（被兩個缺口隔開）",Y)+T(52,128,"跳空跌")+T(196,128,"跳空漲")),
+    fw:svg(N(28,"",0,0,R,20,240,92)+N(67,"",0,0,R,20,240,110)+L("20,30 45,70 75,46 110,88 140,66 170,100 195,82 220,106 245,70 300,30")+T(150,40,"上線比下線陡",B)+A(230,92,20,-34,"突破上線",250,110)),
+    m:svg(N(108,"頸線",96,124,G)+L("15,150 50,110 85,35 120,108 155,40 190,108 230,130 300,150")+D(85,35)+D(155,40)+T(62,25,"第一個頂")+T(132,30,"第二個頂")+A(200,112,18,26,"跌破頸線",226,108)),
+    hst:svg(N(112,"頸線",112,128,G)+L("12,140 45,65 80,112 125,25 170,112 205,62 240,112 270,132 305,150")+T(30,55,"左肩")+T(112,18,"頭")+T(192,52,"右肩")+A(250,104,16,24,"跌破頸線",262,100)),
+    vt:svg(L("15,140 50,115 85,80 115,25 145,75 180,110 215,130 300,145")+D(115,25)+T(90,15,"急漲後的高點")+A(160,72,22,34,"快速下跌",190,72)),
+    rndt:svg(N(130,"碗緣",24,146,G)+P("M20 132 C 70 10, 210 10, 260 130 L 300 150")+T(110,32,"慢慢做頭（圓弧）")+A(250,110,16,26,"跌破",226,108)),
+    islt:svg(K([[20,30,18,28],[28,38,26,36],[52,60,50,58],[58,64,52,55],[55,62,50,60],[40,42,30,32],[32,34,22,24]],30,22,12,[2,4])+T(96,160,"島（被兩個缺口隔開）",Y)+T(52,28,"跳空漲")+T(196,28,"跳空跌")),
+    rw:svg(N(110,"",0,0,G,20,240,40)+N(145,"",0,0,G,20,240,62)+L("20,140 45,105 75,120 110,85 140,100 170,62 195,80 220,58 245,96 300,140")+T(150,140,"下線比上線陡",B)+A(232,70,20,34,"跌破下線",248,98)),
+    box:svg(`<rect x="40" y="55" width="200" height="70" fill="rgba(240,211,74,.08)" stroke="${BOX}" stroke-width="2"/>`+T(44,50,"上緣（壓力）",BOX)+T(44,140,"下緣（支撐）",BOX)+L("12,100 45,120 75,58 105,118 140,60 175,122 210,62 235,95 260,40 300,20")+`<g fill="${R}">${[250,262,274,286].map((x,i)=>`<rect x="${x}" y="${150-[10,14,18,12][i]}" width="8" height="${[10,14,18,12][i]}"/>`).join("")}</g><g fill="#6b6385">${[50,70,90,110,130,150,170,190,210,230].map(x=>`<rect x="${x}" y="144" width="8" height="6"/>`).join("")}</g>`+T(250,132,"帶量突破","#fca5a5")),
+    sym:svg(N(25,"",0,0,R,20,250,82)+N(140,"",0,0,G,20,250,88)+L("20,30 50,130 85,45 120,118 150,62 180,104 210,74 240,90")+T(250,60,"等它",B)+T(250,76,"選方向",B)+T(70,160,"高點越來越低、低點越來越高")),
+    asc:svg(N(45,"水平壓力",22,38,R,20,250,45)+N(145,"",0,0,G,20,250,62)+L("20,140 55,47 90,118 125,47 160,92 195,47 225,70 250,45 300,22")+T(60,160,"低點越墊越高")+A(255,52,16,-24,"突破",270,66)),
+    desc:svg(N(130,"水平支撐",22,148,G,20,250,130)+N(25,"",0,0,R,20,250,108)+L("20,30 55,128 90,55 125,128 160,82 195,128 225,108 250,130 300,152")+T(60,18,"高點越來越低")+A(255,124,16,24,"跌破",270,120)),
+    ma:svg(`<path d="M10 120 C 80 60, 140 100, 200 82 S 280 70, 310 75" stroke="#facc15" stroke-width="2" fill="none"/><path d="M10 100 C 80 90, 140 76, 200 88 S 280 84, 310 78" stroke="#7FDBFF" stroke-width="2" fill="none"/><path d="M10 70 C 80 95, 140 90, 200 80 S 280 82, 310 82" stroke="#AF73E8" stroke-width="2" fill="none"/>`+T(14,150,"5日線",Y)+T(70,150,"10日線","#7FDBFF")+T(136,150,"20日線","#AF73E8")+T(150,40,"三條線纏在一起，沒方向",B)),
+    ham:svg(K([[80,82,66,68],[68,70,52,54],[54,56,38,40]],40,22,14)+K([[40,43,12,42]],150,26)+T(190,110,"下影線很長",Y)+T(190,126,"（實體的 2 倍以上）",Y)+T(30,160,"先跌一段")),
+    ihm:svg(K([[80,82,66,68],[68,70,52,54],[54,56,38,40]],40,22,14)+K([[38,68,37,40]],150,26)+T(190,72,"上影線很長",Y)+T(30,160,"先跌一段，出現在低檔")),
+    shoot:svg(K([[30,44,28,42],[42,58,40,56],[56,72,54,70]],40,22,14)+K([[72,100,71,70]],150,26)+T(190,30,"上影線很長",Y)+T(30,160,"先漲一段，出現在高檔")),
+    eng:svg(K([[80,82,66,68],[68,70,54,56]],40,22,14)+K([[56,58,44,46],[44,62,42,60]],124,26,14,[0,1])+T(206,40,"紅K 實體把前一根",Y)+T(206,56,"黑K 整根包住",Y)),
+    engb:svg(K([[30,44,28,42],[42,56,40,54]],40,22,14)+K([[54,64,52,62],[64,66,48,50]],124,26,14,[0,1])+T(206,130,"黑K 實體把前一根",Y)+T(206,146,"紅K 整根包住",Y)),
+    pierce:svg(K([[80,82,66,68],[68,70,54,56]],40,22,14)+K([[60,62,40,42],[38,56,36,54]],124,26,14,[0,1])+`<line x1="110" y1="${150-51*1.3}" x2="190" y2="${150-51*1.3}" stroke="${Y}" stroke-dasharray="4 3"/>`+T(206,86,"開低，但收到前一根",Y)+T(206,102,"黑K 的一半以上",Y)),
+    cloud:svg(K([[30,44,28,42],[42,56,40,54]],40,22,14)+K([[44,66,42,62],[66,68,48,50]],124,26,14,[0,1])+`<line x1="110" y1="${150-53*1.3}" x2="190" y2="${150-53*1.3}" stroke="${Y}" stroke-dasharray="4 3"/>`+T(206,60,"開高，但收進前一根",Y)+T(206,76,"紅K 的一半以下",Y)),
+    mstar:svg(K([[84,86,72,74]],30,22)+K([[72,74,54,56],[50,53,46,48],[50,68,49,66]],80,24,14,[0,2])+T(80,20,"長黑 → 小K → 長紅",Y)+T(200,130,"紅K 收過",Y)+T(200,146,"長黑的一半",Y)),
+    estar:svg(K([[16,28,14,26]],30,22)+K([[28,48,26,46],[52,56,50,54],[50,52,32,34]],80,24,14,[0,2])+T(80,160,"長紅 → 小K → 長黑",Y)+T(200,30,"黑K 跌破",Y)+T(200,46,"長紅的一半",Y)),
+    crow:svg(K([[20,32,18,30],[30,44,28,42],[42,56,40,54]],30,20,12)+K([[60,62,50,52],[52,53,42,44],[44,45,34,36]],126,22,14,[0,2])+T(126,160,"連 3 根黑K，一天比一天低",Y)),
+    kd:svg(`<rect x="10" y="10" width="300" height="38" fill="rgba(155,28,28,.35)"/><rect x="10" y="122" width="300" height="38" fill="rgba(31,122,52,.35)"/>`+N(48,"80",290,44,"#9a93ad")+N(122,"20",290,138,"#9a93ad")+`<polyline fill="none" stroke="#facc15" stroke-width="2.5" points="10,100 50,70 90,40 120,28 150,22 180,30 210,45 240,80 270,128 300,140"/>`+T(110,64,"K 值一直在 80 上面＝高檔鈍化","#fca5a5")+T(150,116,"跌到 20 下面＝低檔鈍化","#86efac")),
+    dmi:svg(`<polyline fill="none" stroke="${R}" stroke-width="2.5" points="10,120 60,115 110,108 150,96 180,84 210,70 250,56 300,44"/><polyline fill="none" stroke="${G}" stroke-width="2.5" points="10,50 60,60 110,74 150,86 180,96 210,108 250,118 300,124"/><polyline fill="none" stroke="#e5e7eb" stroke-width="2" stroke-dasharray="5 4" points="10,130 80,128 150,124 200,110 250,92 300,76"/>`+T(14,112,"+DI（多方）",R)+T(14,44,"-DI（空方）",G)+T(196,150,"ADX（趨勢強度）","#e5e7eb")+`<circle cx="166" cy="90" r="7" fill="none" stroke="${Y}" stroke-width="2.5"/>`+T(120,30,"+DI 往上穿過 -DI＝翻多",Y))
+  };
+  const C=["底部反轉","頂部反轉","整理","K線反轉","指標"];
+  const I=(id,cat,name,alias,kind,what,how,sys,risk,f)=>({id,cat,name,alias,kind,what,how,sys,risk,f});
+  const P_=[
+    I("w","底部反轉","W雙重底","雙底、W底、雙重底","bull","股價跌到差不多的低點兩次都撐住，形狀像英文字母 W。代表那個價位有人願意接，賣壓變輕。",
+      ["兩個低點差距在 8% 以內","中間反彈的高點畫一條水平線＝頸線，頸線要比低點高 8% 以上","第二個底已經轉折向上才算"],
+      ["收盤站上頸線＝已突破（確認）","接近頸線＝準備突破，可列入觀察","還沒到頸線＝成形中"],"突破後又跌回頸線下面，或跌破兩個底，型態就失敗。","bot"),
+    I("w2","底部反轉","W雙重底（不對稱）","不對稱雙底、醜W","bull","也是 W，但兩個底高低差比較多，第二個底比較高或比較低。比標準 W 弱一點，所以本站只在快要突破時才標。",
+      ["兩個低點差 8%～12%","其他條件和 W雙重底一樣"],["只在接近頸線或已突破時才標"],"和 W雙重底一樣：跌回頸線下就失敗。","bot"),
+    I("hs","底部反轉","頭肩底","倒頭肩、頭肩底","bull","三個低點，中間那個最低（頭），兩邊比較高（左右肩），像倒過來的人頭和肩膀。通常比雙重底花更久時間打底。",
+      ["頭要比兩肩低 3% 以上","兩肩高度差 8% 以內","左肩到頭、頭到右肩的天數相差不超過 2 倍","兩個反彈高點連成頸線；右肩已經轉折向上"],
+      ["收盤突破頸線＝已突破","形成後股價又跌破頭部低點＝作廢，不再顯示"],"突破失敗，或跌破右肩低點要小心。","bot"),
+    I("v","底部反轉","V形底","V轉、V型反轉、V形反轉","bull","股價急跌後沒有整理，馬上急漲回來，形狀像英文字母 V。常出現在恐慌殺盤之後。",
+      ["從高點跌 15% 以上","從低點反彈超過跌幅的一半","下跌那一段（左腳）至少 3 天"],
+      ["低點出現後 10 天內顯示","超過 6 天的 V 形底，排序在其他還在成形的型態後面"],"V 形來得快去得也快，反彈後再跌破低點就失敗。","bot"),
+    I("rnd","底部反轉","圓弧底","碗型底、鍋底","bull","股價慢慢跌、慢慢止穩、再慢慢漲回來，畫出一個像碗的圓弧。代表賣壓一點一點消化掉。",
+      ["底部是圓滑的弧形，不是尖的","兩邊的高點畫成碗口（頸線）"],["接近碗口＝準備突破","收盤突破碗口＝已突破"],"突破後又跌回碗裡就失敗。","rnd"),
+    I("cup","底部反轉","杯柄","杯子、杯柄型態、Cup","bull","先畫出像茶杯的圓弧（杯身），接近杯口時小小回檔一段（杯柄），把不堅定的人洗掉後再往上突破。",
+      ["杯身是圓弧、不是尖尖的 V","杯柄回檔幅度小，大約在杯子上半部","突破杯柄的高點（杯口）"],["接近杯口＝準備突破","收盤突破杯口＝已突破"],"杯柄跌太深（跌進杯子下半部）通常就不算杯柄。","cup"),
+    I("isl","底部反轉","島型反轉底","島型反轉、島狀反轉","bull","股價先跳空往下（留下缺口），在低檔停留幾天，接著又跳空往上。中間那幾天被兩個缺口隔開，像一座孤島。",
+      ["前後兩個缺口價位差不多","島上只有 1 天的叫「單日島型反轉」，本站只標示、不改型態"],
+      ["守在島外的前 3 天會改變五種型態，第 4～10 天只加標籤","反轉時成交量放大另標「島型量增確認」"],"跌回島內（補掉往上的缺口）＝失敗。",null),
+    I("fw","底部反轉","下降楔形","下降楔型、下楔","bull","高點和低點都往下，但上面那條線比下面陡，兩條線越來越靠近。代表跌勢越來越沒力，常常往上突破。",
+      ["上下兩條線都往右下","上線比下線陡、越收越窄"],["接近上線＝準備突破","收盤突破上線＝已突破"],"跌破下線就失敗。","wdg"),
+    I("m","頂部反轉","M雙重頂","雙頂、M頭、雙重頂","bear","股價漲到差不多的高點兩次都過不去，像英文字母 M。代表那個價位賣壓重。",
+      ["兩個高點差距在 8% 以內","中間回檔的低點畫成頸線"],["收盤跌破頸線＝已跌破（走弱）"],"跌破後又站回頸線上面，型態就失敗。","top"),
+    I("hst","頂部反轉","頭肩頂","頭肩頂、三尊頭","bear","三個高點，中間那個最高（頭），兩邊比較低（左右肩）。是常見的做頭型態。",
+      ["頭要比兩肩高 3% 以上","兩肩高度差 8% 以內","兩個回檔低點連成頸線；右肩已經轉折向下"],["收盤跌破頸線＝已跌破","形成後股價又突破頭部高點＝作廢"],"跌破後又站回頸線上要小心是假跌破。","top"),
+    I("vt","頂部反轉","V形頂","倒V、尖頭","bear","股價急漲後馬上急跌，形狀像倒過來的 V。常出現在短線過熱之後。",
+      ["從低點漲一大段後快速回落","跌幅超過漲幅的一半"],["和 V形底同樣規則，方向相反"],"再創新高就失敗。","top"),
+    I("rndt","頂部反轉","圓弧頂","碗蓋頂","bear","股價慢慢漲、慢慢走平、再慢慢跌下來，像倒扣的碗。代表買盤一點一點退場。",
+      ["頭部是圓滑的弧形","兩邊的低點連成頸線"],["收盤跌破頸線＝已跌破"],"跌破後又站回頸線就失敗。","top"),
+    I("islt","頂部反轉","島型反轉頂","島型反轉頂、島狀頂","bear","股價先跳空往上，在高檔停留幾天，接著又跳空往下，中間像一座孤島。",
+      ["前後兩個缺口價位差不多"],["規則和島型反轉底一樣，方向相反"],"漲回島內（補掉往下的缺口）＝失敗。","top"),
+    I("rw","頂部反轉","上升楔形","上升楔型、上楔","bear","高點和低點都往上，但下面那條線比上面陡，兩條線越來越靠近。代表漲勢越來越沒力，常常往下跌破。",
+      ["上下兩條線都往右上","下線比上線陡、越收越窄","整體要是往右上的走勢"],["接近下線＝準備跌破","收盤跌破下線＝已跌破"],"突破上線就失敗。","top"),
+    I("box","整理","盤整區間突破","箱型、盤整、區間、整理突破、蓄勢待發","neu","股價在一個上下範圍裡來回好幾次，像關在箱子裡。突破上緣常常會走一段，跌破下緣則轉弱。",
+      ["整理 10～60 天","上緣、下緣都碰過 2 次以上","高低差 20%（股性活潑的 25%）以內"],
+      ["成交量 1.5 倍以上突破上緣＝轉強","沒帶量走出去＝無量突破待追蹤","突破後 3 天內又收回＝假突破；連 3 天在下緣下＝區間失效（紫色框）"],"整理越久越要等「帶量」突破再確認。","rdy"),
+    I("sym","整理","對稱三角形","三角收斂、收斂三角形","neu","高點越來越低、低點越來越高，像三角形越收越小。多空都在等，突破哪一邊就往哪邊走。",
+      ["上線往下、下線往上，越收越窄"],["接近上線＝準備突破","突破上線看漲、跌破下線看跌"],"突破後又回到三角形裡面＝假突破。","wdg"),
+    I("asc","整理","上升三角形","上升三角","bull","上面是一條水平的壓力線，低點卻越墊越高。代表買方越來越積極，常常往上突破。",
+      ["上緣差不多水平","低點一次比一次高"],["接近上緣＝準備突破","收盤突破上緣＝已突破"],"跌破下面那條上升線就失敗。","wdg"),
+    I("desc","整理","下降三角形","下降三角","bear","下面是一條水平的支撐線，高點卻越來越低。代表賣方越來越積極，常常往下跌破。",
+      ["下緣差不多水平","高點一次比一次低"],["收盤跌破下緣＝已跌破","股票正在轉強時出現，會標「⚠下降三角形」提醒"],"突破上面那條下降線就失敗。","top"),
+    I("ma","整理","均線糾結","均線糾結、均線黏合","neu","5 日、10 日、20 日線纏在一起，看不出往上還往下。通常是在等方向，之後常會出現一段比較大的走勢。",
+      ["幾條均線很接近、交錯","沒有明顯多頭或空頭排列"],["沒有盤整區間、也不是多頭或空頭時，歸在「盤整」並標「均線糾結」"],"只是「沒方向」，不代表會漲或會跌。",null),
+    I("ham","K線反轉","傘形線","錘子線、槌子線、吊人線","bull","一根下影線很長、實體很小的 K 棒，像一把雨傘或錘子。在下跌後出現，代表盤中殺低後有人接回來。",
+      ["下影線至少是實體的 2 倍","上影線很短","出現前 5 天股價跌了 3% 以上"],["只看最新一根 K 棒"],"隔天又跌破這根的低點，訊號就失效。","cdl"),
+    I("ihm","K線反轉","倒錘子線","倒槌子、倒鎚","bull","上影線很長、實體很小、下影線很短。在下跌後出現，代表買方開始試著往上攻。",
+      ["上影線至少是實體的 2 倍","下影線很短","出現前 5 天股價跌了 3% 以上"],["只看最新一根 K 棒"],"單根 K 棒只是提示，最好等隔天收紅確認。","cdl"),
+    I("shoot","K線反轉","流星線","射擊之星、避雷針","bear","形狀和倒錘子一樣（長上影線），但出現在上漲之後，代表衝高後被賣壓打下來。",
+      ["上影線至少是實體的 2 倍","下影線很短","出現前 5 天股價漲了 3% 以上"],["只看最新一根 K 棒"],"隔天又創新高，訊號就失效。","cdl"),
+    I("eng","K線反轉","多頭吞沒","多頭吞噬、陽包陰","bull","下跌中先出現一根黑K，隔天一根紅K 的實體把它整根包住。代表買方一口氣把前一天的跌幅吃回來。",
+      ["前一根黑K、今天紅K","紅K 實體完全包住黑K 實體","出現在下跌之後"],["只看最新兩根 K 棒"],"隔天又跌破紅K 低點，訊號失效。","cdl"),
+    I("engb","K線反轉","空頭吞沒","空頭吞噬、陰包陽","bear","上漲中先出現一根紅K，隔天一根黑K 的實體把它整根包住。代表賣方一口氣把前一天的漲幅打掉。",
+      ["前一根紅K、今天黑K","黑K 實體完全包住紅K 實體","出現在上漲之後"],["只看最新兩根 K 棒"],"隔天又漲過黑K 高點，訊號失效。","cdl"),
+    I("pierce","K線反轉","刺透形態","貫穿線、曙光初現","bull","下跌中先一根黑K，隔天開低，但收盤漲回前一根黑K 實體的一半以上。",
+      ["前一根黑K、今天紅K","今天開盤比昨天收盤低","收盤超過昨天黑K 的一半"],["只看最新兩根 K 棒"],"比多頭吞沒弱一點，最好等隔天確認。","cdl"),
+    I("cloud","K線反轉","烏雲蓋頂","烏雲罩頂","bear","上漲中先一根紅K，隔天開高，但收盤跌進前一根紅K 實體的一半以下。",
+      ["前一根紅K、今天黑K","今天開盤比昨天收盤高","收盤低於昨天紅K 的一半"],["只看最新兩根 K 棒"],"隔天又漲回紅K 高點，訊號失效。","cdl"),
+    I("mstar","K線反轉","啟明星","晨星、早晨之星","bull","三根 K 棒：一根長黑、一根小小的K（像星星）、一根長紅收回長黑的一半以上。像黑夜後出現的晨星。",
+      ["第一根長黑","第二根實體很小，在長黑下方","第三根紅K 收過長黑的一半","出現在下跌之後"],["只看最新三根 K 棒"],"之後跌破星星那根的低點就失效。","cdl"),
+    I("estar","K線反轉","黃昏星","夜星、暮星","bear","三根 K 棒：一根長紅、一根小小的K、一根長黑跌破長紅的一半。是做頭的訊號。",
+      ["第一根長紅","第二根實體很小，在長紅上方","第三根黑K 跌破長紅的一半","出現在上漲之後"],["只看最新三根 K 棒"],"之後又漲過星星那根的高點就失效。","cdl"),
+    I("crow","K線反轉","三隻烏鴉","黑三兵、三烏鴉","bear","上漲後連續三根黑K，收盤一天比一天低。代表賣壓連續出籠。",
+      ["連 3 根黑K，每根跌幅都有一定大小","收盤一天比一天低","出現在上漲之後"],["只看最新三根 K 棒"],"如果很快又漲回第一根黑K 開盤價，訊號失效。","cdl"),
+    I("kd","指標","KD 鈍化","KD高檔鈍化、KD低檔鈍化、鈍化","neu","KD 是看「最近收盤在高點還是低點附近」的指標（0～100）。K 值一直待在 80 上面叫高檔鈍化，代表很強；一直在 20 下面叫低檔鈍化，代表很弱。",
+      ["K 值超過 80＝高檔鈍化開始，跌回 80 以下就結束","K 值低於 20＝低檔鈍化，同理"],["K 線圖的 KD 副圖會塗深紅／深綠並寫「高檔鈍化 N天」","「3日急漲」＋KD高檔鈍化＝標「短線過熱勿追」"],"鈍化可以持續很久，不代表馬上反轉。","kdlo"),
+    I("dmi","指標","DMI 趨勢指標","DMI、+DI、-DI、ADX、翻多","neu","DMI 有三條線：+DI 是多方力量、-DI 是空方力量、ADX 是趨勢有多強。+DI 在上面代表多方佔優勢，ADX 越高代表趨勢越明顯。",
+      ["+DI 往上穿過 -DI＝翻多","ADX 25 以上而且往上＝趨勢正在變強","ADX 低於 20＝趨勢弱，容易有假訊號"],
+      ["DMI即將翻多：兩條線相距 5 以內、+DI 往上、-DI 往下","DMI剛翻多：最近 2 天 +DI 穿過 -DI","DMI多頭趨勢：+DI 比 -DI 高 5 以上、ADX 25 以上往上、股價突破前段高點"],"回測兩年：「即將翻多」「剛翻多」只適合當觀察名單；「多頭趨勢」表現比較好。","dmisoon")
+  ];
+  return {S,C,P:P_};
+})();
+function learnPage(){
+  const KT={bull:["看漲","bull"],bear:["看跌","bear"],neu:["中性","neu"]};
+  const card=p=>`<div class="lcard" data-cat="${p.cat}" data-k="${(p.name+" "+p.alias+" "+p.cat).toLowerCase()}"><div class="lhd"><h2>${p.name}<span class="ltag ${KT[p.kind][1]}">${KT[p.kind][0]}</span></h2><div class="lal">也叫：${p.alias}</div></div>
+<div>${LV.S[p.id]}</div><div class="ld"><h3>長什麼樣</h3><div>${p.what}</div><h3>怎麼認</h3><ul>${p.how.map(x=>`<li>${x}</li>`).join("")}</ul>
+<h3>本站怎麼標</h3><ul>${p.sys.map(x=>`<li>${x}</li>`).join("")}</ul><h3>什麼時候失敗</h3><div>${p.risk}</div>
+${p.f?`<a class="lgo" href="#scr-${p.f}">→ 看現在符合「${(FILTERS.find(x=>x.k===p.f)||{}).name||p.name}」的股票</a>`:""}</div></div>`;
+  let h=`<h2 style="margin:4px 0 4px">什麼是股票型態？</h2><p class="note" style="margin-top:0">股價走勢常會畫出某些反覆出現的形狀，叫做「型態」。看懂型態，可以知道現在比較像要轉強、還在整理，還是要走弱。下面的示意圖是本站自己畫的簡化圖，實際股票不會這麼工整；型態只是機率，不是保證，非投資建議。</p>
+<div class="lsb"><input id="lq" type="search" placeholder="搜尋型態，例如：W、頭肩、杯柄、盤整、吞沒" autocomplete="off"><div class="lch">${["全部"].concat(LV.C).map((c,i)=>`<button class="${i?"":"on"}" data-c="${c}">${c}</button>`).join("")}</div></div>`;
+  for(const c of LV.C) h+=`<div class="lsec" data-cat="${c}">${c}</div>`+LV.P.filter(p=>p.cat===c).map(card).join("");
+  h+=`<p class="note lem" style="display:none">找不到這個型態，試試別的關鍵字。</p>`;
+  $("#app").innerHTML=h;
+  let cat="全部";
+  const q=$("#lq"), apply=()=>{const t=q.value.trim().toLowerCase();let n=0;
+    document.querySelectorAll(".lcard").forEach(c=>{const ok=(!t||c.dataset.k.includes(t))&&(cat==="全部"||c.dataset.cat===cat);c.style.display=ok?"":"none";n+=ok});
+    document.querySelectorAll(".lsec").forEach(s=>s.style.display=!t&&(cat==="全部"||s.dataset.cat===cat)?"":"none");
+    document.querySelector(".lem").style.display=n?"none":""};
+  /* 搜尋或換分類後，若第一張卡片被搜尋框擋住（已往下捲），捲回讓它出現在搜尋框正下方 */
+  const jump=()=>{const sb=document.querySelector(".lsb"),f=[...document.querySelectorAll(".lsec,.lcard")].find(e=>e.style.display!=="none");
+    if(!f) return; const d=f.getBoundingClientRect().top-sb.getBoundingClientRect().bottom-8; if(d<0) window.scrollBy(0,d)};
+  q.oninput=()=>{apply();jump()};
+  document.querySelectorAll(".lch button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;document.querySelectorAll(".lch button").forEach(x=>x.classList.toggle("on",x===b));apply();jump()});
+  /* 搜尋框黏在頁首下面（頁首高度會變，跟著調） */
+  const sb=document.querySelector(".lsb"), hd=document.querySelector("header"), z=parseFloat($("#app").style.zoom)||1;
+  const fit=()=>{if(sb.isConnected) sb.style.top=(hd.getBoundingClientRect().height/z)+"px"};
+  fit(); if(window.ResizeObserver) new ResizeObserver(fit).observe(hd);
+}
+
 window.onhashchange = route; route();
 </script>
 </body>
