@@ -303,7 +303,7 @@ def shard(c):
 
 
 def tkey(t):
-    return re.sub(r"[^一-鿿A-Za-z0-9]", "", t)[:24]
+    return re.sub(r"[^一-鿿A-Za-z0-9]", "", t)[:18]   # 前 18 字相同＝同一篇（各家會加「｜產經」之類的尾巴）
 
 
 def main(out):
@@ -324,6 +324,8 @@ def main(out):
         shards = [dict() for _ in range(NSHARD)]
         for x in items:
             for s in x["ai"]:
+                if s.get("k") in ("點名", "盤面") and s["d"] == 0:      # 盤勢文、投顧點名又沒利多利空：不顯示
+                    continue
                 lst = shards[shard(s["c"])].setdefault(s["c"], [])
                 if any(tkey(y["title"]) == tkey(x["title"]) for y in lst):   # 同一篇多家轉載只留一則
                     continue
