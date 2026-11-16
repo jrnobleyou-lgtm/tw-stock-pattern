@@ -66,7 +66,12 @@ def single(q, cum, fm):
 
 
 def update():
+    ok, why = RV.due("eps", r"財務報告|財報|每股盈餘|自結|損益")
+    print("EPS：", why)
+    if not ok and "force" not in sys.argv:
+        return
     d = _load(CUM)
+    got = 0
     n = 0
     for url in OFFICIAL:
         rows = None
@@ -76,6 +81,7 @@ def update():
                 break
             except Exception as e:
                 print("EPS 抓取失敗，重試", url.rsplit("/", 1)[-1], k + 1, repr(e)[:80]); time.sleep(5)
+        got += rows is not None
         for r in rows or []:
             p = parse_row(r)
             if not p:
@@ -84,6 +90,8 @@ def update():
             if d.setdefault(c, {}).get(q) != v:
                 d[c][q] = v; n += 1
     _save(CUM, d)
+    if got == len(OFFICIAL):
+        RV.mark("eps")
     print("EPS 官方累計更新", n, "筆，共", len(d), "檔")
 
 

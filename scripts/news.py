@@ -307,9 +307,6 @@ def tkey(t):
 
 
 def main(out):
-    prov = providers()
-    if not prov:
-        sys.exit("缺 GEMINI_API_KEY（請到 GitHub Settings → Secrets 新增）")
     os.makedirs(os.path.join(out, "s"), exist_ok=True)
     P = lambda f: os.path.join(out, f)
     load = lambda f, d: json.load(open(P(f), encoding="utf-8")) if os.path.exists(P(f)) else d
@@ -317,6 +314,15 @@ def main(out):
     seen, tries, items, meta = load("seen.json", {}), load("tries.json", {}), load("items.json", []), load("meta.json", {})
     seen = {k: v for k, v in seen.items() if v > now - (KEEP_DAYS + 5) * 86400}
     names, codes = stocks_map()
+    try:                                                # 11/16 重訊（scripts/mops.py）：不用 AI，先做，AI 沒額度也照常更新
+        import mops as MO
+        mo_rows = MO.run(out, codes, meta)
+    except Exception as e:
+        print("重訊失敗（略過）：", repr(e)[:120], file=sys.stderr)
+        mo_rows = load("mops.json", [])
+    prov = providers()
+    if not prov:
+        sys.exit("缺 GEMINI_API_KEY（請到 GitHub Settings → Secrets 新增）")
 
     def save():
         nonlocal items
@@ -330,6 +336,9 @@ def main(out):
                 if any(tkey(y["title"]) == tkey(x["title"]) for y in lst):   # 同一篇多家轉載只留一則
                     continue
                 lst.append({"t": x["t"], "day": x.get("day", 0), "src": x["src"], "title": x["title"], "link": x["link"], "d": s["d"], "k": s.get("k", ""), "w": s["w"]})
+        for r in mo_rows:                               # 重訊也放進個股分包（消息分頁每 30 分就看得到）
+            lst = shards[shard(r["c"])].setdefault(r["c"], [])
+            lst.append({"t": r["t"], "day": 0, "src": r["src"], "title": r["s"], "link": r.get("link", ""), "mo": 1})
         for i, sh in enumerate(shards):
             json.dump(sh, open(P(f"s/{i}.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
         json.dump(items, open(P("items.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))

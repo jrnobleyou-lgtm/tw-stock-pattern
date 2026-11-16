@@ -65,7 +65,58 @@ def _num(x):
         return None
 
 
+META = os.path.join(ROOT, "data", "fin_meta.json")
+MOPS_URL = "https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/mops.json"
+
+
+def _now_tw():
+    import datetime
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) + datetime.timedelta(hours=8)
+
+
+def mops_hit(pattern, since):
+    """近期重訊主旨有沒有符合 pattern（發言時間 ≥ since，epoch）；讀 news-data 分支的 mops.json，讀不到當沒有。"""
+    import re
+    try:
+        rows = json.loads(urllib.request.urlopen(MOPS_URL, timeout=20).read())
+        return any(r.get("t", 0) >= since and re.search(pattern, r.get("s", "")) for r in rows)
+    except Exception:
+        return False
+
+
+def due(kind, pattern):
+    """11/16 使用者：月營收 每月 1～12 號每天下午（13:00 後）抓一次；其他時間每週一次（週日那輪，或距上次 ≥7 天）；
+    EPS 每週一次；兩者另外在有相關重訊（主旨符合 pattern）時立刻抓。回傳 (要不要抓, 原因)。"""
+    now = _now_tw()
+    today = now.strftime("%Y-%m-%d")
+    meta = json.load(open(META)) if os.path.exists(META) else {}
+    last = meta.get(kind, "")
+    if last == today:
+        return False, "今天抓過"
+    if kind == "rev" and now.day <= 12 and now.hour >= 13:
+        return True, "每月 1～12 號下午"
+    if now.weekday() == 6:
+        return True, "每週日"
+    if not last or (now - __import__("datetime").datetime.strptime(last, "%Y-%m-%d")).days >= 7:
+        return True, "距上次 ≥7 天"
+    if mops_hit(pattern, int(time.mktime(time.strptime(last, "%Y-%m-%d"))) - 8 * 3600):
+        return True, "有相關重訊"
+    return False, "還不用抓"
+
+
+def mark(kind):
+    meta = json.load(open(META)) if os.path.exists(META) else {}
+    meta[kind] = _now_tw().strftime("%Y-%m-%d")
+    with open(META, "w") as f:
+        json.dump(meta, f)
+
+
 def update():
+    ok, why = due("rev", r"營收|營業收入")
+    print("月營收：", why)
+    if not ok and "force" not in sys.argv:
+        return
+    got = 0
     """官方最新月（含上月、去年同月補洞）。失敗就沿用舊資料。"""
     for u in OFFICIAL:
         rows = None
@@ -87,12 +138,15 @@ def update():
             cur[ym][c] = _num(r.get("營業收入-當月營收"))
             prev[ym_add(ym, -1)][c] = _num(r.get("營業收入-上月營收"))
             ly[ym_add(ym, -12)][c] = _num(r.get("營業收入-去年當月營收"))
+        got += 1
         for ym, d in cur.items():
             print(u.rsplit("/", 1)[-1], ym, len(d), "檔，更新", save_month(ym, d))
         for ym, d in prev.items():                 # 上月營收：官方更正要蓋過去（Fable 11/16）
             save_month(ym, d)
         for ym, d in ly.items():                   # 去年同月只補洞
             save_month(ym, d, overwrite=False)
+    if got == len(OFFICIAL):
+        mark("rev")
 
 
 def fm_loop(todo, url_of, handle):
