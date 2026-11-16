@@ -19,3 +19,4 @@ for p in provs:
             print('失敗', tag, i, str(e)[:200], flush=True)
         time.sleep(6)
     print('RESULT_' + tag + ' ' + json.dumps(out, ensure_ascii=False), flush=True)
+# 重跑 1794842842
