@@ -62,3 +62,4 @@
 - `.github/workflows/news.yml`（workflow_dispatch）；Worker `jobsAt()` 台灣 06:00–23:30 平日每 30 分、週末每小時觸發；新聞觸發不寫 `cron/last`。
 - Worker `/api/news?c=`：讀 raw.githubusercontent.com news-data 分包（快取 200→300 秒、404→60 秒）。前端 `loadNews`：▲▼＋理由只在 `?nwdir=1` 或 `window.NWDIR` 顯示（使用者確認準度後再打開，並顯示「AI 自動整理，非投資建議」）；只有日期的文章不顯示時分。
 - Fable 審查（11/16）抓到並已修：非 UTF-8 網頁讓整輪當掉、AI 格式防呆、篇號錯位、限流當額度用完、2500 字截斷、工商時間解析失敗、seen 到期重判、暫時抓不到被永久跳過、前端把讀不到當沒新聞、javascript: 連結。待做：各家連續 0 篇的監控顯示在設定頁、重訊／月營收／EPS（左欄目前只在有 f/<代號>.json 時出現）。
+- **11/16 早上**：06:00 那輪由 Worker 排程準時觸發、判斷 79 篇（flash 3 批被限速，其餘 flash-lite），GitHub Models 尚未實際用到（未驗證）。使用者確認：①▲▼＋理由打開（`DIR=window.NWDIR!==false`，下方小字「AI 自動整理，僅供參考，非投資建議」）②做「近期消息偏多／偏空」：`analyze.py news_bias()` 讀 news-data items.json，近 7 天、只算事件＋法人、同檔同天同方向算一次、差 ≥2；篩選鈕「近7天消息偏多」（`nwup`，放篩選清單最後），偏空只標個股。上線時 14 檔偏多。③投顧／券商研究報告有給目標價＝法人（算進標籤），節目專欄推薦沒給目標價＝點名（不算）④加回 Yahoo股市（`rss?category=tw-market`，內文在 tw.news.yahoo.com）。同篇轉載比對標題前 18 字；點名／盤面又持平的不顯示。
