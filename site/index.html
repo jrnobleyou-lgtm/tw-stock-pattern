@@ -249,6 +249,12 @@ html.lrn.lb3 .lcard{background:#000;border-color:#3b3566}html.lrn.lb3 .lix3{back
 @media(max-width:700px){.lcard .ld{transition:margin-left .2s}.lcard.dk .ld{margin-left:104px}}
 #lzoom{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}#lzoom.on{display:flex}#lzoom .lsv{max-width:900px;border:1px solid #6d5ce0}
 .lsv{cursor:zoom-in}
+/* 強弱族群三欄對齊（11/16 使用者：抗跌那欄沒跟左邊切齊）、收合鈕縮小 */
+.mkbtn{padding:2px 9px;font-size:12px}
+html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}html.kdA .sw5{display:inline-block;margin-right:6px;padding:0 6px;border-radius:8px;font-size:11px;font-weight:400;background:rgba(34,197,94,.16);color:#86efac;vertical-align:1px}
+@media(min-width:641px){html.kdB .swg .swbar small{min-height:2.9em}}
+/* 返回上一頁浮動鈕 */
+#ttBack{left:14px;right:auto}
 /* 11/16 使用者：股票／漲跌／族群標題與內容置中、欄寬貼合內容；標記欄加寬（電腦手機都用） */
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
@@ -476,7 +482,7 @@ function swPanel(){
     }
   }
   const V=window.SWV??3, mx=Math.max(1,...strong.concat(weak).map(r=>Math.abs(r.med)));
-  const sub=(r,isS)=>isS===2?`贏市場 +${(r.med-mk).toFixed(2)}%・${r.beat}/${r.n} 檔跌得比市場少・最抗跌 ${r.best.name}${r.r5ok?"・近 5 日也抗跌":""}`:`${isS?r.up:r.dn}/${r.n} 檔${isS?"漲":"跌"}・${isS?"領漲":"領跌"} ${(isS?r.best:r.worst).name}`;
+  const sub=(r,isS)=>isS===2?((window.KDV||"A")==="A"?`${r.r5ok?'<span class="sw5">5日也抗跌</span>':""}贏 +${(r.med-mk).toFixed(2)}%・${r.beat}/${r.n} 檔較抗跌・最抗跌 ${r.best.name}`:`贏市場 +${(r.med-mk).toFixed(2)}%・${r.beat}/${r.n} 檔跌得比市場少・最抗跌 ${r.best.name}${r.r5ok?"・近 5 日也抗跌":""}`):`${isS?r.up:r.dn}/${r.n} 檔${isS?"漲":"跌"}・${isS?"領漲":"領跌"} ${(isS?r.best:r.worst).name}`;
   const item=(r,cls0,isS)=>{const cls=r.med>0?"c-strong":r.med<0?"c-weak":"mute", bgc=r.med>0?"bg-s":"bg-w", go=`data-swg="${r.name.replace(/"/g,"&quot;")}" title="點擊看 ${r.name.replace(/"/g,"")} 的股票"`; return V===2?`<span class="swchip" ${go}><b>${r.name}</b> <span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></span>`
     :V===3?`<div class="swbar" ${go}><b>${r.name} <span class="swgo">›</span></b><span class="swtr"><i class="${bgc}" style="width:${Math.abs(r.med)/mx*100}%"></i></span><span class="${cls}">${f(r.med)}</span><small class="mute">${sub(r,isS)}</small></div>`
     :`<div class="swr" ${go}><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`};
@@ -1731,13 +1737,16 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(
   const lab=v===2?["▲ 頂端","▼ 底部"]:["▲","▼"];
   const mk=(id,t,title,fn)=>{const b=document.createElement("button");b.id=id;b.className="ttb";b.textContent=t;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;document.body.appendChild(b);return b};
   const top=mk("ttTop",lab[0],"回到頂端",()=>scrollTo({top:0,behavior:"smooth"}));
+  document.documentElement.classList.add("kd"+(window.KDV||"A"));
+  const back=mk("ttBack","← 返回上一頁","返回上一頁",()=>goPrev());   /* 11/16 使用者：返回上一頁要跟著置頂（BKV 1 左上、2 左下） */
   const bot=mk("ttBot",lab[1],"到底部",()=>scrollTo({top:document.documentElement.scrollHeight,behavior:"smooth"}));
   const upd=()=>{const hd=document.querySelector("header");let t=hd?hd.getBoundingClientRect().bottom:0;
     const sm=document.querySelector("#app .sum");if(sm){const r=sm.getBoundingClientRect();if(r.top<=t+2&&r.bottom>t)t=r.bottom}   /* 五種型態卡片列黏在頁首下方時，按鈕放到它下面 */
     const sh=document.getElementById("sth");if(sh&&sh.style.display!=="none")t=Math.max(t,sh.getBoundingClientRect().bottom);   /* 表格標題列置頂時，按鈕放到它下面 */
     bot.style.top=(t+10)+"px";
+    if((window.BKV||1)===1){back.style.top=(t+10)+"px";back.style.bottom="auto"}else{back.style.top="auto";back.style.bottom="calc(18px + env(safe-area-inset-bottom))"}
     const y=scrollY,rest=document.documentElement.scrollHeight-innerHeight-y;
-    top.classList.toggle("show",y>300); bot.classList.toggle("show",rest>300&&y>150)};   /* 最上面時不顯示「底部」，免得蓋住五種型態卡片 */
+    top.classList.toggle("show",y>300); bot.classList.toggle("show",rest>300&&y>150); back.classList.toggle("show",!!location.hash&&!/^#[si]-/.test(location.hash)&&y>150)};   /* 最上面時不顯示「底部」，免得蓋住五種型態卡片 */
   addEventListener("scroll",upd,{passive:true}); addEventListener("resize",upd); addEventListener("hashchange",()=>setTimeout(upd,300));
   new MutationObserver(()=>requestAnimationFrame(upd)).observe($("#app"),{childList:true}); upd();
 })();
