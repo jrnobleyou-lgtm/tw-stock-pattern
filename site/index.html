@@ -182,7 +182,7 @@ svg text{fill:var(--fg);font-size:11px}
 @media(max-width:900px){
   .hs1 .hsx>.hsh{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#c4b5fd;margin:2px 2px 4px}.hs1 .hsx>.hsh b{font-size:16px;animation:hsb 1.6s ease-in-out infinite}
   .hs2 .hsx .tw{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}.hs2 .hsx .tw.hse{-webkit-mask-image:none;mask-image:none}
-  .hs2 .hsx th.tg::after{content:" ◀ ▶";color:#c4b5fd;font-size:11px}
+  .hsh0 b{cursor:pointer;padding:4px 10px;margin:-4px 0}.hs2 .hsx th.tg::after{content:" ◀ ▶";color:#c4b5fd;font-size:11px}
   .hs3 .hsx{position:relative}.hs3 .hsx>.hsa{position:sticky;top:45vh;float:right;margin-bottom:-36px;z-index:5;width:34px;height:34px;border-radius:50%;background:rgba(124,58,237,.75);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
   .hs3 .hsx.hse>.hsa{opacity:0;pointer-events:none}
 }
@@ -562,7 +562,13 @@ function stockTable(list,withGroup,showVal,dmiCols){
 function stateList(st){
   if(!STATES.includes(st)){location.hash="";return}
   const list=sortList(Object.values(D.stocks).filter(x=>x.state===st));
-  let h=`<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">預設依成交值由大到小排列（可用右邊「排序」改），點股票看 K 線圖。</p>`;
+  const STN={   /* 11/16 使用者：五種型態點進來，上面要有說明（依 engine.py classify 實際規則） */
+    "轉強":"帶量（1.5 倍）突破盤整區間上緣 3 天內；或站回 5 日、10 日線（之前 10 天裡至少 3 天在 10 日線下）；或 3 天內從低點反彈 20% 以上；或底部形態（W 雙重底、頭肩底、V 形底等）剛突破頸線。轉強優先於走弱。",
+    "弱轉強":"符合「轉強」，但均線還沒排成多頭（5 日 > 10 日 > 20 日線、且 10、20 日線往上還沒成立）＝從弱勢剛翻上來。多頭途中回檔再站回的不算。",
+    "型態好":"多頭排列：收盤在 5 日線上，5 日 > 10 日 > 20 日線，而且 20 日線往上。另含「多頭回檔」：跌破 5 日線但守住 10 日線、回檔不到波段一半，觀察能不能站回 5 日線。",
+    "盤整":"股價在盤整區間裡（10～60 根、上下緣各碰 2 次以上），或均線糾結、方向不明。快到上緣的標「準備突破」，杯柄、圓弧底成形中的標「蓄勢待發」。",
+    "走弱":"回檔走弱＝之前是多頭，最近連 3 天收在 5 日、10 日線下；破底走弱＝跌破盤整區間下緣（連 3 天收在下緣下），或沒有區間、20 日線往下的空頭走勢；頂部形態（M 雙重頂、頭肩頂等）剛跌破頸線也算。"};
+  let h=`<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2>${STN[st]?`<p class="note" style="margin-top:0"><b>什麼是「${st}」：</b>${STN[st]}</p>`:""}<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button><p class="note" style="margin-top:0">預設依成交值由大到小排列（可用右邊「排序」改），點股票看 K 線圖。</p>`;
   h+=sortBar()+stockTable(list,true,true);
   $("#app").innerHTML=h; bindRows();
 }
@@ -1653,7 +1659,7 @@ function renderBase(h){
 }
 function goBack(){
   const h = decodeURIComponent(location.hash.slice(1));
-  if(h.startsWith("s-")||h.startsWith("i-")) location.hash = baseRaw || "";
+  if(h.startsWith("s-")||h.startsWith("i-")){ if(navStack.length>1&&navStack[navStack.length-2]===(baseRaw||"")) history.back(); else {window.__navRep=true;location.replace("#"+(baseRaw||""))} }
   else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn") location.hash = "";
 }
 document.addEventListener("keydown",e=>{
@@ -1672,12 +1678,22 @@ function route(){
   }
   closeModal();
   document.documentElement.classList.toggle("sub",!!h);
-  if(baseRaw!==h){ renderBase(h); window.scrollTo(0,0); }
+  if(baseRaw!==h){ renderBase(h); window.scrollTo(0,0); restoreNav(h); }
   if(h&&!document.querySelector("#app .back")) $("#app").insertAdjacentHTML("afterbegin",'<button class="btn back" onclick="goPrev()">← 返回上一頁</button>');   /* 11/16 使用者：每一頁都要有返回上一頁 */
 }
-/* 返回上一頁：站內有上一頁就回去，沒有（直接開連結進來）就回首頁 */
-let navDepth=0; addEventListener("hashchange",()=>{navDepth++});
-function goPrev(){ if(navDepth>0){navDepth-=2;history.back()} else location.hash="" }
+/* 返回上一頁（11/16 修）：自己記一份站內走過的頁面（navStack），回到上一頁時恢復當時捲動位置；
+   K 線視窗關閉＝退回開它之前那頁（history.back），不再多塞一筆紀錄，所以「返回上一頁」不會又跑回 K 線 */
+const navStack=[location.hash.slice(1)], navPos={}; let navBack=false, lastY=0;
+addEventListener("scroll",()=>{lastY=scrollY},{passive:true});
+addEventListener("hashchange",e=>{
+  const h=location.hash.slice(1), prev=navStack[navStack.length-1];
+  if(window.__navRep){window.__navRep=false;navStack[navStack.length-1]=h;navBack=false;return}   /* location.replace：取代目前這筆，不算新的一頁 */
+  if(!/^[si]-/.test(prev)) navPos[prev]=lastY;                 /* 離開前那頁的捲動位置（hashchange 時畫面還沒換） */
+  navBack=navStack.length>1&&navStack[navStack.length-2]===h;
+  if(navBack) navStack.pop(); else navStack.push(h);
+});
+function goPrev(){ if(navStack.length>1) history.back(); else location.hash="" }
+function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,400].forEach(t=>setTimeout(()=>scrollTo(0,y),t))} }
 
 /* 上班模式、字體大小（記在瀏覽器裡） */
 (function(){
@@ -1743,6 +1759,8 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(
         if(v===3){w.insertAdjacentHTML("afterbegin",'<div class="hsa">▶</div>');w.firstChild.onclick=()=>tw.scrollBy({left:200,behavior:"smooth"})}
         tw.addEventListener("scroll",()=>{const end=tw.scrollLeft+tw.clientWidth>=tw.scrollWidth-4;tw.classList.toggle("hse",end);w.classList.toggle("hse",end)},{passive:true});}
     })};
+  document.addEventListener("click",e=>{const b=e.target.closest(".hsh0 b");if(!b)return;const sm=b.parentElement.nextElementSibling;   /* 11/16 使用者：◀▶ 按了要能捲 */
+    if(sm) sm.scrollBy({left:(b===b.parentElement.firstElementChild?-1:1)*sm.clientWidth*.7,behavior:"smooth"})});
   window.__hsMark=mark; new MutationObserver(()=>requestAnimationFrame(mark)).observe($("#app"),{childList:true}); addEventListener("resize",mark); setTimeout(mark,300);
 })();
 /* 回到頂端／到底部按鈕（11/15 使用者）：樣式 window.TTV（使用者選 2 膠囊文字；1 圓形實心／3 半透明方形保留可切） */
