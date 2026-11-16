@@ -222,6 +222,11 @@ svg text{fill:var(--fg);font-size:11px}
 .lcard h2{margin:0 0 2px;font-size:17px}.lal{color:var(--mute);font-size:12px}.ltag{display:inline-block;font-size:12px;padding:0 8px;border-radius:10px;margin-left:6px;vertical-align:2px}
 .ltag.bull{background:rgba(239,68,68,.18);color:#fca5a5}.ltag.bear{background:rgba(34,197,94,.16);color:#86efac}.ltag.neu{background:rgba(240,211,74,.15);color:#f0d34a}
 .lsv{display:block;width:100%;height:auto;background:#000;border-radius:8px}.ld{line-height:1.6}.ld h3{font-size:13px;color:#a5b4fc;margin:8px 0 2px}.ld h3:first-child{margin-top:0}.ld ul{margin:0;padding-left:18px}.ld li{margin:2px 0}
+.lix{width:100%;margin-top:7px;padding:8px 10px;border-radius:10px;border:1px solid #6d5ce0;background:#241d4a;color:#fff;font-size:15px}
+.lix2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px;margin:8px 0 4px;padding:10px 12px;border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.78)}
+.lix2 b,.lix3 b{display:block;color:#a5b4fc;font-size:13px;margin-bottom:3px}.lix2 a,.lix3 a{display:inline-block;margin:2px 8px 2px 0;color:#e9e3ff;font-size:14px;cursor:pointer;text-decoration:underline;text-decoration-color:#6d5ce0;text-underline-offset:3px}
+.lixb{background:#4c3d99!important;color:#fff!important;border-color:#6d5ce0!important}
+.lix3{position:absolute;left:0;right:0;top:100%;max-height:60vh;overflow:auto;z-index:25;padding:10px 12px;border:1px solid #6d5ce0;border-radius:12px;background:rgba(22,18,39,.98);box-shadow:0 10px 30px rgba(0,0,0,.6);display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px}.lix3[hidden]{display:none}
 .lgo{display:inline-block;margin-top:10px;color:#c4b5fd;font-size:13px}.learnb{margin:0 0 10px;border-color:#6d5ce0!important;color:#e9e3ff}
 @media(max-width:700px){.lsb input{width:calc(100% - 84px)}.lcard{grid-template-columns:1fr}.lcard .lhd{grid-column:auto}}
 /* 11/16 使用者：股票／漲跌／族群標題與內容置中、欄寬貼合內容；標記欄加寬（電腦手機都用） */
@@ -1864,12 +1869,17 @@ const LV=(()=>{
 })();
 function learnPage(){
   const KT={bull:["看漲","bull"],bear:["看跌","bear"],neu:["中性","neu"]};
-  const card=p=>`<div class="lcard" data-cat="${p.cat}" data-k="${(p.name+" "+p.alias+" "+p.cat).toLowerCase()}"><div class="lhd"><h2>${p.name}<span class="ltag ${KT[p.kind][1]}">${KT[p.kind][0]}</span></h2><div class="lal">也叫：${p.alias}</div></div>
+  const card=p=>`<div class="lcard" id="lp-${p.id}" data-cat="${p.cat}" data-k="${(p.name+" "+p.alias+" "+p.cat).toLowerCase()}"><div class="lhd"><h2>${p.name}<span class="ltag ${KT[p.kind][1]}">${KT[p.kind][0]}</span></h2><div class="lal">也叫：${p.alias}</div></div>
 <div>${LV.S[p.id]}</div><div class="ld"><h3>長什麼樣</h3><div>${p.what}</div><h3>怎麼認</h3><ul>${p.how.map(x=>`<li>${x}</li>`).join("")}</ul>
 <h3>本站怎麼標</h3><ul>${p.sys.map(x=>`<li>${x}</li>`).join("")}</ul><h3>什麼時候失敗</h3><div>${p.risk}</div>
 ${p.f?`<a class="lgo" href="#scr-${p.f}">→ 看現在符合「${(FILTERS.find(x=>x.k===p.f)||{}).name||p.name}」的股票</a>`:""}</div></div>`;
   let h=`<h2 style="margin:4px 0 4px">什麼是股票型態？</h2><p class="note" style="margin-top:0">股價走勢常會畫出某些反覆出現的形狀，叫做「型態」。看懂型態，可以知道現在比較像要轉強、還在整理，還是要走弱。下面的示意圖是本站自己畫的簡化圖，實際股票不會這麼工整；型態只是機率，不是保證，非投資建議。</p>
 <div class="lsb"><input id="lq" type="search" placeholder="搜尋型態，例如：W、頭肩、杯柄、盤整、吞沒" autocomplete="off"><div class="lch">${["全部"].concat(LV.C).map((c,i)=>`<button class="${i?"":"on"}" data-c="${c}">${c}</button>`).join("")}</div></div>`;
+  /* 索引選單（11/16 使用者要求；window.LIX 1 下拉、2 頁首目錄、3 目錄按鈕＋浮動清單） */
+  const LIX=window.LIX||1, grp=c=>LV.P.filter(p=>p.cat===c);
+  if(LIX===1) h=h.replace('<div class="lch">',`<select class="lix" id="lix"><option value="">☰ 跳到型態…</option>${LV.C.map(c=>`<optgroup label="${c}">${grp(c).map(p=>`<option value="${p.id}">${p.name}</option>`).join("")}</optgroup>`).join("")}</select><div class="lch">`);
+  if(LIX===2) h=h.replace('<div class="lsb">',`<div class="lix2">${LV.C.map(c=>`<div><b>${c}</b>${grp(c).map(p=>`<a data-j="${p.id}">${p.name}</a>`).join("")}</div>`).join("")}</div><div class="lsb">`);
+  if(LIX===3) h=h.replace('<div class="lch">',`<div class="lch"><button class="lixb" id="lixb">☰ 目錄</button>`).replace('<div class="lsb">',`<div class="lsb"><div class="lix3" id="lix3" hidden>${LV.C.map(c=>`<div><b>${c}</b>${grp(c).map(p=>`<a data-j="${p.id}">${p.name}</a>`).join("")}</div>`).join("")}</div>`);
   for(const c of LV.C) h+=`<div class="lsec" data-cat="${c}">${c}</div>`+LV.P.filter(p=>p.cat===c).map(card).join("");
   h+=`<p class="note lem" style="display:none">找不到這個型態，試試別的關鍵字。</p>`;
   $("#app").innerHTML=h;
@@ -1882,7 +1892,13 @@ ${p.f?`<a class="lgo" href="#scr-${p.f}">→ 看現在符合「${(FILTERS.find(x
   const jump=()=>{const sb=document.querySelector(".lsb"),f=[...document.querySelectorAll(".lsec,.lcard")].find(e=>e.style.display!=="none");
     if(!f) return; const d=f.getBoundingClientRect().top-sb.getBoundingClientRect().bottom-8; if(d<0) window.scrollBy(0,d)};
   q.oninput=()=>{apply();jump()};
-  document.querySelectorAll(".lch button").forEach(b=>b.onclick=()=>{cat=b.dataset.c;document.querySelectorAll(".lch button").forEach(x=>x.classList.toggle("on",x===b));apply();jump()});
+  document.querySelectorAll(".lch button[data-c]").forEach(b=>b.onclick=()=>{cat=b.dataset.c;document.querySelectorAll(".lch button[data-c]").forEach(x=>x.classList.toggle("on",x===b));apply();jump()});
+  const go=id=>{q.value="";cat="全部";document.querySelectorAll(".lch button[data-c]").forEach(x=>x.classList.toggle("on",x.dataset.c==="全部"));apply();
+    const el=document.getElementById("lp-"+id), sb=document.querySelector(".lsb"); if(!el) return;
+    window.scrollBy(0,el.getBoundingClientRect().top-sb.getBoundingClientRect().bottom-8)};
+  const lx=$("#lix"); if(lx) lx.onchange=()=>{if(lx.value){go(lx.value);lx.value=""}};
+  document.querySelectorAll("[data-j]").forEach(a=>a.onclick=()=>{const p3=$("#lix3");if(p3)p3.hidden=true;go(a.dataset.j)});
+  const lb=$("#lixb"); if(lb) lb.onclick=e=>{e.stopPropagation();const p3=$("#lix3");p3.hidden=!p3.hidden};
   /* 搜尋框黏在頁首下面（頁首高度會變，跟著調） */
   const sb=document.querySelector(".lsb"), hd=document.querySelector("header"), z=parseFloat($("#app").style.zoom)||1;
   const fit=()=>{if(sb.isConnected) sb.style.top=(hd.getBoundingClientRect().height/z)+"px"};
