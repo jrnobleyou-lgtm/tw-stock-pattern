@@ -1102,7 +1102,8 @@ class Chart{
     this.active=this.custom[this.custom.length-1];this.range=null;this.listOpen=true;this.build();
   }
   clear(){ if(this.cancelScissor()) return; if(this.sel!=null){this.sel=null;this.draw()} }
-  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=(this.rb||this.pb)?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/(this.bars.length<30?Math.max(n,30):n)}}   /* 新股等 K 棒很少時，照 30 根寬度畫（靠左、右邊留白），不會一根撐滿整張圖 */
+  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=(this.rb||this.pb)?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/(this.few()?Math.max(n,TF_N[this.tf]):n)}}
+  few(){const L=this.bars.length;return this.tf==="D"?L<40:L<8}   /* 新股：日 K 不到 40 根、週月 K 不到 8 根 */   /* 新股等 K 棒很少時，K 棒寬度跟一般股票預設畫面一樣（日 K 110 根），從最左邊開始往右長（11/16 使用者） */
   rect(){const s=this.cv.querySelector("svg");return (s||this.cv).getBoundingClientRect()}
   indexAtX(cx){const g=this.geom(),r=this.rect(),x=(cx-r.left)/r.width*g.W;return Math.min(this.end-1,Math.max(g.vs,g.vs+Math.floor((x-g.pl)/g.cw)))}
   indexAt(e){return this.indexAtX(e.clientX)}
@@ -1223,6 +1224,7 @@ class Chart{
     const bx=s.box?{...s.box,hi:this.adjOn&&s.box.hiA!=null?s.box.hiA:s.box.hi,lo:this.adjOn&&s.box.loA!=null?s.box.loA:s.box.lo}:null;
     if(bx && this.boxOn && idxOf(B,bx.s)<ve && (bx.live||idxOf(B,bx.e)>=vs)){hi=Math.max(hi,Math.min(bx.hi,hi*1.3));lo=Math.min(lo,Math.max(bx.lo,lo*0.75))}
     for(const n of MA_ALL) if(this.maOn[n]) for(let i=vs;i<ve;i++){const v=this.ma[n][i];if(v!=null&&v>lo*0.7&&v<hi*1.3){hi=Math.max(hi,v);lo=Math.min(lo,v)}}
+    if(this.few()){const c=B[B.length-1].c,need=c*.3;if(hi-lo<need){const m=(hi+lo)/2;hi=m+need/2;lo=m-need/2}}   /* 新股 K 棒很少：價格範圍至少放到現價 30%，K 棒才是正常大小（11/16 使用者） */
     const pad=(hi-lo)*.07||1; hi+=pad; lo-=pad;
     const y=v=>pt+(hi-v)/(hi-lo)*(priceBot-pt), x=i=>pl+(i-vs)*cw+cw/2;
     this.pg={pt,priceBot,hi,lo};
@@ -1539,7 +1541,7 @@ class Chart{
     }
     // 日期軸（獨立一條，不與 K 棒、成交量重疊）
     const step=Math.max(1,Math.ceil(vis.length/Math.max(3,Math.floor((W-pl-pr)/90))));
-    for(let k=0;k<vis.length;k+=step){const b=vis[k];o+=`<text x="${x(vs+k)}" y="${mainH-4}" text-anchor="middle" style="fill:#9a93ad">${this.tf==="M"?b.d.slice(0,7):b.d.slice(2)}</text>`}
+    for(let k=0;k<vis.length;k+=step){const b=vis[k];o+=`<text x="${Math.max(x(vs+k),pl+28)}" y="${mainH-4}" text-anchor="middle" style="fill:#9a93ad">${this.tf==="M"?b.d.slice(0,7):b.d.slice(2)}</text>`}
     // ── 副圖：標題列在圖外，內含隨 K 棒顯示的指標數值
     const ci=this.sel, cur=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;   /* 副圖數值跟上方資訊欄同一根（點選的 K 棒在畫面外也一樣），避免兩邊日期不同 */
     const f2=v=>v==null?"—":(Math.abs(v)>=100?v.toFixed(1):v.toFixed(2));
