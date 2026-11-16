@@ -116,7 +116,7 @@ svg text{fill:var(--fg);font-size:11px}
 .swhint{display:none}
 .dmihelp{margin:6px 0;font-size:13px}.dmihelp summary{cursor:pointer;color:#4D7CFF;font-weight:700}.dmihelp p{margin:6px 0;line-height:1.7}
 .sortbar{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:4px 0 6px;font-size:13px;color:#a5b4fc}.sortbar select{background:#161227;color:#e5e7eb;border:1px solid #3b3566;border-radius:8px;padding:5px 8px;font-size:13px}
-.stt .tvm{display:none}
+.stt .tvm{display:none}.stt .gl2{display:block;font-size:11px;color:#c4b5fd;margin-top:1px;white-space:normal}.mtitle .mg{display:none}
 @media(max-width:900px){
   .modal{align-items:stretch;overflow:hidden;padding:6px;touch-action:pan-x pan-y}
   .mpanel{width:min(99vw,1840px);height:100%;max-height:none;overflow:hidden;padding:8px 8px 6px}
@@ -143,7 +143,7 @@ svg text{fill:var(--fg);font-size:11px}
   .info{grid-template-columns:repeat(4,1fr);gap:0 6px;padding:3px 6px}
   .info b{font-size:11px}.info span{font-size:10px;display:inline;margin-right:3px}
   .info>div{display:flex;align-items:baseline;gap:2px;white-space:nowrap;overflow:hidden}
-  .mhead .mtitle .mute{display:none}
+  .mhead .mtitle .mute{display:none}.mhead .mtitle .mg{display:block;font-size:11px;font-weight:400;color:#c4b5fd;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .mhead{flex-wrap:wrap;gap:4px;margin-bottom:4px}
   .mhead .mtitle{font-size:14px;flex:1;min-width:0}
   .mhead #mclose{padding:3px 9px;font-size:12px}
@@ -571,11 +571,11 @@ function chgCell(s){
   if(V===2) return `<td class="chg2"><div class="p ${lm}" style="${lm?"":"color:"+col}">${lu?"漲停 ":ld?"跌停 ":""}${p}</div><div class="a" style="color:${col}">${a}</div></td>`;
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
-function stockTable(list,withGroup,showVal,dmiCols){
+function stockTable(list,withGroup,showVal,dmiCols,gline){
   let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">漲跌</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -627,7 +627,7 @@ function finder(q){
       mates.sort((a,b)=>b.close*b.vol-a.close*a.vol);   // 先依成交值挑出前幾檔
       const list=[s,...sortList(mates.slice(0,FIND_MAX-1))];      // 搜尋的那檔排第一，其餘依右上角排序
       h+=`<div class="sect">${s.code} ${s.name}　${badge(s.state,s.sub)}　<span class="mute">${gtxt(s)}（同族群共 ${mates.length+1} 檔，列出前 ${list.length} 檔；搜尋的那檔排第一，其餘預設依成交值，可用上方排序改）</span></div>`;
-      h+=stockTable(list,false,true).replace(`<tr class="row" data-c="${s.code}">`,`<tr class="row" data-c="${s.code}" style="background:rgba(240,211,74,.12)">`);
+      h+=stockTable(list,false,true,false,true).replace(`<tr class="row" data-c="${s.code}">`,`<tr class="row" data-c="${s.code}" style="background:rgba(240,211,74,.12)">`);
     }
   }
   // 這邊找不到的，到另一個市場找：台股頁 → 管理者專區（美股，需登入）；管理者專區 → 台股
@@ -822,7 +822,7 @@ function openStock(code){
     el.addEventListener("click",e=>{ if(e.target===el) goBack(); }); document.body.appendChild(el); modalEl=el;
     return;
   }
-  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
+  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span><div class="mg">${gtxt(s)}${s.industry?"・"+s.industry:""}</div></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
   mountModal(s, head, {notes:notesHTML(s),news:D.market!=="US"&&/^\d/.test(s.code)});
   startLive(chart, D.market==="US"?code:code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
