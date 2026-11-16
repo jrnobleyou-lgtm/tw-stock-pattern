@@ -383,7 +383,7 @@ def main():
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
             "market": mk.get(code), "state": state, "sub": sub, "tags": tags,
-            "close": raw[T]["c"],
+            "close": raw[T]["c"], "pc": raw[T - 1]["c"] if T else None,     # 前一日收盤（前端算漲跌金額、漲跌停）
             "chg": r2((raw[T]["c"] / raw[T - 1]["c"] - 1) * 100) if T else 0,
             "vol": round(raw[T]["v"] / 1000),
         }

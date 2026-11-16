@@ -207,6 +207,13 @@ svg text{fill:var(--fg);font-size:11px}
 .nw .bars div i{position:absolute;top:-16px;left:0;right:0;text-align:center;font-style:normal;font-size:11px;color:#ddd}.nw .bl{display:flex;gap:8px}.nw .bl span{flex:1;text-align:center;font-size:11px;color:var(--mute);min-width:22px}
 .nw .sub{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}
 @media(max-width:900px){.mhead .mtabs .btn{padding:3px 8px;font-size:12px}.mhead .mtabs{gap:3px}.mhead .mtitle b{white-space:nowrap}.nw2{grid-template-columns:1fr;gap:6px}.nw .it .dt{width:70px}#newsp{font-size:13px}}
+.stt td.chg2{min-width:64px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;line-height:1.25;font-size:13px}.stt th.chg2{text-align:right}
+.chg2 .lm{display:inline-block;border-radius:6px;padding:2px 6px;color:#fff!important}.chg2 .lm.u{background:#dc2626}.chg2 .lm.d{background:#16a34a}
+.chg2 .a{font-size:11px;opacity:.85}
+.cv2 .chg2 .p{font-weight:700;font-size:14px}
+.cv3 .chg2 span{display:inline-block;min-width:62px;text-align:center;border-radius:6px;background:rgba(255,255,255,.06);padding:1px 4px}.cv3 .chg2 .lm{min-width:62px}
+@media(min-width:641px){.stt .chg2{display:none}}
+@media(max-width:640px){.stt th.c-chg,.stt td.c-chg{display:none}}
 </style>
 </head>
 <body>
@@ -438,7 +445,7 @@ function group(name){
   const g = D.groups.find(x=>x.name===name); if(!g) return home();
   const order = {"轉強":0,"弱轉強":1,"型態好":2,"盤整":3,"走弱":4};
   const list = sortList(g.stocks.map(c=>D.stocks[c]));            // 預設成交值，右上角可改排序
-  let h = `<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 10px">${g.name}</h2>`;
+  let h = `<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2 style="margin:4px 0 10px">${g.name}</h2>`;
   h += sortBar()+stockTable(list,false,true);
   $("#app").innerHTML = h; bindRows();
 }
@@ -461,17 +468,29 @@ function dmiCells(s){
   const [df,ax,dr]=s.dmi, arr=dr>0?'<span style="color:#facc15">▲</span>':dr<0?'<span style="color:#8b84a3">▼</span>':'<span style="color:#8b84a3">平</span>';
   return `<td class="cc dmic" style="color:${df>0?"var(--up)":df<0?"var(--down)":"inherit"}">${df>0?"+":""}${df.toFixed(1)}</td><td class="cc dmic">${ax.toFixed(1)} ${arr}${ax<20?' <small class="mute">弱</small>':""}</td>`;
 }
+/* 漲跌金額、漲跌停（台股 10%，依升降單位）：手機版放在型態左邊，上下兩排 */
+function tick(p){return p<10?.01:p<50?.05:p<100?.1:p<500?.5:p<1000?1:5}
+function limPx(pc,up){const raw=pc*(up?1.1:.9),t=tick(raw);const v=up?Math.floor(raw/t+1e-9)*t:Math.ceil(raw/t-1e-9)*t;return +v.toFixed(2)}
+function chgCell(s){
+  const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||1;
+  const lu=D.market!=="US"&&pc&&s.close>=limPx(pc,1)-1e-9, ld=D.market!=="US"&&pc&&s.close<=limPx(pc,0)+1e-9;
+  const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
+  const lm=lu?"lm u":ld?"lm d":"";
+  if(V===2) return `<td class="chg2"><div class="p ${lm}" style="${lm?"":"color:"+col}">${lu?"漲停 ":ld?"跌停 ":""}${p}</div><div class="a" style="color:${col}">${a}</div></td>`;
+  return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
+}
 function stockTable(list,withGroup,showVal,dmiCols){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
+  let h = `<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="chg2">漲跌</th>${withGroup?"<th>族群</th>":""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+  h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||1}">`);
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td>${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
 function stateList(st){
   if(!STATES.includes(st)){location.hash="";return}
   const list=sortList(Object.values(D.stocks).filter(x=>x.state===st));
-  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">預設依成交值由大到小排列（可用右邊「排序」改），點股票看 K 線圖。</p>`;
+  let h=`<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2 style="margin:4px 0 6px">${st}　<span class="c-${CLS[st]}">${list.length}</span> 檔</h2><p class="note" style="margin-top:0">預設依成交值由大到小排列（可用右邊「排序」改），點股票看 K 線圖。</p>`;
   h+=sortBar()+stockTable(list,true,true);
   $("#app").innerHTML=h; bindRows();
 }
@@ -497,7 +516,7 @@ function findStocks(token){
 }
 function finder(q){
   const tokens=q.split(/[\s,，、;；]+/).filter(Boolean);
-  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">自訂搜尋：${tokens.join("　")}</h2>`;
+  let h=`<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2 style="margin:4px 0 6px">自訂搜尋：${tokens.join("　")}</h2>`;
   if(tokens.length) h+=sortBar();
   if(!tokens.length) h+=`<p class="note">輸入股票代號或名稱（可一次輸入多檔，用空格分開），會把它排在第一個並顯示目前型態，再帶出同族群的公司。</p>`;
   const seen=new Set(), miss=[];
@@ -1508,18 +1527,19 @@ class Chart{
 
 /* ───────── 我的畫線（管理者）：台股＋美股所有畫過線的股票，目前市場的排前面 ───────── */
 async function myDraw(){
-  $("#app").innerHTML=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note">讀取中…</p>`;
+  $("#app").innerHTML=`<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note">讀取中…</p>`;
   let all=null; try{ const r=await fetch("/api/draw-list?all=1",{cache:"no-store"}); all=await r.json() }catch(_){}
   if(location.hash!=="#mydraw") return;
-  if(!all||!all.TW){ $("#app").innerHTML=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2>我的畫線✏️</h2><p class="note">請先登入管理者專區。</p>`; return }
+  if(!all||!all.TW){ $("#app").innerHTML=`<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2>我的畫線✏️</h2><p class="note">請先登入管理者專區。</p>`; return }
   const here=D.market==="US"?"US":"TW", order=[here, here==="US"?"TW":"US"];
-  let h=`<button class="btn back" onclick="location.hash=''">← 全部族群</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note" style="margin-top:0">管理者畫過型態線的股票，點股票看 K 線圖（另一個市場的會換頁打開）。標「型態已更新！」的：系統已經把你畫的型態往後補完，確認後可以刪掉自己的線。</p>`;
+  let h=`<button class="btn back" onclick="goPrev()">← 返回上一頁</button><h2 style="margin:4px 0 6px">我的畫線✏️</h2><p class="note" style="margin-top:0">管理者畫過型態線的股票，點股票看 K 線圖（另一個市場的會換頁打開）。標「型態已更新！」的：系統已經把你畫的型態往後補完，確認後可以刪掉自己的線。</p>`;
   for(const m of order){
     const codes=Object.keys(all[m]||{}), nm=m==="US"?"美股":"台股";
     h+=`<h3 style="margin:18px 0 6px">${nm}　<span class="mute">${codes.length} 檔</span></h3>`;
     if(!codes.length){ h+=`<p class="note">還沒有畫線。</p>`; continue }
     const sameMkt=m===here, list=codes.map(c=>({c,s:sameMkt?D.stocks[c]:null,names:all[m][c]})).sort((a,b)=>((b.s?b.s.close*b.s.vol:0)-(a.s?a.s.close*a.s.vol:0))||a.c.localeCompare(b.c));
-    h+=`<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="tg">我畫的型態</th><th class="cc">型態</th><th class="cc">收盤</th><th class="cc">漲跌%</th></tr></thead><tbody>`;
+    h+=`<div class="tw"><table class="stt"><thead><tr><th>股票</th><th class="tg">我畫的型態</th><th class="cc">型態</th><th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+  h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||1}">`);
     for(const x of list){
       const href=sameMkt?"":(m==="US"?"/admin/#s-":"/#s-")+encodeURIComponent(x.c), s=x.s;
       h+=`<tr class="row" ${sameMkt?`data-c="${x.c}"`:`data-href="${href}"`}><td class="sn1"><b>${x.c}</b> <span class="sn">${s?s.name:""}</span></td><td class="tg">${x.names.map(n=>`<span class="tag" style="color:#f472b6;border-color:#f472b688">✏️${n||"未命名"}</span>`).join("")}${s&&s.drawUpd&&s.drawUpd.length?`<span class="tag hot" title="系統已經把這段型態往後補完，可以點進去確認後刪掉自己畫的線">型態已更新！</span>`:""}</td>`+
@@ -1566,7 +1586,11 @@ function route(){
   }
   closeModal();
   if(baseRaw!==h){ renderBase(h); window.scrollTo(0,0); }
+  if(h&&!document.querySelector("#app .back")) $("#app").insertAdjacentHTML("afterbegin",'<button class="btn back" onclick="goPrev()">← 返回上一頁</button>');   /* 11/16 使用者：每一頁都要有返回上一頁 */
 }
+/* 返回上一頁：站內有上一頁就回去，沒有（直接開連結進來）就回首頁 */
+let navDepth=0; addEventListener("hashchange",()=>{navDepth++});
+function goPrev(){ if(navDepth>0){navDepth-=2;history.back()} else location.hash="" }
 
 /* 上班模式、字體大小（記在瀏覽器裡） */
 (function(){
