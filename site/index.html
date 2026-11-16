@@ -62,7 +62,7 @@ tr.row:hover{background:rgba(255,255,255,.08)}
 .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:120px;background:#0003}
 .bar i{display:block;height:100%}
 .c-strong{color:var(--s-strong)}.c-wstrong{color:var(--s-wstrong)}.c-good{color:var(--s-good)}.c-range{color:var(--s-range)}.c-weak{color:var(--s-weak)}
-.b-strong{background:var(--s-strong)}.b-wstrong{background:var(--s-wstrong)}.b-good{background:var(--s-good)}.b-range{background:var(--s-range)}.b-weak{background:var(--s-weak)}
+.b-strong{background:var(--s-strong)}.b-wstrong{background:var(--s-wstrong)}.b-good{background:var(--s-good)}.b-range{background:var(--s-range)}.b-weak{background:var(--s-weak)}.b-new{background:#4b5563;color:#e5e7eb}
 .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--mute);margin:1px 0 1px 4px}
 .tag.hot{border-color:var(--s-strong);color:var(--s-strong);font-weight:700}
 .tag.bad{border-color:#fb7185;color:#fb7185}
@@ -281,7 +281,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 const D = window.DATA;
 const DN={"雙重底":"W雙重底","雙重底（不對稱）":"W雙重底（不對稱）","雙重頂":"M雙重頂"}, dn=k=>DN[k]||k;      // 顯示用名稱（判斷仍用原名稱）
 const STATES = ["轉強","弱轉強","型態好","盤整","走弱"];
-const CLS = {"轉強":"strong","弱轉強":"wstrong","型態好":"good","盤整":"range","走弱":"weak"};
+const CLS = {"轉強":"strong","弱轉強":"wstrong","型態好":"good","盤整":"range","走弱":"weak","新股":"new"};   /* 新股：剛上市櫃不到 40 根，不算進五種型態 */
 const $ = s => document.querySelector(s);
 const AM=D.asofM||{};
 $("#asof").textContent = D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 " + D.asof;
@@ -548,7 +548,7 @@ const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["stat
 function sortList(list){
   const tv=s=>s.close*s.vol;
   const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
-    state:(a,b)=>STATES.indexOf(a.state)-STATES.indexOf(b.state)||tv(b)-tv(a),
+    state:(a,b)=>((STATES.indexOf(a.state)+1)||99)-((STATES.indexOf(b.state)+1)||99)||tv(b)-tv(a),   /* 新股排最後 */
     dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
   return list.sort(f);
 }
@@ -563,6 +563,7 @@ function dmiCells(s){
 function tick(p){return p<10?.01:p<50?.05:p<100?.1:p<500?.5:p<1000?1:5}
 function limPx(pc,up){const raw=pc*(up?1.1:.9),t=tick(raw);const v=up?Math.floor(raw/t+1e-9)*t:Math.ceil(raw/t-1e-9)*t;return +v.toFixed(2)}
 function chgCell(s){
+  if(s.new&&!s.pc) return `<td class="chg2"><div class="p mute">—</div><div class="a mute">上市櫃首日</div></td>`;   /* 新股第一天沒有前一日收盤可比 */
   const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||2;
   const lu=D.market!=="US"&&pc&&s.close>=limPx(pc,1)-1e-9, ld=D.market!=="US"&&pc&&s.close<=limPx(pc,0)+1e-9;
   const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
@@ -1101,7 +1102,7 @@ class Chart{
     this.active=this.custom[this.custom.length-1];this.range=null;this.listOpen=true;this.build();
   }
   clear(){ if(this.cancelScissor()) return; if(this.sel!=null){this.sel=null;this.draw()} }
-  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=(this.rb||this.pb)?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/n}}
+  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=(this.rb||this.pb)?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/(this.bars.length<30?Math.max(n,30):n)}}   /* 新股等 K 棒很少時，照 30 根寬度畫（靠左、右邊留白），不會一根撐滿整張圖 */
   rect(){const s=this.cv.querySelector("svg");return (s||this.cv).getBoundingClientRect()}
   indexAtX(cx){const g=this.geom(),r=this.rect(),x=(cx-r.left)/r.width*g.W;return Math.min(this.end-1,Math.max(g.vs,g.vs+Math.floor((x-g.pl)/g.cw)))}
   indexAt(e){return this.indexAtX(e.clientX)}
