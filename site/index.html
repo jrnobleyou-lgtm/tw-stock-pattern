@@ -232,6 +232,10 @@ html.pv2 .lix2 a,html.pv2 .lix3 a{border-radius:8px;border-color:rgba(255,255,25
 .lix3{position:absolute;left:0;right:0;top:100%;max-height:60vh;overflow:auto;z-index:25;padding:10px 12px;border:1px solid #6d5ce0;border-radius:12px;background:#16122a;box-shadow:0 10px 30px rgba(0,0,0,.6);display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px}.lix3[hidden]{display:none}
 .lgo{display:inline-block;margin-top:10px;color:#c4b5fd;font-size:13px}.learnb{margin:0 0 10px;border-color:#6d5ce0!important;color:#e9e3ff}
 @media(max-width:700px){.lsb input{width:calc(100% - 84px)}.lcard{grid-template-columns:1fr}.lcard .lhd{grid-column:auto}}
+/* 型態介紹頁純黑背景（11/16 使用者要求，window.LBG 1～3 原型） */
+html.lrn body::before{background:#000}html.lrn .lsb{background:#000}
+html.lrn.lb2 .lcard{background:#0d0d11;border-color:#2c2c36}html.lrn.lb2 .lix3{background:#0d0d11}
+html.lrn.lb3 .lcard{background:#000;border-color:#3b3566}html.lrn.lb3 .lix3{background:#000}
 /* 11/16 使用者：股票／漲跌／族群標題與內容置中、欄寬貼合內容；標記欄加寬（電腦手機都用） */
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
@@ -1606,6 +1610,7 @@ function renderBase(h){
   $("#n-home").classList.toggle("on", !h.startsWith("scr")&&h!=="mydraw"&&h!=="learn");
   $("#n-scr").classList.toggle("on", h.startsWith("scr")||h==="learn");
   $("#n-draw").classList.toggle("on", h==="mydraw");
+  { const lb=h==="learn"; document.documentElement.classList.toggle("lrn",lb); ["lb1","lb2","lb3"].forEach((c,i)=>document.documentElement.classList.toggle(c,lb&&(window.LBG||1)===i+1)) }
   if(h.startsWith("g-")) group((D.groups[+h.slice(2)]||{}).name);
   else if(h.startsWith("find-")) finder(h.slice(5));
   else if(h.startsWith("st-")) stateList(h.slice(3));
