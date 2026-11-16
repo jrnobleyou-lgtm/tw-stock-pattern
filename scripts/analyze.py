@@ -317,6 +317,22 @@ def main():
     for g in groups:
         code = g["代號"]
         raw = [by[code][d] for d in sorted(by.get(code, {}))] if code in by else []
+        if raw and len(raw) < 40 and di.get(raw[-1]["d"], -1) >= len(all_dates) - 5 and di.get(raw[0]["d"], 0) >= len(all_dates) - 60:
+            # 11/16 使用者選 B：剛上市櫃（不到 40 根）也顯示——價格、漲跌、成交值、K 線，型態標「新股」，不算進五種型態統計；滿 40 根自動改正常分析
+            T = len(raw) - 1
+            stocks[code] = {
+                "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
+                "conf": g.get("把握度", "U"), "market": mk.get(code), "state": "新股", "sub": None, "tags": [f"上市櫃第{T + 1}天"], "geo": [],
+                "close": raw[T]["c"], "pc": raw[T - 1]["c"] if T else None,
+                "r5": [r2((raw[i]["c"] / raw[i - 1]["c"] - 1) * 100) for i in range(max(1, T - 4), T + 1)],
+                "chg": r2((raw[T]["c"] / raw[T - 1]["c"] - 1) * 100) if T else 0, "vol": round(raw[T]["v"] / 1000), "new": 1}
+            rows = [[di[b["d"]], b["o"], b["h"], b["l"], b["c"], round(b["v"] / 1000), round(b.get("f", 1), 5)] for b in raw]
+            if full:
+                with open(os.path.join(OUT, "s", code + ".json"), "w") as f:
+                    json.dump({"bars": rows}, f, separators=(",", ":"))
+            else:
+                stocks[code]["bars"] = rows
+            continue
         if len(raw) < 40 or di.get(raw[-1]["d"], -1) < len(all_dates) - 5:        # 近 5 個交易日內沒有任何成交的才略過（停牌、全額交割等）
             missing.append(code)
             continue
@@ -429,8 +445,9 @@ def main():
             g = gl.setdefault(gname, {"name": gname, "n": 0,
                                       "counts": {s: 0 for s in STATES}, "stocks": [], "first": [],
                                       "weak_pull": 0, "weak_break": 0, "weak_strong": 0})
-            g["n"] += 1
-            g["counts"][st["state"]] += 1
+            if st["state"] in STATES:                    # 新股不算進族群檔數與五種型態百分比，但會出現在族群的股票列表
+                g["n"] += 1
+                g["counts"][st["state"]] += 1
             if st["sub"] == "回檔走弱":
                 g["weak_pull"] += 1
             elif st["sub"] == "破底走弱":
@@ -438,7 +455,7 @@ def main():
             g["stocks"].append(st["code"])
             if "突破第1根" in st["tags"]:
                 g["first"].append(st["code"])
-    glist = sorted(gl.values(), key=lambda g: (g["n"] < 5, -(g["counts"]["轉強"] + g["counts"]["型態好"]) / g["n"], -g["n"]))
+    glist = sorted(gl.values(), key=lambda g: (g["n"] < 5, -(g["counts"]["轉強"] + g["counts"]["型態好"]) / max(g["n"], 1), -g["n"]))
 
     total = {s: sum(1 for st in stocks.values() if st["state"] == s) for s in STATES}      # 雙族群不重複計算
     index = {}

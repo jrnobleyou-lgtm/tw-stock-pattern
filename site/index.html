@@ -62,7 +62,7 @@ tr.row:hover{background:rgba(255,255,255,.08)}
 .bar{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:120px;background:#0003}
 .bar i{display:block;height:100%}
 .c-strong{color:var(--s-strong)}.c-wstrong{color:var(--s-wstrong)}.c-good{color:var(--s-good)}.c-range{color:var(--s-range)}.c-weak{color:var(--s-weak)}
-.b-strong{background:var(--s-strong)}.b-wstrong{background:var(--s-wstrong)}.b-good{background:var(--s-good)}.b-range{background:var(--s-range)}.b-weak{background:var(--s-weak)}
+.b-strong{background:var(--s-strong)}.b-wstrong{background:var(--s-wstrong)}.b-good{background:var(--s-good)}.b-range{background:var(--s-range)}.b-weak{background:var(--s-weak)}.b-new{background:#4b5563;color:#e5e7eb}
 .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--mute);margin:1px 0 1px 4px}
 .tag.hot{border-color:var(--s-strong);color:var(--s-strong);font-weight:700}
 .tag.bad{border-color:#fb7185;color:#fb7185}
@@ -281,7 +281,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 const D = window.DATA;
 const DN={"雙重底":"W雙重底","雙重底（不對稱）":"W雙重底（不對稱）","雙重頂":"M雙重頂"}, dn=k=>DN[k]||k;      // 顯示用名稱（判斷仍用原名稱）
 const STATES = ["轉強","弱轉強","型態好","盤整","走弱"];
-const CLS = {"轉強":"strong","弱轉強":"wstrong","型態好":"good","盤整":"range","走弱":"weak"};
+const CLS = {"轉強":"strong","弱轉強":"wstrong","型態好":"good","盤整":"range","走弱":"weak","新股":"new"};   /* 新股：剛上市櫃不到 40 根，不算進五種型態 */
 const $ = s => document.querySelector(s);
 const AM=D.asofM||{};
 $("#asof").textContent = D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 " + D.asof;
@@ -548,7 +548,7 @@ const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["stat
 function sortList(list){
   const tv=s=>s.close*s.vol;
   const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
-    state:(a,b)=>STATES.indexOf(a.state)-STATES.indexOf(b.state)||tv(b)-tv(a),
+    state:(a,b)=>((STATES.indexOf(a.state)+1)||99)-((STATES.indexOf(b.state)+1)||99)||tv(b)-tv(a),   /* 新股排最後 */
     dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
   return list.sort(f);
 }
@@ -563,6 +563,7 @@ function dmiCells(s){
 function tick(p){return p<10?.01:p<50?.05:p<100?.1:p<500?.5:p<1000?1:5}
 function limPx(pc,up){const raw=pc*(up?1.1:.9),t=tick(raw);const v=up?Math.floor(raw/t+1e-9)*t:Math.ceil(raw/t-1e-9)*t;return +v.toFixed(2)}
 function chgCell(s){
+  if(s.new&&!s.pc) return `<td class="chg2"><div class="p mute">—</div><div class="a mute">上市櫃首日</div></td>`;   /* 新股第一天沒有前一日收盤可比 */
   const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||2;
   const lu=D.market!=="US"&&pc&&s.close>=limPx(pc,1)-1e-9, ld=D.market!=="US"&&pc&&s.close<=limPx(pc,0)+1e-9;
   const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
@@ -1089,7 +1090,8 @@ class Chart{
     this.active=this.custom[this.custom.length-1];this.range=null;this.listOpen=true;this.build();
   }
   clear(){ if(this.cancelScissor()) return; if(this.sel!=null){this.sel=null;this.draw()} }
-  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=(this.rb||this.pb)?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/n}}
+  geom(){const W=this.W||this.cv.clientWidth||800,pl=6,pr=(this.rb||this.pb)?68:58;const vs=Math.max(0,this.end-this.n);const n=this.end-vs;return{W,pl,pr,vs,n,cw:(W-pl-pr)/(this.few()?Math.max(n,TF_N[this.tf]):n)}}
+  few(){const L=this.bars.length;return this.tf==="D"?L<40:L<8}   /* 新股：日 K 不到 40 根、週月 K 不到 8 根 */   /* 新股等 K 棒很少時，K 棒寬度跟一般股票預設畫面一樣（日 K 110 根），從最左邊開始往右長（11/16 使用者） */
   rect(){const s=this.cv.querySelector("svg");return (s||this.cv).getBoundingClientRect()}
   indexAtX(cx){const g=this.geom(),r=this.rect(),x=(cx-r.left)/r.width*g.W;return Math.min(this.end-1,Math.max(g.vs,g.vs+Math.floor((x-g.pl)/g.cw)))}
   indexAt(e){return this.indexAtX(e.clientX)}
@@ -1210,6 +1212,7 @@ class Chart{
     const bx=s.box?{...s.box,hi:this.adjOn&&s.box.hiA!=null?s.box.hiA:s.box.hi,lo:this.adjOn&&s.box.loA!=null?s.box.loA:s.box.lo}:null;
     if(bx && this.boxOn && idxOf(B,bx.s)<ve && (bx.live||idxOf(B,bx.e)>=vs)){hi=Math.max(hi,Math.min(bx.hi,hi*1.3));lo=Math.min(lo,Math.max(bx.lo,lo*0.75))}
     for(const n of MA_ALL) if(this.maOn[n]) for(let i=vs;i<ve;i++){const v=this.ma[n][i];if(v!=null&&v>lo*0.7&&v<hi*1.3){hi=Math.max(hi,v);lo=Math.min(lo,v)}}
+    if(this.few()){const c=B[B.length-1].c,need=c*.3;if(hi-lo<need){const m=(hi+lo)/2;hi=m+need/2;lo=m-need/2}}   /* 新股 K 棒很少：價格範圍至少放到現價 30%，K 棒才是正常大小（11/16 使用者） */
     const pad=(hi-lo)*.07||1; hi+=pad; lo-=pad;
     const y=v=>pt+(hi-v)/(hi-lo)*(priceBot-pt), x=i=>pl+(i-vs)*cw+cw/2;
     this.pg={pt,priceBot,hi,lo};
@@ -1526,7 +1529,7 @@ class Chart{
     }
     // 日期軸（獨立一條，不與 K 棒、成交量重疊）
     const step=Math.max(1,Math.ceil(vis.length/Math.max(3,Math.floor((W-pl-pr)/90))));
-    for(let k=0;k<vis.length;k+=step){const b=vis[k];o+=`<text x="${x(vs+k)}" y="${mainH-4}" text-anchor="middle" style="fill:#9a93ad">${this.tf==="M"?b.d.slice(0,7):b.d.slice(2)}</text>`}
+    for(let k=0;k<vis.length;k+=step){const b=vis[k];o+=`<text x="${Math.max(x(vs+k),pl+28)}" y="${mainH-4}" text-anchor="middle" style="fill:#9a93ad">${this.tf==="M"?b.d.slice(0,7):b.d.slice(2)}</text>`}
     // ── 副圖：標題列在圖外，內含隨 K 棒顯示的指標數值
     const ci=this.sel, cur=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;   /* 副圖數值跟上方資訊欄同一根（點選的 K 棒在畫面外也一樣），避免兩邊日期不同 */
     const f2=v=>v==null?"—":(Math.abs(v)>=100?v.toFixed(1):v.toFixed(2));
