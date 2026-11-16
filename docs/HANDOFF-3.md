@@ -81,3 +81,14 @@
 - **強弱族群**：抗跌欄對齊用 B（`html.kdB`：電腦版每列說明最少兩行高，三欄切齊）；收合鈕縮小（`.mkbtn`）。
 - **返回上一頁跟著畫面**：電腦版左上浮動（`#ttBack`，和右上「底部」對稱，捲動 >150 才出現）；手機版放在頁首「字體」那列左邊（`#hbk`，`html.sub` 非首頁才顯示）。
 - 使用者規則：截圖全部跑完再一次給、標清楚每張是什麼。
+
+## 2026-11-16 晚（已上線＝✅，未上線＝工作分支 claude/trusting-fermi-4kivzc）
+- ✅ 返回上一頁改成站內紀錄 `navStack`：關 K 線＝history.back、回上一頁恢復捲動位置（`navPos`、`restoreNav`）；五種型態卡片列 ◀▶ 可按；五種型態頁（`STN`）加說明＋「什麼是股票型態」鈕。
+- ✅ 底部／頂部反轉頁內小分類 `SUBF`（網址 `#scr-bot.w`），手機接在被選按鈕下方（`subf-i`），電腦在所有按鈕下方（`subf-o`）。
+- ✅ 強弱族群三欄表頭一行切齊（`fitSw`/`fit1`＋ResizeObserver 自動縮說明字，修收合再展開被切），標題列下加橫線（`SWL` 1）。
+- ✅ 新股（上市櫃不到 40 根、首根在近 60 交易日內）也顯示：`state:"新股"`、`new:1`、標記「上市櫃第N天」，不算進五種型態與族群檔數；K 線 `few()` 時寬度照 TF_N、價格範圍至少現價 30%。7848 騏億鑫、7710、7867。
+- ✅ 族群：7848 騏億鑫加進 `groups_tw_all.csv`（試算表異動紀錄已補「網站同步」列）。
+- ✅ 工作須知：回報用 ✅／❓；待確認的事只講一次；son＝Sonnet、可切回時主動說。
+- **未上線（工作分支）**：月營收 `scripts/revenue.py`（`data/rev/<YYYY-MM>.json` 千元；1～12 號每天下午、其他週日或有營收重訊才抓 `due()`；標籤 月營收創新高／年增新高；篩選 revhi/yoyhi）、EPS `scripts/eps.py`（`data/eps_cum.json` 官方累計＋`data/eps_fm.json` FinMind 單季，`single()` 顯示時才算；週日或有財報重訊才抓）、`site/f/<代號>.json`（消息分頁左欄）、重訊 `scripts/mops.py`（鉅亨網公告分類＋證交所／櫃買開放資料隔天校正，news.py 每輪呼叫，存 news-data `mops.json`；`今天有重訊`＝上一交易日 13:30 後；篩選 mops；`meta.mops.check` 記官方 vs 鉅亨漏幾則，觀察 2～3 天）、設定頁新聞來源各家篇數（連續 ≥3 輪 0 篇標紅）、update.yml 推送失敗先 pull --rebase、intraday_loop 讀最新 data/rev 與 eps。Fable 審查（A1～A4、B1～B4）已修；B3「FinMind Q4 是否單季」回補完要用官方全年 EPS 驗證。
+- **回補**：本機 FinMind（使用者 11/16 同意白天跑），寫在 scratchpad `rev/`、`eps_fm.json`（`REV_DIR`、`EPS_FM`），`fin_backfill2.sh` 可續跑；完成後複製回 data/ 再提交。環境重啟會停掉背景程式，重跑即可。上線要在 13:50 後或 08:50 前。
+- 不碰 mops.twse.com.tw（觀測站擋程式、證交所條款只允許開放資料管道）。
