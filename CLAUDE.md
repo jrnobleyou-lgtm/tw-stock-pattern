@@ -22,7 +22,7 @@
 - 推到 `main` 會觸發 `.github/workflows/update.yml` 重建並推到 `deploy`；Cloudflare 偶爾沒自動部署，可用 Cloudflare API 觸發建置（見 HANDOFF）。
 
 ## 對話管理
-- 背景資訊（context）用量到 **70%** 時，主動提醒使用者壓縮，並先把本次變更寫進 `docs/HANDOFF-N.md`（最新那份；快滿 200 行就開下一份並在上方加 `@docs/HANDOFF-N.md` 引用）再請他壓縮。
+- 背景資訊（context）用量到 **70%** 時，主動提醒使用者壓縮（**提醒那段開頭一定加 ⚠️**，使用者 11/16 要求，方便一眼看到），並先把本次變更寫進 `docs/HANDOFF-N.md`（最新那份；快滿 200 行就開下一份並在上方加 `@docs/HANDOFF-N.md` 引用）再請他壓縮。
 - 壓縮後使用者會說「先讀 CLAUDE.md 和交接文件再繼續」，就照做，不必開新對話。
 
 ## 難題找 Opus 顧問（使用者平常用 Sonnet，不必他來判斷）
