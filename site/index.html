@@ -975,7 +975,7 @@ const textW=(t,fs)=>{let w=0;for(const ch of String(t))w+=/[⺀-鿿＀-￯]/.tes
 class Chart{
   constructor(el, s, opts){
     this.el=el; this.s=s; this.opts=opts||{}; this.raw=stockBars(s);
-    this.tf="D"; this.geo=true; this.sup=true; this.pb=false; this.rb=false; this.adjOn=false;
+    this.tf="D"; this.geo=true; this.sup=true; this.pb=false; this.rb=false; this.adjOn=window.ADJDEF!==false&&this.raw.some(b=>Math.abs(b.f-1)>1e-6);   /* 11/16 使用者同意：有除權息還原資料的股票，打開 K 線預設用還原價（按鈕可切回原始價） */
     this.maOn={5:1,10:1,20:1,60:1,120:0,250:0}; this.maOpen=true;
     this.ind={boll:0,dmi:0,kd:0,macd:0,...(s.defInd||{})};
     if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
