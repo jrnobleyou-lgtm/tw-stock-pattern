@@ -92,3 +92,12 @@
 - **未上線（工作分支）**：月營收 `scripts/revenue.py`（`data/rev/<YYYY-MM>.json` 千元；1～12 號每天下午、其他週日或有營收重訊才抓 `due()`；標籤 月營收創新高／年增新高；篩選 revhi/yoyhi）、EPS `scripts/eps.py`（`data/eps_cum.json` 官方累計＋`data/eps_fm.json` FinMind 單季，`single()` 顯示時才算；週日或有財報重訊才抓）、`site/f/<代號>.json`（消息分頁左欄）、重訊 `scripts/mops.py`（鉅亨網公告分類＋證交所／櫃買開放資料隔天校正，news.py 每輪呼叫，存 news-data `mops.json`；`今天有重訊`＝上一交易日 13:30 後；篩選 mops；`meta.mops.check` 記官方 vs 鉅亨漏幾則，觀察 2～3 天）、設定頁新聞來源各家篇數（連續 ≥3 輪 0 篇標紅）、update.yml 推送失敗先 pull --rebase、intraday_loop 讀最新 data/rev 與 eps。Fable 審查（A1～A4、B1～B4）已修；B3「FinMind Q4 是否單季」回補完要用官方全年 EPS 驗證。
 - **回補**：本機 FinMind（使用者 11/16 同意白天跑），寫在 scratchpad `rev/`、`eps_fm.json`（`REV_DIR`、`EPS_FM`），`fin_backfill2.sh` 可續跑；完成後複製回 data/ 再提交。環境重啟會停掉背景程式，重跑即可。上線要在 13:50 後或 08:50 前。
 - 不碰 mops.twse.com.tw（觀測站擋程式、證交所條款只允許開放資料管道）。
+
+## 2026-11-16 深夜：交接給新對話（使用者要求換對話）
+- **月營收回補**：1,987 檔全部有資料，其中 1,609 檔有 ≥120 個月，其餘約 378 檔補到一半（多為新上市櫃，本來就不到 10 年）；已複製到 `data/rev/` 並提交工作分支。`revenue.py summary` 現況：月營收創新高 330 檔、年增新高 174 檔。要補齊就再跑 `python3 scripts/revenue.py backfill`（會略過已 ≥120 個月的，FinMind 每 8 秒一次、402 額度滿會停到整點；平日白天不要跑，使用者自己的程式在用 FinMind）。
+- **EPS 回補尚未開始**：`python3 scripts/eps.py backfill`（寫 `data/eps_fm.json`，環境變數 `EPS_FM` 可指定暫存檔，避免一直出現「有未提交改動」）。約 1,987 檔 × 8 秒 ≈ 4.5 小時，晚上 18:00 後再跑，被環境重啟停掉就重跑（每檔都存）。補完要驗證 B3：FinMind Q4 是單季，用官方全年 EPS 對 2～3 檔核對。
+- **背景程式用 Bash 的 `run_in_background:true`＋`timeout:7200000` 啟動**（nohup 會被環境收掉；預設 30 分鐘會被停）。
+- **未上線（工作分支 claude/trusting-fermi-4kivzc）**：月營收、EPS、重訊、設定頁新聞來源監控、篩選「今天有重訊／月營收創新高／年增新高」。上線前流程：本機用線上 data.js 跑 `analyze.py all` 產生 `site/f/`；模擬重訊（`mops.run`）；Playwright 截圖（消息分頁月營收長條＋重訊列、篩選頁三顆新鈕、設定頁 `scratchpad/set.html` 模擬圖）；**全部截圖跑完一次給使用者、標清楚每張是什麼**；使用者說好才推 main，且要在 13:50 後或 08:50 前（盤中循環會用 main 的檔案）；上線後檢查線上並 5～10 分鐘後複查。**上線前務必把所有篩選鈕與列表各點一次看有沒有錯誤**（11/16 新股沒有 candle 欄位害型態篩選整頁掛掉，已修並寫進工作須知）。
+- **今天（11/16 晚）已上線＝✅**：自訂搜尋名稱下顯示族群（一行一個）、手機 K 線標題加「族群・產業」、修型態篩選新股錯誤、K 線打開時有除權息資料的股票預設還原價（`window.ADJDEF` 可關）。還原資料只有除權息／分割（Yahoo），沒有減資；掃全市場沒發現明顯減資跳空，使用者說不用補，有看到怪缺口再給代號逐檔查。
+- **待辦（依序）**：①上述月營收／EPS／重訊截圖＋上線 ②**新聞 AI 準確率測試**（使用者同意）：抽約 40 篇，flash-lite、gpt-4.1、Haiku（Agent `model:"haiku"` 子代理）各判一次，我當裁判看不一致的 5～10 篇原文，出準確率表；視結果調整 `news.py` 模型順序（現為 Gemini flash → flash-lite → GitHub gpt-4.1-mini → gpt-4.1）③季營收（使用者說月營收等做好再想）④美股頁推送（使用者：這些做完再說）⑤重訊觀察 2～3 天（`meta.mops.check`）決定按鈕叫「今天有重訊」或「最新重訊」⑥Gemini→GitHub Models 備援尚未實測。
+- 使用者 11/16 規則補充：模型日常用 Sonnet；Fable 只到 11/17 且要先問；回報用 ✅／❓；待確認的事只講一次；截圖全部確認後一次給。
