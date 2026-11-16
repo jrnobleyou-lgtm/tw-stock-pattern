@@ -14,7 +14,7 @@ analyze.py 用 summary() 產生標籤與 site/f/<代號>.json。
 import json, os, sys, time, glob, collections, urllib.request, urllib.error
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DIR = os.path.join(ROOT, "data", "rev")
+DIR = os.environ.get("REV_DIR") or os.path.join(ROOT, "data", "rev")   # 本機長時間回補可先寫到暫存資料夾
 OFFICIAL = ["https://openapi.twse.com.tw/v1/opendata/t187ap05_L",
             "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O"]
 

@@ -17,7 +17,7 @@ import revenue as RV
 
 ROOT = RV.ROOT
 CUM = os.path.join(ROOT, "data", "eps_cum.json")
-FM = os.path.join(ROOT, "data", "eps_fm.json")
+FM = os.environ.get("EPS_FM") or os.path.join(ROOT, "data", "eps_fm.json")
 _T = "https://openapi.twse.com.tw/v1/opendata/"
 _O = "https://www.tpex.org.tw/openapi/v1/"
 OFFICIAL = [_T + "t187ap14_L"] + [_T + "t187ap06_L_" + k for k in ("ci", "basi", "bd", "ins", "mim", "fh")] + \
