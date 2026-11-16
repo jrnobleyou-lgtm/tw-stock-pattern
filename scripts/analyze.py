@@ -347,7 +347,7 @@ def main():
             T = len(raw) - 1
             stocks[code] = {
                 "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
-                "conf": g.get("把握度", "U"), "market": mk.get(code), "state": "新股", "sub": None, "tags": [f"上市櫃第{T + 1}天"], "geo": [],
+                "conf": g.get("把握度", "U"), "market": mk.get(code), "state": "新股", "sub": None, "tags": [f"上市櫃第{T + 1}天"], "geo": [], "candle": [],
                 "close": raw[T]["c"], "pc": raw[T - 1]["c"] if T else None,
                 "r5": [r2((raw[i]["c"] / raw[i - 1]["c"] - 1) * 100) for i in range(max(1, T - 4), T + 1)],
                 "chg": r2((raw[T]["c"] / raw[T - 1]["c"] - 1) * 100) if T else 0, "vol": round(raw[T]["v"] / 1000), "new": 1}
