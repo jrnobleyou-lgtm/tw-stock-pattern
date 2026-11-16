@@ -657,7 +657,7 @@ const FILTERS = [
   {k:"top", name:"頂部反轉（走弱）", f:s=>s.geo.some(g=>["雙重頂","頭肩頂","V形頂","圓弧頂","上升楔形","島型反轉頂","下降三角形"].includes(g.kind)&&g.status==="confirmed"&&g.dir==="bear")},   /* 11/16 Fable：上升楔形往上突破是看漲，不算；加島型反轉頂、下降三角形 */
   {k:"pb",  name:"多頭回檔（觀察）", f:s=>s.sub==="多頭回檔"},
   {k:"bk",  name:"破底走弱", f:s=>s.sub==="破底走弱"},
-  {k:"cdl", name:"K線反轉形態", f:s=>s.candle.length>0},
+  {k:"cdl", name:"K線反轉形態", f:s=>(s.candle||[]).length>0},
   {k:"kdlo", name:"KD低檔鈍化", f:s=>has(s,/KD低檔鈍化/)},
   {k:"kdhi", name:"KD高檔鈍化", f:s=>has(s,/KD高檔鈍化/)},
   {k:"dmisoon", name:"DMI即將翻多", f:s=>has(s,/DMI即將翻多/)},
