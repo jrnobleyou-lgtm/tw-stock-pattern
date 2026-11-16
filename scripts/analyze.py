@@ -168,6 +168,34 @@ def dmi_now(bars):
     return [round(pdi[T] - mdi[T], 1), round(adx[T], 1), 1 if ch > 0.5 else -1 if ch < -0.5 else 0]
 
 
+def news_bias():
+    """11/16 使用者：近 7 天新聞 AI 判斷（scripts/news.py → news-data 分支）彙總成「近期消息偏多／偏空」。
+    只算「事件」「法人」（投顧點名、盤勢文不算）；同一檔同一天同方向只算一次（多家轉載不灌票）；利多比利空多 2 則以上＝偏多，反之偏空。"""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/items.json", timeout=20) as r:
+            items = json.loads(r.read().decode("utf-8"))
+    except Exception as e:
+        print("新聞資料讀不到，略過消息標籤：", e)
+        return {}
+    lim, votes = time.time() - 7 * 86400, collections.defaultdict(set)
+    for x in items:
+        if x.get("t", 0) < lim:
+            continue
+        day = time.strftime("%Y-%m-%d", time.gmtime(x["t"] + 8 * 3600))
+        for s_ in x.get("ai", []):
+            if s_.get("k") in ("事件", "法人") and s_.get("d") in (1, -1):
+                votes[s_["c"]].add((day, s_["d"]))
+    out = {}
+    for c, v in votes.items():
+        up, dn = sum(1 for _, d in v if d > 0), sum(1 for _, d in v if d < 0)
+        if up - dn >= 2:
+            out[c] = "近期消息偏多"
+        elif dn - up >= 2:
+            out[c] = "近期消息偏空"
+    return out
+
+
 def fetch_inst():
     """三大法人現貨買賣超（證交所 BFI82U，只含上市，單位換成億元）。抓不到回傳 None（網頁會顯示「稍後更新」，不放舊數字）。"""
     import urllib.request
@@ -270,6 +298,7 @@ def main():
         os.makedirs(os.path.join(OUT, "s"), exist_ok=True)
 
     di = {d: i for i, d in enumerate(all_dates)}
+    nbias = news_bias() if full and not us else {}
     # 管理者自己畫的型態（台股）：有畫的股票，以管理者的判斷取代系統的幾何形態
     adm = {}
     if full and not us:
@@ -348,6 +377,8 @@ def main():
             lo10 = min(b["l"] for b in bars[-10:])
             if lo10 > 0 and bars[-1]["c"] / lo10 - 1 >= 0.30:
                 tags.append("近日反彈強勁")
+        if code in nbias:                            # 11/16 使用者：近 7 天新聞 AI 判斷偏多／偏空（見 news_bias）
+            tags.append(nbias[code])
         st = {
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),

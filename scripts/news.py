@@ -1,4 +1,4 @@
-"""個股新聞：抓 7 家財經媒體的免費文章 → 讀全文 → AI 判斷對個股是上修（利多）／持平／下修（利空）。
+"""個股新聞：抓 8 家財經媒體（含 Yahoo股市，11/16 使用者要求加回）的免費文章 → 讀全文 → AI 判斷對個股是上修（利多）／持平／下修（利空）。
 
 用法：news.py <資料夾>
   資料夾＝news-data 分支的工作目錄，裡面放：
@@ -110,7 +110,11 @@ def src_technews():
     return [dict(a, src="科技新報") for a in rss("https://finance.technews.tw/feed/")]
 
 
-SOURCES = (src_udn, src_ctee, src_cnyes, src_moneydj, src_cna, src_uanalyze, src_technews)
+def src_yahoo():
+    return [dict(a, src="Yahoo股市") for a in rss("https://tw.stock.yahoo.com/rss?category=tw-market")]
+
+
+SOURCES = (src_udn, src_ctee, src_cnyes, src_moneydj, src_cna, src_uanalyze, src_technews, src_yahoo)
 
 
 # ───────── 內文（抓不到全文＝付費／會員文章，跳過） ─────────
@@ -195,7 +199,7 @@ PROMPT = """你是台股新聞分析助理。下面每篇是台灣財經新聞�
 上修＝利多（營收／獲利／訂單／目標價上調、需求轉強、擴產等）
 持平＝中性、已公布的數字、好壞參半；只報導股價漲跌、沒有基本面原因的也算持平
 下修＝利空（獲利衰退、目標價下調、砍單、風險升高等）
-kind 填：事件（公司營運、財報、訂單、法說）／法人（外資或券商評等、目標價）／點名（投顧或分析師推薦、題材）／盤面（股價漲跌、資金流向）。
+kind 填：事件（公司營運、財報、訂單、法說）／法人（外資、券商或投顧的研究報告有給明確目標價或調整評等、EPS 預估）／點名（節目或專欄的投顧、分析師推薦、題材，沒有給目標價）／盤面（股價漲跌、資金流向）。
 請以內文為準，不要被標題的聳動語氣誤導。code 填台股代號（4～6 碼，不確定就空字串）。理由用繁體中文 25 字內。
 只輸出 JSON：{"r":[{"id":"原樣的編號","stocks":[{"name":"公司簡稱","code":"代號","dir":"上修|持平|下修","kind":"事件|法人|點名|盤面","why":"理由"}]}]}，沒有主要公司就 stocks 給空陣列，每篇都要回。
 """
@@ -333,7 +337,7 @@ def main(out):
         json.dump(meta, open(P("meta.json"), "w", encoding="utf-8"), ensure_ascii=False)
 
     arts = []
-    with cf.ThreadPoolExecutor(7) as ex:
+    with cf.ThreadPoolExecutor(8) as ex:
         for res in ex.map(safe, SOURCES):
             arts += res
     meta.update({"t": now, "src": dict(SRC_N)})

@@ -547,6 +547,7 @@ const FILTERS = [
   {k:"dmipre", name:"DMI翻多前已轉強", f:s=>has(s,/DMI翻多前已轉強/)},
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
+  {k:"nwup", name:"近7天消息偏多", f:s=>has(s,/近期消息偏多/)},
 ];
 const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）";
 const DMI_WATCH="<br><b>提醒：</b>用過去兩年資料算，前三種（即將翻多、翻多前已轉強、剛翻多）出現後平均和大盤差不多、略輸，適合先列觀察名單；真正比大盤強的是「DMI多頭趨勢」（股價突破前高）。最好搭配型態（盤整區間、底部形態）一起看。";
@@ -596,7 +597,7 @@ function pctTxt(x){return x==null?"—":`<span class="${x>0?"up":x<0?"dn":""}">$
 async function loadNews(s,np){
   np.innerHTML='<div class="mute" style="padding:30px;text-align:center">載入中…</div>';
   const [f,n]=await Promise.all([fetch("f/"+s.code+".json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),fetch("/api/news?c="+s.code).then(r=>r.ok?r.json():null).catch(()=>null)]);
-  const today=D.dates[D.dates.length-1], DIR=window.NWDIR||/[?&]nwdir=1/.test(location.search);   /* ▲▼ 上線前先隱藏（使用者確認準度後再開） */
+  const today=D.dates[D.dates.length-1], DIR=window.NWDIR!==false;   /* ▲▼＋理由：11/16 使用者確認後打開 */
   const tw=(t,day)=>{if(!(t>0))return{d:"",t:""};const d=new Date((t+28800)*1000).toISOString();return{d:d.slice(0,10),t:day?"":d.slice(11,16)}};
   const mops=(f&&f.mops||[]).map(m=>({d:m.d,t:m.t,title:m.s,mo:1}));
   const news=(n&&n.items||[]).filter(x=>/^https:\/\//.test(x.link||"")).map(x=>({...tw(x.t,x.day),title:x.title,link:x.link,src:x.src,dir:x.d,why:x.w}));
@@ -604,7 +605,7 @@ async function loadNews(s,np){
   const dm=x=>!DIR||x.dir==null?"":x.dir>0?'<b class="up">▲</b> ':x.dir<0?'<b class="dn">▼</b> ':'<b class="mute">－</b> ';
   const row=x=>`<div class="it"><div class="dt">${x.d.slice(5).replace("-","/")} ${x.t||""}</div><div>${dm(x)}${x.mo?`<span class="mk mo">重訊</span>`:""}${x.mo&&x.d>=today?`<span class="mk td">今天</span>`:""}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}${x.src?`<span class="mute" style="font-size:12px">　${esc(x.src)}</span>`:""}${DIR&&x.why?`<div class="mute" style="font-size:12px;margin-top:2px">${esc(x.why)}</div>`:""}</div></div>`;
   const empty=t=>`<div class="mute" style="padding:6px 2px">${t}</div>`;
-  const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報（只收免費文章，點標題開原文）${mops.length?"　重訊來源：公開資訊觀測站":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
+  const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"　重訊來源：公開資訊觀測站":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
   const hi=f?`${f.revHi?'<span class="hib">月營收創新高</span>':""}${f.yoyHi?'<span class="hib">年增新高</span>':""}`:"";
   const rev=f&&f.rev||[], eps=f&&f.eps||[];
   const mx=Math.max(1,...rev.map(r=>r[1]));
