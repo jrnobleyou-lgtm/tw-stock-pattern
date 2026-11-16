@@ -299,6 +299,15 @@ def main():
 
     di = {d: i for i, d in enumerate(all_dates)}
     nbias = news_bias() if full and not us else {}
+    revs, epss = {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
+    if full and not us:
+        try:
+            import revenue, eps as EPS
+            revs = revenue.summary()
+            epss = EPS.summary()
+            os.makedirs(os.path.join(OUT, "f"), exist_ok=True)
+        except Exception as e:
+            print("月營收讀取失敗（略過）", repr(e)[:80])
     # 管理者自己畫的型態（台股）：有畫的股票，以管理者的判斷取代系統的幾何形態
     adm = {}
     if full and not us:
@@ -379,6 +388,12 @@ def main():
                 tags.append("近日反彈強勁")
         if code in nbias:                            # 11/16 使用者：近 7 天新聞 AI 判斷偏多／偏空（見 news_bias）
             tags.append(nbias[code])
+        rv = revs.get(code)
+        if rv:
+            if rv["revHi"]:
+                tags.append("月營收創新高")
+            if rv["yoyHi"]:
+                tags.append("年增新高")
         st = {
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
@@ -419,6 +434,12 @@ def main():
         if full:
             with open(os.path.join(OUT, "s", code + ".json"), "w") as f:
                 json.dump({"bars": rows}, f, separators=(",", ":"))
+            fin = dict(rv or {})                         # 消息分頁左欄：月營收近 6 個月＋單季 EPS 近 3 季
+            if code in epss:
+                fin["eps"] = epss[code]
+            if fin:
+                with open(os.path.join(OUT, "f", code + ".json"), "w") as f:
+                    json.dump(fin, f, ensure_ascii=False, separators=(",", ":"))
         else:
             st["bars"] = rows
         stocks[code] = st

@@ -639,6 +639,8 @@ const FILTERS = [
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
   {k:"nwup", name:"近7天消息偏多", f:s=>has(s,/近期消息偏多/)},
+  {k:"revhi", name:"月營收創新高", f:s=>has(s,/月營收創新高/)},   /* 11/16 使用者：最新月營收比前 11 個月都高 */
+  {k:"yoyhi", name:"年增新高", f:s=>has(s,/年增新高/)},   /* 月營收創歷史新高且年增 > 0 */
 ];
 const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）";
 const DMI_WATCH="<br><b>提醒：</b>用過去兩年資料算，前三種（即將翻多、翻多前已轉強、剛翻多）出現後平均和大盤差不多、略輸，適合先列觀察名單；真正比大盤強的是「DMI多頭趨勢」（股價突破前高）。最好搭配型態（盤整區間、底部形態）一起看。";
@@ -664,6 +666,9 @@ function screener(key){
   } else if(DMI_NOTE[cur.k]) h += sortBar([["dmid","DMI差值"],["adx","ADX"]])+stockTable(list,false,true,true);
   else h += sortBar()+stockTable(list,false,true);
   if(DMI_NOTE[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${DMI_NOTE[cur.k]}</p>${DMI_HELP}<div class="sortbar">`);
+  const RVN={revhi:"<b>條件：</b>這檔最新公布的月營收，比前 11 個月都高（近 12 個月新高；要有 13 個月以上資料）。每月約 10 號前公布完，公布下個月之前標籤都保留。點股票後切到「消息」看近 6 個月營收。",
+    yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。"};
+  if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
   document.querySelectorAll(".filters .btn").forEach(b=>b.onclick=()=>{location.hash="scr-"+b.dataset.k});

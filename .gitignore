@@ -20,6 +20,7 @@ data/uncertain.csv
 data/backfill.log
 site/data.js
 site/s/
+site/f/
 site/preview.html
 site/index_v1.html
 review/
