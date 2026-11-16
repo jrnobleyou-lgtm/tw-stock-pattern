@@ -77,6 +77,8 @@ tr.row:hover{background:rgba(255,255,255,.08)}
 .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:4px}
 svg text{fill:var(--fg);font-size:11px}
 .note{font-size:12px;color:var(--mute);margin-top:8px}
+footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin-bottom:40px;color:#c9c4dc}
+.note,details.dmihelp{background:rgba(0,0,0,.55);padding:7px 11px;border-radius:8px;color:#c9c4dc}
 .info{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 10px;font-size:12px;margin-bottom:8px;padding:6px 8px;background:#0003;border-radius:8px}
 .info span{color:var(--mute);display:block;font-size:11px}
 .info b{font-weight:600;font-variant-numeric:tabular-nums}
@@ -271,7 +273,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
@@ -664,10 +666,10 @@ const FILTERS = [
   {k:"dmipre", name:"DMI翻多前已轉強", f:s=>has(s,/DMI翻多前已轉強/)},
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
-  {k:"nwup", name:"近7天消息偏多", f:s=>has(s,/近期消息偏多/)},
-  {k:"mops", name:"今天有重訊", f:s=>has(s,/今天有重訊/)},   /* 11/16：上一交易日收盤後到現在有重訊 */
-  {k:"revhi", name:"月營收創新高", f:s=>has(s,/月營收創新高/)},   /* 11/16 使用者：最新月營收比前 11 個月都高 */
-  {k:"yoyhi", name:"年增新高", f:s=>has(s,/年增新高/)},   /* 月營收創歷史新高且年增 > 0 */
+  {k:"nwup", m:1, name:"近7天消息偏多", f:s=>has(s,/近期消息偏多/)},
+  {k:"mops", m:1, name:"今天有重訊", f:s=>has(s,/今天有重訊/)},   /* 11/16：上一交易日收盤後到現在有重訊 */
+  {k:"revhi", m:1, name:"月營收創新高", f:s=>has(s,/月營收創新高/)},   /* 11/16 使用者：最新月營收比前 11 個月都高 */
+  {k:"yoyhi", m:1, name:"年增新高", f:s=>has(s,/年增新高/)},   /* 月營收創歷史新高且年增 > 0 */
 ];
 const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）";
 const DMI_WATCH="<br><b>提醒：</b>用過去兩年資料算，前三種（即將翻多、翻多前已轉強、剛翻多）出現後平均和大盤差不多、略輸，適合先列觀察名單；真正比大盤強的是「DMI多頭趨勢」（股價突破前高）。最好搭配型態（盤整區間、底部形態）一起看。";
@@ -682,16 +684,17 @@ const SUBF={   /* 11/16 使用者：底部反轉可以分開看（頁內小分�
   bot:[["w","W雙重底",g=>g.kind==="雙重底"||g.kind==="雙重底（不對稱）"],["hs","頭肩底",g=>g.kind==="頭肩底"],["v","V形底",g=>g.kind==="V形底"],["isl","島型反轉底",g=>g.kind==="島型反轉底"&&g.status!=="hist"]],
   top:[["m","M雙重頂","雙重頂"],["hs","頭肩頂","頭肩頂"],["v","V形頂","V形頂"],["r","圓弧頂","圓弧頂"],["isl","島型反轉頂","島型反轉頂"],["dt","下降三角形","下降三角形"],["rw","上升楔形","上升楔形"]]
     .map(([k,n,kind])=>[k,n,g=>g.kind===kind&&g.status==="confirmed"&&g.dir==="bear"])};   /* 頂部也分開（與「頂部反轉」同條件：已跌破、看跌） */
-function screener(key){
-  key = key || "rb3";
+function screener(key,mix){
+  if(!mix&&/^(nwup|mops|revhi|yoyhi)$/.test(key||"")){location.replace("#mix-"+key);return}   /* 舊網址 #scr-revhi 等轉到「綜合篩選」 */
+  key = key || (mix?"mops":"rb3");
   const [bk,sk] = key.split(".");
-  const cur = FILTERS.find(x=>x.k===bk) || FILTERS[0];
+  const GF=FILTERS.filter(x=>!!x.m===!!mix), cur = GF.find(x=>x.k===bk) || GF[0];
   const all = Object.values(D.stocks);
   let list = all.filter(cur.f);
   const subs=SUBF[cur.k], sb=subs&&subs.find(x=>x[0]===sk);
   /* 小分類：電腦版放在所有按鈕下面（subf-o）；手機版接在被選的按鈕正下方（subf-i，11/16 使用者） */
   const subH=c=>subs?`<div class="subf ${c}"><button class="btn ${sb?"":"on"}" data-k="${cur.k}">全部<small>${list.length}</small></button>`+subs.map(([k,n,f])=>`<button class="btn ${sb&&sb[0]===k?"on":""}" data-k="${cur.k}.${k}">${n}<small>${list.filter(s=>s.geo.some(f)).length}</small></button>`).join("")+`</div>`:"";
-  let h = `<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button><div class="filters">` + FILTERS.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`+(x.k===cur.k?subH("subf-i"):"")).join("") + `</div>` + subH("subf-o");
+  let h = (mix?`<p class="note" style="margin-top:0">綜合篩選：看消息與基本面（非型態）。之後會陸續放更多非技術面的條件。點股票看 K 線，切到「消息」看內容。</p>`:`<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button>`)+`<div class="filters">` + GF.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`+(x.k===cur.k?subH("subf-i"):"")).join("") + `</div>` + subH("subf-o");
   if(sb) list=list.filter(s=>s.geo.some(sb[2]));
   const tv=s=>s.close*s.vol;            // 成交值（收盤×成交張數）
   sortList(list);            // 預設依成交值由大到小，右上角可改排序
@@ -708,7 +711,7 @@ function screener(key){
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
-  document.querySelectorAll(".filters .btn,.subf .btn").forEach(b=>b.onclick=()=>{location.hash="scr-"+b.dataset.k});
+  document.querySelectorAll(".filters .btn,.subf .btn").forEach(b=>b.onclick=()=>{location.hash=(mix?"mix-":"scr-")+b.dataset.k});
 }
 
 /* ───────── 個股／大盤視窗（彈出，不透明） ───────── */
@@ -1676,14 +1679,16 @@ async function myDraw(){
 let baseRaw=null;                 // 目前底層頁面的 hash（列表頁）
 function renderBase(h){
   baseRaw=h;
-  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&h!=="mydraw"&&h!=="learn");
+  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&!h.startsWith("mix")&&h!=="mydraw"&&h!=="learn");
   $("#n-scr").classList.toggle("on", h.startsWith("scr")||h==="learn");
+  $("#n-mix").classList.toggle("on", h.startsWith("mix"));
   $("#n-draw").classList.toggle("on", h==="mydraw");
   { const lb=h==="learn"; document.documentElement.classList.toggle("lrn",lb); ["lb1","lb2","lb3"].forEach((c,i)=>document.documentElement.classList.toggle(c,lb&&(window.LBG||1)===i+1)); const de=document.documentElement; const ltp=window.LTP||"B"; de.classList.toggle("ltA",lb&&ltp==="A"); de.classList.toggle("ltB",lb&&ltp==="B"); const lcv=window.LCV||"X"; de.classList.toggle("lcX",lb&&lcv==="X"); de.classList.toggle("lcY",lb&&lcv==="Y"); if(!lb){const d=document.getElementById("ldock");if(d)d.classList.remove("on")} de.classList.toggle("lmb2",lb&&window.LMB===2) }
   if(h.startsWith("g-")) group((D.groups[+h.slice(2)]||{}).name);
   else if(h.startsWith("find-")) finder(h.slice(5));
   else if(h.startsWith("st-")) stateList(h.slice(3));
   else if(h.startsWith("scr")) screener(h.slice(4));
+  else if(h==="mix"||h.startsWith("mix-")) screener(h.slice(4),1);
   else if(h==="mydraw") myDraw();
   else if(h==="learn") learnPage();
   else home();
@@ -1691,7 +1696,7 @@ function renderBase(h){
 function goBack(){
   const h = decodeURIComponent(location.hash.slice(1));
   if(h.startsWith("s-")||h.startsWith("i-")){ if(navStack.length>1&&navStack[navStack.length-2]===(baseRaw||"")) history.back(); else {window.__navRep=true;location.replace("#"+(baseRaw||""))} }
-  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn") location.hash = "";
+  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("mix") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn") location.hash = "";
 }
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
@@ -1771,6 +1776,7 @@ if(D.market==="US"){                 // 美股版：同一套頁面，換標題�
   $("#asof").textContent="資料日期 "+D.asof+"（美東）";
   const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; nm.insertAdjacentHTML("afterend",'<a href="/admin/settings">設定</a>');
 }
+if(D.market==="US") $("#n-mix").style.display="none";   // 美股沒有重訊／月營收
 if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textContent="美股"}   // 登入後顯示「美股」，登入前才顯示「管理者專區」
 renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
