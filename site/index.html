@@ -1673,7 +1673,8 @@ function scrollToFirstRow(){
   requestAnimationFrame(()=>{
     setStuck(true);
     const H=document.querySelector("header").getBoundingClientRect().height;
-    const y=Math.max(0,row.getBoundingClientRect().top+window.scrollY-H-4);
+    const th=row.closest("table")?.querySelector("thead"), T=th?th.getBoundingClientRect().height:0;   /* 11/16：表格標題列會黏在頁首下方，要一起讓開 */
+    const y=Math.max(0,row.getBoundingClientRect().top+window.scrollY-H-T-4);
     window.scrollTo(0,y); if(y<=20) setStuck(false);
   });
 }
