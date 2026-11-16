@@ -168,6 +168,21 @@ def dmi_now(bars):
     return [round(pdi[T] - mdi[T], 1), round(adx[T], 1), 1 if ch > 0.5 else -1 if ch < -0.5 else 0]
 
 
+def mops_today(all_dates):
+    """11/16 使用者：「今天有重訊」＝上一交易日收盤（13:30）之後到現在有重訊（news-data 分支 mops.json；連續重複公告只算第一次）。"""
+    import urllib.request, datetime
+    try:
+        with urllib.request.urlopen("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/mops.json", timeout=20) as r:
+            rows = json.loads(r.read().decode("utf-8"))
+    except Exception as e:
+        print("重訊資料讀不到，略過：", e)
+        return set()
+    td = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)).strftime("%Y-%m-%d")
+    p = all_dates[-2] if all_dates[-1] >= td and len(all_dates) > 1 else all_dates[-1]
+    cut = datetime.datetime.fromisoformat(p + "T13:30:00+08:00").timestamp()
+    return {r["c"] for r in rows if r.get("t", 0) >= cut}
+
+
 def news_bias():
     """11/16 使用者：近 7 天新聞 AI 判斷（scripts/news.py → news-data 分支）彙總成「近期消息偏多／偏空」。
     只算「事件」「法人」（投顧點名、盤勢文不算）；同一檔同一天同方向只算一次（多家轉載不灌票）；利多比利空多 2 則以上＝偏多，反之偏空。"""
@@ -299,6 +314,16 @@ def main():
 
     di = {d: i for i, d in enumerate(all_dates)}
     nbias = news_bias() if full and not us else {}
+    mtoday = mops_today(all_dates) if full and not us else set()
+    revs, epss = {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
+    if full and not us:
+        try:
+            import revenue, eps as EPS
+            revs = revenue.summary()
+            epss = EPS.summary()
+            os.makedirs(os.path.join(OUT, "f"), exist_ok=True)
+        except Exception as e:
+            print("月營收讀取失敗（略過）", repr(e)[:80])
     # 管理者自己畫的型態（台股）：有畫的股票，以管理者的判斷取代系統的幾何形態
     adm = {}
     if full and not us:
@@ -395,6 +420,14 @@ def main():
                 tags.append("近日反彈強勁")
         if code in nbias:                            # 11/16 使用者：近 7 天新聞 AI 判斷偏多／偏空（見 news_bias）
             tags.append(nbias[code])
+        if code in mtoday:
+            tags.append("今天有重訊")
+        rv = revs.get(code)
+        if rv:
+            if rv["revHi"]:
+                tags.append("月營收創新高")
+            if rv["yoyHi"]:
+                tags.append("年增新高")
         st = {
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
@@ -435,6 +468,12 @@ def main():
         if full:
             with open(os.path.join(OUT, "s", code + ".json"), "w") as f:
                 json.dump({"bars": rows}, f, separators=(",", ":"))
+            fin = dict(rv or {})                         # 消息分頁左欄：月營收近 6 個月＋單季 EPS 近 3 季
+            if code in epss:
+                fin["eps"] = epss[code]
+            if fin:
+                with open(os.path.join(OUT, "f", code + ".json"), "w") as f:
+                    json.dump(fin, f, ensure_ascii=False, separators=(",", ":"))
         else:
             st["bars"] = rows
         stocks[code] = st
