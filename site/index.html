@@ -1881,7 +1881,7 @@ ${p.f?`<a class="lgo" href="#scr-${p.f}">→ 看現在符合「${(FILTERS.find(x
   let h=`<h2 style="margin:4px 0 4px">什麼是股票型態？</h2><p class="note" style="margin-top:0">股價走勢常會畫出某些反覆出現的形狀，叫做「型態」。看懂型態，可以知道現在比較像要轉強、還在整理，還是要走弱。下面的示意圖是本站自己畫的簡化圖，實際股票不會這麼工整；型態只是機率，不是保證，非投資建議。本頁說的「綠K（黑K）」是收盤比開盤低的 K 棒；「已突破／已跌破」只在發生後 3 天內標示。</p>
 <div class="lsb"><input id="lq" type="search" placeholder="搜尋型態，例如：W、頭肩、杯柄、盤整、吞沒" autocomplete="off"><div class="lch">${["全部"].concat(LV.C).map((c,i)=>`<button class="${i?"":"on"}" data-c="${c}">${c}</button>`).join("")}</div></div>`;
   /* 索引選單（11/16 使用者要求；window.LIX 1 下拉、2 頁首目錄、3 目錄按鈕＋浮動清單） */
-  const LIX=window.LIX||1, grp=c=>LV.P.filter(p=>p.cat===c);
+  const LIX=window.LIX||3, grp=c=>LV.P.filter(p=>p.cat===c);
   if(LIX===1) h=h.replace('<div class="lch">',`<select class="lix" id="lix"><option value="">☰ 跳到型態…</option>${LV.C.map(c=>`<optgroup label="${c}">${grp(c).map(p=>`<option value="${p.id}">${p.name}</option>`).join("")}</optgroup>`).join("")}</select><div class="lch">`);
   if(LIX===2) h=h.replace('<div class="lsb">',`<div class="lix2">${LV.C.map(c=>`<div><b>${c}</b>${grp(c).map(p=>`<a data-j="${p.id}">${p.name}</a>`).join("")}</div>`).join("")}</div><div class="lsb">`);
   if(LIX===3) h=h.replace('<div class="lch">',`<div class="lch"><button class="lixb" id="lixb">☰ 目錄</button>`).replace('<div class="lsb">',`<div class="lsb"><div class="lix3" id="lix3" hidden>${LV.C.map(c=>`<div><b>${c}</b>${grp(c).map(p=>`<a data-j="${p.id}">${p.name}</a>`).join("")}</div>`).join("")}</div>`);
