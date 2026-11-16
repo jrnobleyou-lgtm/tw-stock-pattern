@@ -205,7 +205,19 @@ async function usRoute(req, env, u) {
     const meta = (await env.US.get("meta", "json")) || {};
     const cl = (await env.US.get("cron/last", "json")) || null;
     const dl = (await env.US.get("deploy/last", "json")) || null, dc = await env.US.get("deploy/check");
-    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
+    // 11/16：新聞各家這輪篇數，連續 ≥3 輪 0 篇或失敗標紅（news-data 分支的 meta.json）
+    let nwRow = "讀不到";
+    try {
+      const nm = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/meta.json", { cf: { cacheTtl: 300 } })).json();
+      const NM = { udn: "經濟日報", ctee: "工商時報", cnyes: "鉅亨網", moneydj: "MoneyDJ", cna: "中央社", uanalyze: "優分析", technews: "科技新報", yahoo: "Yahoo股市" };
+      const z = nm.zero || {};
+      nwRow = `${new Date(nm.t * 1000).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　共 ${nm.n} 篇<br>` + Object.entries(nm.src || {}).map(([k, v]) => {
+        const bad = (z[k] || 0) >= 3 || typeof v !== "number";
+        const t = typeof v === "number" ? `${v} 篇` : "抓取失敗";
+        return `<span style="${bad ? "color:#f87171;font-weight:bold" : ""}">${NM[k] || k} ${t}${(z[k] || 0) >= 3 ? `（連續 ${z[k]} 輪沒抓到）` : ""}</span>`;
+      }).join("　");
+    } catch (e) {}
+    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
     return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">

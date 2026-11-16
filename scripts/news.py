@@ -343,6 +343,10 @@ def main(out):
         for res in ex.map(safe, SOURCES):
             arts += res
     meta.update({"t": now, "src": dict(SRC_N)})
+    z = meta.get("zero", {})                        # 11/16：各家連續幾輪 0 篇或失敗（設定頁 ≥3 輪標紅）
+    for k_, v_ in SRC_N.items():
+        z[k_] = 0 if isinstance(v_, int) and v_ > 0 else z.get(k_, 0) + 1
+    meta["zero"] = z
     print("各家篇數：", SRC_N)
 
     new = []
