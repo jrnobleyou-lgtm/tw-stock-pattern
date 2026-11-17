@@ -214,7 +214,7 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 @media(max-width:900px){.mhead .mtabs .btn{padding:3px 8px;font-size:12px}.mhead .mtabs{gap:3px}.mhead .mtitle b{white-space:nowrap}.nw2{grid-template-columns:1fr;gap:6px}.nw .it .dt{width:70px}#newsp{font-size:13px}}
 .stt td{vertical-align:middle}.stt td.chg2{min-width:64px;white-space:nowrap;text-align:center;padding-left:2px;padding-right:2px;font-variant-numeric:tabular-nums;line-height:1.25;font-size:13px}.stt th.chg2{text-align:center}
 .chg2 .lm{display:inline-block;border-radius:6px;padding:2px 6px;color:#fff!important}.chg2 .lm.u{background:#dc2626}.chg2 .lm.d{background:#16a34a}
-.chg2 .a{font-size:11px;opacity:.85}
+.chg2 .a{font-size:11px;opacity:.85}.chg2.cp .p{font-weight:700;font-size:15px}.chg2.cp .a2{font-size:12px;margin-top:1px}.chg2.cp .p.lm,.chg2.cp .a2.lm{display:table;margin:1px auto}.chg2 .blk{display:inline-block;border-radius:6px;padding:2px 8px}.chg2 .blk.u{background:#dc2626;color:#fff}.chg2 .blk.d{background:#16a34a;color:#fff}.chg2 .blk.lm .p,.chg2 .blk.lm .a2{color:#fff}
 .cv2 .chg2 .p{font-weight:700;font-size:14px}
 .cv3 .chg2 span{display:inline-block;min-width:62px;text-align:center;border-radius:6px;background:rgba(255,255,255,.06);padding:1px 4px}.cv3 .chg2 .lm{min-width:62px}
 .stt th.c-chg,.stt td.c-chg{display:none}
@@ -570,6 +570,10 @@ function chgCell(s){
   const lu=D.market!=="US"&&pc&&s.close>=limPx(pc,1)-1e-9, ld=D.market!=="US"&&pc&&s.close<=limPx(pc,0)+1e-9;
   const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
   const lm=lu?"lm u":ld?"lm d":"";
+  const CP=window.CPV||1, px=s.close, pct=`${lu?"漲停 ":ld?"跌停 ":""}${p}`;
+  if(CP===1) return `<td class="chg2 cp"><div class="p" style="color:${col}">${px}</div><div class="a2"><span class="${lm}" style="${lm?"":"color:"+col}">${pct}</span></div></td>`;
+  if(CP===2) return `<td class="chg2 cp"><div class="blk ${lm}"><div class="p" style="${lm?"":"color:"+col}">${px}</div><div class="a2" style="${lm?"":"color:"+col}">${pct}</div></div></td>`;
+  if(CP===3) return `<td class="chg2 cp"><div class="p ${lm}" style="${lm?"":"color:"+col}">${px}</div><div class="a2 ${lm}" style="${lm?"":"color:"+col}">${pct}</div></td>`;
   if(V===2) return `<td class="chg2"><div class="p ${lm}" style="${lm?"":"color:"+col}">${lu?"漲停 ":ld?"跌停 ":""}${p}</div><div class="a" style="color:${col}">${a}</div></td>`;
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
