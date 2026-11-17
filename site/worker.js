@@ -218,9 +218,21 @@ async function usRoute(req, env, u) {
         return `<span style="${bad ? "color:#f87171;font-weight:bold" : ""}">${NM[k] || k} ${t}${(z[k] || 0) >= 3 ? `（連續 ${z[k]} 輪沒抓到）` : ""}</span>`;
       }).join("　");
     } catch (e) {}
+    // 11/17 使用者：每日新聞判斷統計（news-data 的 daily.json），比對要不要改用付費 Claude Haiku
+    let dayTbl = '<div class="m">讀不到</div>';
+    try {
+      const dj = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/daily.json", { cf: { cacheTtl: 300 } })).json();
+      const ds = Object.keys(dj).sort().reverse().slice(0, 14), sum = (f) => ds.reduce((s, k) => s + (f(dj[k]) || 0), 0);
+      const lite = (d) => Object.entries(d.by || {}).filter(([k]) => /lite/.test(k)).reduce((s, [, v]) => s + v, 0);
+      const th = ["日期", "判斷篇數", "有個股", "上修", "持平", "下修", "flash-lite", "flash", "忙碌 503", "額度 429", "預估 Haiku（美元）"];
+      const tr = ds.map(k => { const d = dj[k], fl = (d.articles || 0) - lite(d); return `<tr><td>${k.slice(5)}</td><td>${d.articles}</td><td>${d.withStock}</td><td style="color:#f87171">${d.up}</td><td>${d.flat}</td><td style="color:#4ade80">${d.down}</td><td>${lite(d)}</td><td>${fl}</td><td>${d.busy}</td><td>${d.quota}</td><td>${(d.usd || 0).toFixed(2)}</td></tr>`; }).join("");
+      const full = ds.filter(k => dj[k].runs >= 20), avg = full.length ? full.reduce((s, k) => s + (dj[k].usd || 0), 0) / full.length : null;   // 一整天（≥20 輪）才算進平均
+      dayTbl = `<table><tr>${th.map(x => `<td class="m">${x}</td>`).join("")}</tr>${tr}</table><div class="m" style="margin-top:6px">近 14 天合計判斷 ${sum(d => d.articles)} 篇，預估 Haiku 費用 ${sum(d => d.usd).toFixed(2)} 美元；${avg != null ? `完整天數（${full.length} 天）平均每天 ${avg.toFixed(2)} 美元，一個月約 ${(avg * 30).toFixed(1)} 美元` : "還沒有完整一天的資料，累積幾天後才估得準"}。<br>預估算法：輸入約每字 1.3 token＋每批提示詞 700，輸出每篇約 450 token（含思考），Haiku 5.5 每百萬 token 輸入 0.10、輸出 0.50 美元。「有個股」＝AI 認出主要公司且不是盤面的篇數。</div>`;
+    } catch (e) {}
     const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
     return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
+<h1 style="font-size:16px;margin-top:6px">每日新聞判斷統計</h1>${dayTbl}
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
 <input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
 <div class="m"><a href="/admin/">← 回管理者專區</a>　<a href="/admin/logout">登出</a></div>`);

@@ -251,6 +251,9 @@ def call(url, key, model, body):
     return res
 
 
+EV = {"busy": 0, "quota": 0}      # 本輪 AI 忙碌（503）、額度（429）次數，記到每日統計
+
+
 def judge(batch, prov):
     """回傳 (結果, 用哪個 AI)。額度用完換下一個 AI；回傳格式壞掉丟 BadBatch（呼叫端拆小再送），不換 AI。"""
     body = PROMPT + "".join(f"\n=== {a['id']}（{a['src']}）\n標題：{a['title']}\n內文：{a['text'][:TEXT_MAX]}\n" for a in batch)
@@ -263,12 +266,14 @@ def judge(batch, prov):
                 if len(res) >= len(batch) * 0.8 or tryno >= 2:   # 回來的篇數太少（可能被截斷）就重試
                     return res, f"{name} {model}"
             except Quota as e:
+                EV["quota"] += 1
                 if tryno == 0:
                     time.sleep(WAIT_429)               # 多半是每分鐘上限，等一下再試
                     continue
                 print(f"{model} 額度用完：{e}", file=sys.stderr)
                 break
             except Busy as e:                           # AI 伺服器暫時忙：等一下再試
+                EV["busy"] += 1
                 print(f"{model} 暫時忙：{e}", file=sys.stderr)
                 time.sleep(20)
                 continue
@@ -321,6 +326,11 @@ def main(out):
     except Exception as e:
         print("重訊失敗（略過）：", repr(e)[:120], file=sys.stderr)
         mo_rows = load("mops.json", [])
+    daily = load("daily.json", {})                       # 11/17 使用者：每日新聞判斷統計表（比對要不要改付費 Claude Haiku），設定頁顯示
+    dkey = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
+    day_stat = daily.setdefault(dkey, {"runs": 0, "articles": 0, "chars": 0, "batches": 0, "withStock": 0, "up": 0, "flat": 0, "down": 0, "skipped": 0, "by": {}, "busy": 0, "quota": 0})
+    day_stat["runs"] += 1
+    daily = {k: v for k, v in daily.items() if k >= (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=60)).strftime("%Y-%m-%d")}
     prov = providers()
     if not prov:
         sys.exit("缺 GEMINI_API_KEY（請到 GitHub Settings → Secrets 新增）")
@@ -347,6 +357,9 @@ def main(out):
         json.dump(tries, open(P("tries.json"), "w"), separators=(",", ":"))
         meta["n"] = len(items)
         json.dump(meta, open(P("meta.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        d = day_stat                                    # 預估改用 Claude Haiku 的費用：輸入約 1.3 token／字加每批提示詞 700，輸出每篇約 450（含思考）；每百萬 token 輸入 0.10、輸出 0.50 美元
+        d["usd"] = round((d["chars"] * 1.3 + d["batches"] * 700) * 0.10 / 1e6 + d["articles"] * 450 * 0.50 / 1e6, 4)
+        json.dump(daily, open(P("daily.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 
     arts = []
     with cf.ThreadPoolExecutor(8) as ex:
@@ -424,6 +437,8 @@ def main(out):
             print("AI 額度都用完，剩下的之後再判斷")
             break
         used[who] = used.get(who, 0) + 1
+        day_stat["batches"] += 1
+        day_stat["chars"] += sum(min(len(a["text"]), TEXT_MAX) for a in batch)
         byid = {a["id"]: a for a in batch}
         got = set()
         for x in res:
@@ -432,6 +447,8 @@ def main(out):
                 if not a or a["id"] in got:
                     continue
                 got.add(a["id"])
+                day_stat["articles"] += 1
+                day_stat["by"][who] = day_stat["by"].get(who, 0) + 1
                 ss = []
                 for s in x.get("stocks") or []:
                     c = resolve(s, a, names, codes)
@@ -443,12 +460,16 @@ def main(out):
                 seen[a["k"]] = now
                 done += 1
                 if ss:
+                    day_stat["withStock"] += 1
+                    for s_ in ss:
+                        day_stat["up" if s_["d"] > 0 else "down" if s_["d"] < 0 else "flat"] += 1
                     items.append({"k": a["k"], "src": a["src"], "t": a["t"] or now, "day": a.get("day", 0) if a["t"] else 1,
                                   "title": a["title"][:120], "link": a["link"], "ai": ss})
             except Exception as e:                      # 單筆格式怪：跳過這筆，下輪再判
                 print("解析失敗：", e, file=sys.stderr)
         save()                                          # 每批存一次，額度白費的機會降到最低
     meta["ai"] = used
+    day_stat["busy"] += EV["busy"]; day_stat["quota"] += EV["quota"]
     print(f"本輪判斷 {done} 篇（{used}），近 {KEEP_DAYS} 天有個股的文章 {len(items)} 篇")
     save()
 
