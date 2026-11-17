@@ -315,12 +315,14 @@ def main():
     di = {d: i for i, d in enumerate(all_dates)}
     nbias = news_bias() if full and not us else {}
     mtoday = mops_today(all_dates) if full and not us else set()
-    revs, epss = {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
+    revs, epss, mgs = {}, {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
     if full and not us:
         try:
             import revenue, eps as EPS
             revs = revenue.summary()
             epss = EPS.summary()
+            import margins
+            mgs = margins.summary()                   # 11/17 使用者：季營收（近三季）、三率、「三率三升」標籤
             os.makedirs(os.path.join(OUT, "f"), exist_ok=True)
         except Exception as e:
             print("月營收讀取失敗（略過）", repr(e)[:80])
@@ -428,6 +430,8 @@ def main():
                 tags.append("月營收創新高")
             if rv["yoyHi"]:
                 tags.append("年增新高")
+        if mgs.get(code, {}).get("m3"):
+            tags.append("三率三升")
         st = {
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
@@ -473,6 +477,8 @@ def main():
             fin = dict(rv or {})                         # 消息分頁左欄：月營收近 6 個月＋單季 EPS 近 3 季
             if code in epss:
                 fin["eps"] = epss[code]
+            if code in mgs:
+                fin["q"] = mgs[code]["q"]
             if fin:
                 with open(os.path.join(OUT, "f", code + ".json"), "w") as f:
                     json.dump(fin, f, ensure_ascii=False, separators=(",", ":"))

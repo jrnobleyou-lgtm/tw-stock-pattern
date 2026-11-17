@@ -224,8 +224,9 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .nw table{border-collapse:collapse;width:auto;min-width:300px}.nw td,.nw th{padding:5px 12px;border-bottom:1px solid #222;text-align:right}.nw td:first-child,.nw th:first-child{text-align:left}
 .nw .up{color:#f87171}.nw .dn{color:#4ade80}.nw .src{font-size:11px;color:var(--mute);margin-top:6px}
 .nw .eps{display:flex;gap:8px;flex-wrap:wrap}.nw .eps div{border:1px solid #333;border-radius:8px;padding:6px 14px;text-align:center;min-width:80px}.nw .eps b{display:block;font-size:18px}.nw .eps span{font-size:11px;color:var(--mute)}
+.nw .qt small{font-size:10px;margin-left:3px}.nw .qt td,.nw .qt th{padding:5px 8px;white-space:nowrap}.nw .qt th{font-size:12px;color:var(--mute);font-weight:500}
 .nw .hib{display:inline-block;background:#7c2d12;color:#fed7aa;border-radius:999px;padding:1px 9px;font-size:12px;margin-right:6px}
-.nw2{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:22px}
+.nw2>div{min-width:0}.nw2{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:22px}
 .nw .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:16px}.nw .bars div{flex:1;background:#6d28d9;border-radius:4px 4px 0 0;position:relative;min-width:22px}
 .nw .bars div i{position:absolute;top:-16px;left:0;right:0;text-align:center;font-style:normal;font-size:11px;color:#ddd}.nw .bl{display:flex;gap:8px}.nw .bl span{flex:1;text-align:center;font-size:11px;color:var(--mute);min-width:22px}
 .nw .sub{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}
@@ -700,6 +701,7 @@ const FILTERS = [
   {k:"mops", m:1, name:"今天有重訊", f:s=>has(s,/今天有重訊/)},   /* 11/16：上一交易日收盤後到現在有重訊 */
   {k:"revhi", m:1, name:"月營收創新高", f:s=>has(s,/月營收創新高/)},   /* 11/16 使用者：最新月營收比前 11 個月都高 */
   {k:"yoyhi", m:1, name:"年增新高", f:s=>has(s,/年增新高/)},   /* 月營收創歷史新高且年增 > 0 */
+  {k:"m3up", m:1, name:"三率三升", f:s=>has(s,/三率三升/)},   /* 11/17 使用者：毛利率、營益率、淨利率都比上一季高 */
 ];
 const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）";
 const DMI_WATCH="<br><b>提醒：</b>用過去兩年資料算，前三種（即將翻多、翻多前已轉強、剛翻多）出現後平均和大盤差不多、略輸，適合先列觀察名單；真正比大盤強的是「DMI多頭趨勢」（股價突破前高）。最好搭配型態（盤整區間、底部形態）一起看。";
@@ -715,7 +717,7 @@ const SUBF={   /* 11/16 使用者：底部反轉可以分開看（頁內小分�
   top:[["m","M雙重頂","雙重頂"],["hs","頭肩頂","頭肩頂"],["v","V形頂","V形頂"],["r","圓弧頂","圓弧頂"],["isl","島型反轉頂","島型反轉頂"],["dt","下降三角形","下降三角形"],["rw","上升楔形","上升楔形"]]
     .map(([k,n,kind])=>[k,n,g=>g.kind===kind&&g.status==="confirmed"&&g.dir==="bear"])};   /* 頂部也分開（與「頂部反轉」同條件：已跌破、看跌） */
 function screener(key,mix){
-  if(!mix&&/^(nwup|mops|revhi|yoyhi)$/.test(key||"")){location.replace("#mix-"+key);return}   /* 舊網址 #scr-revhi 等轉到「綜合篩選」 */
+  if(!mix&&/^(nwup|mops|revhi|yoyhi|m3up)$/.test(key||"")){location.replace("#mix-"+key);return}   /* 舊網址 #scr-revhi 等轉到「綜合篩選」 */
   key = key || (mix?"mops":"rb3");
   const [bk,sk] = key.split(".");
   const GF=FILTERS.filter(x=>!!x.m===!!mix), cur = GF.find(x=>x.k===bk) || GF[0];
@@ -737,7 +739,8 @@ function screener(key,mix){
   if(DMI_NOTE[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${DMI_NOTE[cur.k]}</p>${DMI_HELP}<div class="sortbar">`);
   const RVN={mops:"<b>條件：</b>上一個交易日收盤（13:30）之後到現在，有公告重大訊息的股票（同一則天天重發的只算第一次）。當天的重訊取自鉅亨網轉載的公開資訊觀測站公告，隔天早上以證交所／櫃買開放資料校正；這個名單在網站每次更新時重算（盤中約每 2 分鐘、收盤後到傍晚、隔天清晨）。點股票後切到「消息」看內容。",
     revhi:"<b>條件：</b>這檔最新公布的月營收，比前 11 個月都高（近 12 個月新高；要有 13 個月以上資料）。每月約 10 號前公布完，公布下個月之前標籤都保留。點股票後切到「消息」看近 6 個月營收。",
-    yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。"};
+    yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。",
+    m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。財報公布後（Q3 約 11/14 前）更新。點股票後切到「消息」看近 3 季營收與三率。"};
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
@@ -778,14 +781,16 @@ async function loadNews(s,np){
   const empty=t=>`<div class="mute" style="padding:6px 2px">${t}</div>`;
   const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"<br>重訊：當天取自鉅亨網轉載的公開資訊觀測站公告（約每 30 分更新），隔天以證交所／櫃買開放資料校正；「今天」＝上一交易日收盤後":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
   const hi=f?`${f.revHi?'<span class="hib">月營收創新高</span>':""}${f.yoyHi?'<span class="hib">年增新高</span>':""}`:"";
-  const rev=f&&f.rev||[], eps=f&&f.eps||[];
+  const rev=f&&f.rev||[], eps=f&&f.eps||[], qq=f&&f.q||[];
   const mx=Math.max(1,...rev.map(r=>r[1]));
-  const revBars=`<div class="bars">${rev.slice().reverse().map(r=>`<div style="height:${Math.max(6,r[1]/mx*100)}%"><i>${revTxt(r[1]).replace("億","")}</i></div>`).join("")}</div><div class="bl">${rev.slice().reverse().map(r=>`<span>${+r[0].slice(5)}月<br>${pctTxt(r[2])}</span>`).join("")}</div><div class="src">單位：億元；下排為年增率</div>`;
+  const revBars=`<div class="bars">${rev.slice().reverse().map(r=>`<div style="height:${Math.max(6,r[1]/mx*100)}%"><i>${r===rev[0]&&f.mAth?"🌟":""}${revTxt(r[1]).replace("億","")}</i></div>`).join("")}</div><div class="bl">${rev.slice().reverse().map(r=>`<span>${+r[0].slice(5)}月<br>${pctTxt(r[2])}</span>`).join("")}</div><div class="src">單位：億元；下排為年增率${f.mAth?"；🌟＝最新月營收創歷史新高":""}</div>`;
   const epsHTML=`<div class="eps">${eps.map(e=>`<div><b class="${e[1]<0?"dn":""}">${e[1]}</b><span>${e[0].replace("Q"," 第")}季</span></div>`).join("")}</div><div class="src">單季 EPS（元）</div>`;
+  const rt=(v,d)=>v==null?"—":`${v.toFixed(1)}%${d==null||d===0?"":`<small class="${d>0?"up":"dn"}">${d>0?"▲":"▼"}${Math.abs(d).toFixed(1)}</small>`}`;
+  const qHTML=`<div style="overflow-x:auto"><table class="qt"><tr><th>季別</th><th>營收</th><th>季增</th><th>年增</th><th>毛利率</th><th>營益率</th><th>淨利率</th></tr>${qq.map(r=>`<tr><td>${r[0].replace("Q"," 第")}季${r[10]?" 🌟":""}</td><td>${r[1]==null?"—":revTxt(r[1])}</td><td>${pctTxt(r[2])}</td><td>${pctTxt(r[3])}</td><td>${rt(r[4],r[7])}</td><td>${rt(r[5],r[8])}</td><td>${rt(r[6],r[9])}</td></tr>`).join("")}</table></div><div class="src">營收＝三個月營收加總；三率＝單季財報，▲▼為比上一季增減幾個百分點（毛利／營業利益／稅後淨利 ÷ 營收）；金融業沒有三率${qq[0]&&qq[0][10]?"；🌟＝當季營收創歷史新高":""}</div>`;
   const all=mops.concat(news).sort((a,b)=>(b.d+b.t).localeCompare(a.d+a.t));
   const right=`<h4>${mops.length?"重訊＋新聞":"新聞"}<small>近 30 天，依時間排列</small></h4>${src.replace('class="src"','class="src" style="margin:0 0 6px"')}${all.length?all.map(row).join(""):empty(n&&!n.error?"近 30 天沒有相關新聞":"新聞暫時讀不到，請稍後再試")}`;   /* 11/16 使用者：來源與注意事項放最上面 */
-  np.innerHTML=rev.length||eps.length
-    ?`<div class="nw nw2"><div>${hi?`<div style="margin:8px 0 0">${hi}</div>`:""}${rev.length?`<h4>月營收<small>近 6 個月</small></h4>${revBars}`:""}${eps.length?`<h4>EPS<small>近 3 季</small></h4>${epsHTML}`:""}</div><div>${right}</div></div>`
+  np.innerHTML=rev.length||eps.length||qq.length
+    ?`<div class="nw nw2"><div>${hi?`<div style="margin:8px 0 0">${hi}</div>`:""}${rev.length?`<h4>月營收<small>近 6 個月</small></h4>${revBars}`:""}${eps.length?`<h4>EPS<small>近 3 季</small></h4>${epsHTML}`:""}${qq.length?`<h4>季營收與三率<small>近 3 季</small></h4>${qHTML}`:""}</div><div>${right}</div></div>`
     :`<div class="nw">${right}</div>`;
 }
 function notesHTML(s){

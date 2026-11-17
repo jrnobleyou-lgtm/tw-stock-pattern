@@ -238,13 +238,15 @@ def summary(data=None):
             ly = v.get(ym_add(ym, -12))
             yoy = round((v[ym] / ly - 1) * 100, 1) if ly else None
             rows.append([ym, v[ym], yoy])
-        r = {"rev": rows, "revHi": False, "yoyHi": False}
+        r = {"rev": rows, "revHi": False, "yoyHi": False, "mAth": False}
         if last >= ok_from:
             cur = v[last]
             prev11 = [v[m] for m in (ym_add(last, -k) for k in range(1, 12)) if m in v]
             if len(v) >= 13 and len(prev11) >= 11 and cur > 0 and cur > max(prev11):
                 r["revHi"] = True
             before = [x for m, x in v.items() if m < last]
+            if len(v) >= 36 and cur > 0 and before and cur > max(before):   # 11/17 使用者：當月營收創歷史新高，圖上打 🌟（只看最新月）
+                r["mAth"] = True
             ly = v.get(ym_add(last, -12))
             if len(v) >= 36 and cur > 0 and before and cur > max(before) and ly and cur > ly:
                 r["yoyHi"] = True

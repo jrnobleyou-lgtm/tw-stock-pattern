@@ -16,7 +16,7 @@ while [ "$(date +%s)" -lt "$end" ]; do
   echo "=== 第 $cycle 輪 $(date +%T) ==="
   # 每輪先取最新的網頁與程式（避免長時間運行的舊版覆蓋掉之後的修改）；不更新本檔案自己
   git fetch -q origin main 2>/dev/null && git checkout -q origin/main -- site/index.html site/worker.js site/wrangler.jsonc site/.assetsignore $(git ls-tree -r --name-only origin/main scripts | grep '\.py$') 2>/dev/null
-  git checkout -q origin/main -- $(git ls-tree -r --name-only origin/main data/rev data/eps_cum.json data/eps_fm.json data/fin_meta.json) 2>/dev/null   # 11/16 月營收／EPS 資料跟著 main（盤中才不會用到舊的、洗掉標籤）
+  git checkout -q origin/main -- $(git ls-tree -r --name-only origin/main data/rev data/eps_cum.json data/eps_fm.json data/margin_cum.json data/margin_fm.json data/fin_meta.json) 2>/dev/null   # 11/16 月營收／EPS 資料跟著 main（盤中才不會用到舊的、洗掉標籤）
   if python3 scripts/intraday.py; then
     fails=0
     python3 scripts/build_prices.py && python3 scripts/analyze.py all && {

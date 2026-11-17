@@ -22,3 +22,9 @@
 - ✅ 美股股票池加 6 檔 OTC ADR（FUWAY 古河→光通訊/CPO、TTDKY TDK→電子零組件、SHECY 信越→矽晶圓、SUOPY 勝高→矽晶圓、IFNNY 英飛凌→功率半導體、RNECY 瑞薩→IC設計）：已寫進美股試算表（工作表1 第 603～608 列）與 KV `state/groups_us*.csv`，美股更新（台灣 11/17 20:08）已抓到價格，股票數 4,089。ANT（Anthropic）預計 11/21（週五）上市，上市當天使用者會通知。
 - ✅ 台股試算表分頁「工作表1」→「族群分類」；**排程 `trig_01C1hrzzY2io3gRmGr7zX3ce`（每週六 15:15 同步台美股族群，從網頁建，只有使用者能編輯，網址 claude.ai/code/routines/<id>）指令仍寫「工作表1」，下週六 11/21 台股會讀不到，要使用者改**（台股改「族群分類」；美股先試「族群分類」，讀不到用「工作表1」）。另一條「code網站分類試算表同步」（週六 14:50，使用者隔壁線）11/17 18:11 已更新過。可同時加一步 2b：讀「關注股票_台股!A2:B500」寫 `data/watchlist_tw.txt`（使用者尚未回覆是否要）。
 - 待辦：11/19 08:30 自動對照新聞統計（`trig_01EKR7bV9p6M9bjwKG983fWh`）；Haiku 速率限制已確認（Console 評估等級：Haiku 5.5 每分鐘輸入 50 萬／輸出 8 萬／請求 1,000，夠用；API 要先儲值才能呼叫，尚未決定）。
+
+## 2026-11-17 晚：季營收、三率、🌟歷史新高（程式已寫好，資料回補中，未推 main）
+- 使用者規格（grilling 全照建議＋）：消息分頁左欄「季營收與三率（近 3 季）」表：營收（三個月月營收加總）、季增%、年增%、毛利率／營益率／淨利率（單季）＋比上一季增減個百分點；標籤與綜合篩選鈕「三率三升」（`m3up`，三率都比上一季高）；**當月營收創歷史新高**（月營收長條最新月）與**當季營收創歷史新高**（季表最新一季）各打 🌟，只看最新月／最新一季。
+- 程式：`scripts/margins.py`（`update` 官方最新季累計→`data/margin_cum.json`；`backfill` FinMind 單季→`data/margin_fm.json`，單位千元；`single()`、`summary()`），`revenue.summary()` 加 `mAth`，`analyze.py` 把 `q` 寫進 `site/f/<代號>.json`、加「三率三升」標籤；`update.yml`／`intraday_loop.sh` 已加 margin 檔；固定檢查 `scripts/tests/test_margins.py`。
+- **回補**：本容器背景程式 `MARGIN_FM=<scratchpad>/margin_fm.json python3 scripts/margins.py backfill`，每檔 8 秒約 4.5 小時（台灣 11/17 約 21:00 開始）；可續跑（已有的略過）。補完後把 `margin_fm.json` 複製成 `data/margin_fm.json` 並提交（連同 `data/margin_cum.json`），再手動觸發 update.yml，檢查消息分頁與「三率三升」篩選頁（所有篩選鈕各點一次）。**盤中（08:50–13:50）不要推 main。**
+- 金融業沒有毛利率（官方只抓一般業 `_ci`），三率顯示「—」。
