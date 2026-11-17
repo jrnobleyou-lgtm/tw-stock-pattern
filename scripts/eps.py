@@ -117,7 +117,7 @@ def backfill(start="2023-01-01"):
     print("EPS 回補完成", n, "檔", flush=True)
 
 
-def summary(cum=None, fm=None):
+def summary(cum=None, fm=None, n=3):
     """{代號: [["115Q3", 0.24], ...] 最新在前 3 季（季別用民國年）}"""
     cum = cum if cum is not None else _load(CUM)
     fm = fm if fm is not None else _load(FM)
@@ -129,7 +129,7 @@ def summary(cum=None, fm=None):
             v = single(q, cc, ff)
             if v is not None:
                 rows.append([f"{int(q[:4]) - 1911}Q{q[-1]}", v])
-            if len(rows) == 3:
+            if len(rows) == n:
                 break
         if rows:
             out[c] = rows

@@ -209,6 +209,17 @@ def mops_today(all_dates):
     return {r["c"] for r in rows if r.get("t", 0) >= cut}
 
 
+def target_rows():
+    """11/18 法人目標價：讀 news-data 分支的 targets.json（scripts/targets.py 整理的具名目標價列）。讀不到回傳 None。"""
+    import urllib.request
+    try:
+        with urllib.request.urlopen("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/targets.json", timeout=20) as r:
+            return json.loads(r.read().decode("utf-8"))
+    except Exception as e:
+        print("目標價資料讀不到，沿用上次：", e)
+        return None
+
+
 def news_bias():
     """11/16 使用者：近 7 天新聞 AI 判斷（scripts/news.py → news-data 分支）彙總成「近期消息偏多／偏空」。
     只算「事件」「法人」（投顧點名、盤勢文不算）；同一檔同一天同方向只算一次（多家轉載不灌票）；利多比利空多 2 則以上＝偏多，反之偏空。"""
@@ -341,6 +352,10 @@ def main():
     di = {d: i for i, d in enumerate(all_dates)}
     nbias = cached("nbias", news_bias(), {}) if full and not us else {}
     mtoday = cached("mtoday", mops_today(all_dates), set()) if full and not us else set()
+    trows = {}                                            # 11/18 法人目標價（代號 → 該檔所有具名目標價列）
+    if full and not us:
+        for r_ in (cached("targets", target_rows(), []) or []):
+            trows.setdefault(r_["c"], []).append(r_)
     revs, epss, mgs = {}, {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
     if full and not us:
         try:
@@ -514,6 +529,14 @@ def main():
                 fin["eps"] = epss[code]
             if code in mgs:
                 fin["q"] = mgs[code]["q"]
+            if trows.get(code):
+                try:
+                    import targets as TG
+                    tp = TG.summarize(trows[code], st["close"], time.time())
+                    if tp:
+                        fin["tp"] = tp
+                except Exception as e:
+                    print("目標價彙總失敗", code, repr(e)[:60])
             if fin:
                 with open(os.path.join(OUT, "f", code + ".json"), "w") as f:
                     json.dump(fin, f, ensure_ascii=False, separators=(",", ":"))
@@ -521,6 +544,34 @@ def main():
             st["bars"] = rows
         stocks[code] = st
 
+    val = None                                           # 11/18 使用者：本益比／股價淨值比／殖利率（官方收盤後資料，固定收盤值，不隨盤中跳動）
+    if full and not us:
+        try:
+            import valuation, datetime
+            val = cached("val", valuation.fetch((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)).strftime("%Y%m%d")), None)   # 抓不到就沿用線上上次那份（日期會照實顯示）
+            if val:
+                try:
+                    import eps as EPS4
+                    e4 = EPS4.summary(n=4)
+                except Exception:
+                    e4 = {}
+                nv = 0
+                for code, st in stocks.items():
+                    r = val["m"].get(code)
+                    if not r:
+                        continue
+                    pe, pb, dy, fq = r
+                    st["pe"], st["pb"], st["dy"] = pe, pb, dy
+                    if fq:
+                        st["pq"] = fq
+                    if pe is None:
+                        q4 = e4.get(code, [])
+                        if len(q4) == 4 and sum(x[1] for x in q4) <= 0:
+                            st["pl"] = 1              # 近四季合計虧損
+                    nv += 1
+                print("本益比資料", val["date"], "檔數", nv)
+        except Exception as e:
+            print("本益比讀取失敗（略過）", repr(e)[:80])
     gl = collections.OrderedDict()
     for st in stocks.values():
         for gname in st["groups"]:                       # 雙族群的股票，兩個族群都會計入
@@ -549,7 +600,7 @@ def main():
     mp = os.path.join(ROOT, "data", "intraday_meta.json")
     if full and not us and os.path.exists(mp):
         live = json.load(open(mp))
-    out = {"live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
+    out = {"valDate": (val or {}).get("date"), "live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
     if mode == "all":
         # 11/17 Fable 審查：盤中（15:00 前，這兩項資料要收盤後才公布）不重抓，沿用上次發布的；抓到新的才更新
         import datetime
