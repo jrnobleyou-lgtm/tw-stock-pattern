@@ -802,7 +802,7 @@ async function loadNews(s,np){
   const mops=(n&&n.items||[]).filter(x=>x.mo).map(x=>({...tw(x.t),title:x.title,link:/^https:\/\//.test(x.link||"")?x.link:"",src:x.src==="公開資訊觀測站"?"":x.src,mo:1,nw:x.t>=cut}));
   const news=(n&&n.items||[]).filter(x=>!x.mo&&/^https:\/\//.test(x.link||"")).map(x=>({...tw(x.t,x.day),title:x.title,link:x.link,src:x.src,dir:x.d,why:x.w}));
   const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
-  const dm=x=>!DIR||x.dir==null?"":x.dir>0?'<b class="up">▲</b> ':x.dir<0?'<b class="dn">▼</b> ':'<b class="mute">－</b> ';
+  const dm=x=>!DIR||x.dir==null?"":x.dir>0?'<b class="up">▲</b> ':x.dir<0?'<b class="dn">▼</b> ':'<b class="mute">↔️</b> ';   /* 持平符號：使用者 11/17 指定 ↔️ */
   const row=x=>`<div class="it"><div class="dt">${x.d.slice(5).replace("-","/")} ${x.t||""}</div><div>${dm(x)}${x.mo?`<span class="mk mo">重訊</span>`:""}${x.mo&&x.nw?`<span class="mk td">今天</span>`:""}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}${x.src?`<span class="mute" style="font-size:12px">　${esc(x.src)}</span>`:""}${DIR&&x.why?`<div class="mute" style="font-size:12px;margin-top:2px">${esc(x.why)}</div>`:""}</div></div>`;
   const empty=t=>`<div class="mute" style="padding:6px 2px">${t}</div>`;
   const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"<br>重訊：當天取自鉅亨網轉載的公開資訊觀測站公告（約每 30 分更新），隔天以證交所／櫃買開放資料校正；「今天」＝上一交易日收盤後":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
