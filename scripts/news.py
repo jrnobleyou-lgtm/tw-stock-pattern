@@ -255,7 +255,13 @@ class Gone(Exception):                    # Google 回報這個型號不存在�
 
 DEFAULT_MODELS = ("gemini-3.5-flash-lite", "gemini-3.5-flash")      # 抓不到型號清單時的預設；版本號低於這兩個的不用（避免清單出錯時退回舊一代）
 MODEL_RE = re.compile(r"^models/gemini-(\d+(?:\.\d+)?)-flash(-lite)?$")   # 只收「正式版」：排除 preview／exp／-001／latest／tts／image／live／pro／embedding／gemma
-GONE, MINFO = [], {}                                                # 本輪被 Google 回報不存在的型號；選型號過程的紀錄
+GONE, MINFO = [], {}
+API = {}                                                            # 本輪各型號的工作狀況：呼叫次數、成功、忙碌 503、額度 429、格式錯、不存在、耗時秒數（記到 daily.json 的 api，長期追蹤）
+
+
+def ev(model, k, n=1):
+    d = API.setdefault(model, {"calls": 0, "ok": 0, "busy": 0, "quota": 0, "bad": 0, "gone": 0, "secs": 0.0})
+    d[k] = round(d[k] + n, 1) if k == "secs" else d[k] + n                                                # 本輪被 Google 回報不存在的型號；選型號過程的紀錄
 
 
 def model_ver(name):
@@ -390,10 +396,14 @@ def judge(batch, prov):
         bad = 0
         for tryno in range(4):
             try:
+                ev(model, "calls"); t0 = time.time()
                 res = call(url, key, model, body)
+                ev(model, "secs", time.time() - t0)
                 if len(res) >= len(batch) * 0.8 or tryno >= 2:   # 回來的篇數太少（可能被截斷）就重試
+                    ev(model, "ok")
                     return res, f"{name} {model}"
             except Quota as e:
+                ev(model, "quota")
                 EV["quota"] += 1
                 if tryno == 0:
                     time.sleep(WAIT_429)               # 多半是每分鐘上限，等一下再試
@@ -401,16 +411,19 @@ def judge(batch, prov):
                 print(f"{model} 額度用完：{e}", file=sys.stderr)
                 break
             except Gone as e:                           # 型號已下架：直接換下一個並記錄
+                ev(model, "gone")
                 GONE.append(model)
                 print(f"{e}", file=sys.stderr)
                 break
             except Busy as e:                           # AI 伺服器暫時忙：等一下再試
+                ev(model, "busy")
                 EV["busy"] += 1
                 print(f"{model} 暫時忙：{e}", file=sys.stderr)
                 time.sleep(20)
                 continue
             except Exception as e:
                 bad += 1
+                ev(model, "bad")
                 print(f"{model} 回傳有問題：{e}", file=sys.stderr)
                 if "不是預期格式" in str(e) and bad >= 2:
                     break                               # 這個 AI 連線本身有問題：換下一個
@@ -629,6 +642,11 @@ def main(out):
     meta["ai"] = used
     if used:
         meta["ai_ok_t"] = now                            # 最後一次 AI 判斷成功的時間（設定頁超過 3 小時標紅）
+    ap = day_stat.setdefault("api", {})                  # 各型號當天累計
+    for m_, v_ in API.items():
+        a_ = ap.setdefault(m_, {k: 0 for k in v_})
+        for k_, x_ in v_.items():
+            a_[k_] = round(a_.get(k_, 0) + x_, 1)
     if GONE:
         day_stat["gone"] = sorted(set(day_stat.get("gone", []) + GONE))
     if MINFO.get("fatal"):
