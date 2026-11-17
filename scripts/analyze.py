@@ -168,6 +168,32 @@ def dmi_now(bars):
     return [round(pdi[T] - mdi[T], 1), round(adx[T], 1), 1 if ch > 0.5 else -1 if ch < -0.5 else 0]
 
 
+def site_site():
+    return os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev").rstrip("/")
+
+
+def cached(name, val, default):
+    """11/17 Fable 審查：外部資料（新聞、重訊、畫線）這輪抓失敗就沿用上次成功的結果，不要整塊空掉。
+    成功時存 site/cache/<name>.json（跟網站一起發布，內容都是公開的衍生結果）；失敗時從線上網站讀上次那份。"""
+    import urllib.request
+    path = os.path.join(ROOT, "site", "cache", name + ".json")
+    if val is not None:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(sorted(val) if isinstance(val, set) else val, f, ensure_ascii=False, separators=(",", ":"))
+        return val
+    try:
+        v = json.loads(urllib.request.urlopen(urllib.request.Request(site_site() + "/cache/" + name + ".json", headers={"User-Agent": "Mozilla/5.0"}), timeout=20).read())
+        print(f"  {name}：沿用線上上次的結果")
+        return set(v) if isinstance(default, set) else v
+    except Exception:
+        try:
+            v = json.load(open(path, encoding="utf-8"))
+            return set(v) if isinstance(default, set) else v
+        except Exception:
+            return default
+
+
 def mops_today(all_dates):
     """11/16 使用者：「今天有重訊」＝上一交易日收盤（13:30）之後到現在有重訊（news-data 分支 mops.json；連續重複公告只算第一次）。"""
     import urllib.request, datetime
@@ -175,8 +201,8 @@ def mops_today(all_dates):
         with urllib.request.urlopen("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/mops.json", timeout=20) as r:
             rows = json.loads(r.read().decode("utf-8"))
     except Exception as e:
-        print("重訊資料讀不到，略過：", e)
-        return set()
+        print("重訊資料讀不到，沿用上次：", e)
+        return None
     td = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)).strftime("%Y-%m-%d")
     p = all_dates[-2] if all_dates[-1] >= td and len(all_dates) > 1 else all_dates[-1]
     cut = datetime.datetime.fromisoformat(p + "T13:30:00+08:00").timestamp()
@@ -191,8 +217,8 @@ def news_bias():
         with urllib.request.urlopen("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/items.json", timeout=20) as r:
             items = json.loads(r.read().decode("utf-8"))
     except Exception as e:
-        print("新聞資料讀不到，略過消息標籤：", e)
-        return {}
+        print("新聞資料讀不到，沿用上次：", e)
+        return None
     lim, votes = time.time() - 7 * 86400, collections.defaultdict(set)
     for x in items:
         if x.get("t", 0) < lim:
@@ -313,8 +339,8 @@ def main():
         os.makedirs(os.path.join(OUT, "s"), exist_ok=True)
 
     di = {d: i for i, d in enumerate(all_dates)}
-    nbias = news_bias() if full and not us else {}
-    mtoday = mops_today(all_dates) if full and not us else set()
+    nbias = cached("nbias", news_bias(), {}) if full and not us else {}
+    mtoday = cached("mtoday", mops_today(all_dates), set()) if full and not us else set()
     revs, epss, mgs = {}, {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
     if full and not us:
         try:
@@ -332,9 +358,10 @@ def main():
         try:
             import urllib.request
             site = os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev").rstrip("/")
-            adm = json.loads(urllib.request.urlopen(urllib.request.Request(site + "/api/draw-list?span=1", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read())
+            adm = cached("adm", json.loads(urllib.request.urlopen(urllib.request.Request(site + "/api/draw-list?span=1", headers={"User-Agent": "Mozilla/5.0"}), timeout=30).read()), {})
         except Exception as e:
-            print("讀不到管理者畫線（略過）", repr(e)[:80])
+            print("讀不到管理者畫線（沿用上次）", repr(e)[:80])
+            adm = cached("adm", None, {})
     if us:
         try:
             adm = json.load(open(os.path.join(ROOT, "data", "us", "draw.json"), encoding="utf-8"))
@@ -443,6 +470,11 @@ def main():
             "chg": r2((bars[T]["c"] / bars[T - 1]["c"] - 1) * 100) if T else 0,
             "vol": round(raw[T]["v"] / 1000),
         }
+        am_ = asof_m.get(mk.get(code))
+        if am_ and raw[T]["d"] < am_:                    # 11/17 Fable 審查：停牌股（資料日比市場最新日舊）標資料日期，不把舊漲跌當今天的
+            st["stale"] = raw[T]["d"][5:]
+            st["chg"], st["pc"], st["r5"] = 0, raw[T]["c"], [0]
+            tags.append(f"停牌（資料至{raw[T]['d'][5:]}）")
         dn_ = dmi_now(bars)
         if dn_:
             st["dmi"] = dn_                              # DMI 篩選頁的「DMI差值」「ADX」欄
@@ -516,10 +548,14 @@ def main():
         live = json.load(open(mp))
     out = {"live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
     if mode == "all":
-        inst = fetch_inst()
+        # 11/17 Fable 審查：盤中（15:00 前，這兩項資料要收盤後才公布）不重抓，沿用上次發布的；抓到新的才更新
+        import datetime
+        tw = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
+        hold = bool(live) and tw.weekday() < 5 and tw.hour < 15
+        inst = (cached("inst", None, None) if hold else None) or (lambda v: cached("inst", v, None) if v else None)(fetch_inst())
         if inst:
             out["inst"] = inst
-        fut = fetch_fut_foreign()
+        fut = (cached("fut", None, None) if hold else None) or (lambda v: cached("fut", v, None) if v else None)(fetch_fut_foreign())
         if fut:
             out["fut"] = fut
     if us:

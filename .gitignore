@@ -38,3 +38,4 @@ site/us/
 data/groups_us.csv
 data/groups_us_v1.csv
 data/groups_us_all.csv
+site/cache/

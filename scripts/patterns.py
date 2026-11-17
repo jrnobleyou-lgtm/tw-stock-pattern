@@ -646,6 +646,8 @@ def resolve_conflicts(gs, T):
         # V 形底放寬到 10 天顯示後，超過 5 天的 V 只算「成形中」之下的等級，不蓋過其他形態（TSM 固定檢查）
         if g["kind"] == "V形底" and g["status"] == "confirmed" and g.get("day", 0) > 6:
             return 2.5
+        if "島型" in g["kind"] and g["status"] == "confirmed" and g.get("day", 0) > 3:     # 11/17 Fable 審查：島型第 4～10 天只加標籤，打架時也不蓋過其他形態
+            return 2.5
         return RANK.get(g["status"], 5)
     order = sorted(gs, key=lambda g: (rk(g), -len(piv(g)), -g.get("key_i", max(i for i, _ in g["pts"]))))
     keep = []

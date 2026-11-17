@@ -28,3 +28,13 @@
 - 程式：`scripts/margins.py`（`update` 官方最新季累計→`data/margin_cum.json`；`backfill` FinMind 單季→`data/margin_fm.json`，單位千元；`single()`、`summary()`），`revenue.summary()` 加 `mAth`，`analyze.py` 把 `q` 寫進 `site/f/<代號>.json`、加「三率三升」標籤；`update.yml`／`intraday_loop.sh` 已加 margin 檔；固定檢查 `scripts/tests/test_margins.py`。
 - **回補**：本容器背景程式 `MARGIN_FM=<scratchpad>/margin_fm.json python3 scripts/margins.py backfill`，每檔 8 秒約 4.5 小時（台灣 11/17 約 21:00 開始）；可續跑（已有的略過）。補完後把 `margin_fm.json` 複製成 `data/margin_fm.json` 並提交（連同 `data/margin_cum.json`），再手動觸發 update.yml，檢查消息分頁與「三率三升」篩選頁（所有篩選鈕各點一次）。**盤中（08:50–13:50）不要推 main。**
 - 金融業沒有毛利率（官方只抓一般業 `_ci`），三率顯示「—」。
+
+## 2026-11-17 深夜：Fable 其餘建議（使用者：除了登入防猜密碼，其他都做）
+- ✅ 新聞、重訊、畫線抓不到時沿用上次結果：`analyze.py` 的 `cached()`，成功時存 `site/cache/<名稱>.json`（gitignore，隨網站發布），失敗從線上網站 `/cache/` 讀上次那份。
+- ✅ 停牌股：資料日比該市場最新日舊的股票標 `stale`（資料日 MM-DD）＋標籤「停牌（資料至MM-DD）」，漲跌欄顯示灰色「停牌 MM-DD」、漲跌幅當 0。
+- ✅ 島型第 4～10 天形態打架時降級（`patterns.resolve_conflicts` 的 `rk()` 給 2.5，同 V 形底超過 6 天）；全市場五種型態前後不變。
+- ✅ 盤中（週一～五 15:00 前且有盤中資料）不重抓三大法人與外資台指期淨部位（只有收盤後才公布）：沿用 `site/cache/inst.json`、`fut.json`；抓不到仍不放舊數字。
+- ✅ 固定檢查：`scripts/tests/test_pipeline.py`（整條流程 13 個案例＋凍結 6146 轉強／4609 走弱）、`test_margins.py`；`scripts/ui_check.js`＝所有篩選鈕（台股／綜合、含子分類）、族群頁在電腦與手機各點一次，有 pageerror 就失敗（上線前跑：先 `python3 scripts/analyze.py all`，再 `NODE_PATH=$(npm root -g) node scripts/ui_check.js`）。
+- ⏸ `data.js` 瘦身：1.5MB（gzip 後只有 275KB），最大是各股 `geo`（386KB）；效益小，先不動。
+- ❌ 登入防連續猜密碼：使用者決定不做。
+- ✅ 每天台灣 07:47 的新排程 `trig_01Uhcg4uxGQoczg7zAGxg21B`（新對話，只讀）：算前一天新聞判斷量，含優先名單（關注清單＋成交值前 100）占比、各來源篇數、預估 Haiku 費用，推播給使用者。

@@ -591,6 +591,7 @@ function tick(p){return p<10?.01:p<50?.05:p<100?.1:p<500?.5:p<1000?1:5}
 function limPx(pc,up){const raw=pc*(up?1.1:.9),t=tick(raw);const v=up?Math.floor(raw/t+1e-9)*t:Math.ceil(raw/t-1e-9)*t;return +v.toFixed(2)}
 function chgCell(s){
   if(s.new&&!s.pc) return `<td class="chg2"><div class="p mute">—</div><div class="a mute">上市櫃首日</div></td>`;   /* 新股第一天沒有前一日收盤可比 */
+  if(s.stale) return `<td class="chg2 cp"><div class="p mute">${s.close}</div><div class="a2 mute">停牌 ${s.stale}</div></td>`;   /* 11/17：停牌股顯示資料日期，不顯示漲跌 */
   const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||2;
   const lim=D.market!=="US"&&!s.new&&pc;   /* 新股前 5 天沒有漲跌幅限制，不標漲跌停 */
   const lu=lim&&s.close>=limPx(pc,1)-1e-9, ld=lim&&s.close<=limPx(pc,0)+1e-9;
