@@ -299,7 +299,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
@@ -609,7 +609,7 @@ function chgCell(s){
   if(s.new&&!s.pc) return `<td class="chg2"><div class="p mute">—</div><div class="a mute">上市櫃首日</div></td>`;   /* 新股第一天沒有前一日收盤可比 */
   if(s.stale) return `<td class="chg2 cp"><div class="p mute">${s.close}</div><div class="a2 mute">停牌 ${s.stale}</div></td>`;   /* 11/17：停牌股顯示資料日期，不顯示漲跌 */
   const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||2;
-  const lim=D.market!=="US"&&!s.new&&pc;   /* 新股前 5 天沒有漲跌幅限制，不標漲跌停 */
+  const lim=D.market!=="US"&&!s.new&&!s.etf&&pc;   /* 新股前 5 天沒有漲跌幅限制，不標漲跌停 */
   const lu=lim&&s.close>=limPx(pc,1)-1e-9, ld=lim&&s.close<=limPx(pc,0)+1e-9;
   const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
   const lm=lu?"lm u":ld?"lm d":"";
@@ -928,6 +928,46 @@ function openStock(code){
   const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span><div class="mg">${gtxt(s)}${s.industry?"・"+s.industry:""}</div></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>${valBar(s)?`<div class="pevr">${valBar(s)}</div>`:""}`;
   mountModal(s, head, {notes:notesHTML(s),news:D.market!=="US"&&/^\d/.test(s.code)});
   startLive(chart, D.market==="US"?code:code+(s.market==="TPEX"?".TWO":".TW"), false);
+}
+/* ───────── ETF 專區（11/18 使用者：只做台股；主動／被動區分；不做型態判斷；成分股連結、折溢價、規模之後再說） ───────── */
+const ETF_CATS=["市值型","高股息","主題","海外","債券","台股（一般）","期貨／商品","其他"];
+function etfLoad(){return window.__ETF||(window.__ETF=fetch("etf.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null).then(j=>{if(j){j.rows=j.list.map(a=>({etf:1,code:a[0],name:a[1],market:a[2],kind:a[3],cls:a[4],close:a[5],chg:a[6],pc:a[7],vol:a[8],date:a[9],state:"",tags:[],geo:[]}))}return j}))}
+async function etfPage(key){
+  $("#app").innerHTML='<div class="mute" style="padding:30px;text-align:center">載入中…</div>';
+  const E=await etfLoad(); if(baseRaw!=="etf"&&!(baseRaw||"").startsWith("etf-"))return;
+  if(!E){$("#app").innerHTML='<p class="note">ETF 資料暫時讀不到，請稍後再試。</p>';return}
+  const [kk,cc]=(key||"").replace(/^-/,"").split("."), kind=["active","passive"].includes(kk)?kk:"all", cls=cc||"";
+  const KN={active:"主動",passive:"被動"}, lev=cls==="槓桿"||cls==="反向";
+  let list=E.rows.filter(r=>(kind==="all"||r.kind===KN[kind])&&(cls?r.cls===cls:(r.cls!=="槓桿"&&r.cls!=="反向")));   /* 槓桿／反向預設不顯示（使用者 11/18） */
+  const cnt=f=>E.rows.filter(f).length, baseOK=r=>r.cls!=="槓桿"&&r.cls!=="反向";
+  const kb=[["all","全部",cnt(baseOK)],["active","主動式",cnt(r=>r.kind==="主動"&&baseOK(r))],["passive","被動式",cnt(r=>r.kind==="被動"&&baseOK(r))]];
+  const cb=ETF_CATS.concat(["槓桿","反向"]).filter(c=>E.rows.some(r=>r.cls===c)).map(c=>[c,c,E.rows.filter(r=>r.cls===c&&(kind==="all"||r.kind===KN[kind])).length]);
+  const hs=(k,c)=>`#etf-${k}${c?"."+c:""}`;
+  sortList(list);
+  const dd=(E.date||"").slice(5).replace("-","/");
+  let h=`<h2 style="margin:4px 0 6px">ETF 專區　<span class="c-good">${list.length}</span> 檔<small class="mute" style="font-size:13px;margin-left:8px">${dd} 收盤</small></h2>
+    <p class="note" style="margin-top:0">台股上市櫃 ETF。<b>不做型態判斷</b>（ETF 跟著指數與成分股走，型態規則是為個股設計的），只提供 K 線與基本資訊。K 線價格<b>未做配息還原</b>，配息日會出現向下的跳空缺口，不代表下跌。槓桿／反向 ETF 預設不顯示，要看請點下面的「槓桿」「反向」。成分股連結、折溢價、規模之後再補。</p>
+    <div class="filters">${kb.map(([k,n,c])=>`<button class="btn ${kind===k&&!cls?"on":""}" data-etf="${hs(k,"")}">${n}<small>${c}</small></button>`).join("")}</div>
+    <div class="filters" style="margin-top:6px">${cb.map(([c,n,x])=>`<button class="btn ${cls===c?"on":""}" data-etf="${cls===c?hs(kind,""):hs(kind,c)}">${n}<small>${x}</small></button>`).join("")}</div>`;
+  h+=sortBar()+`<div class="tw cv${window.CHV||2}"><table class="stt"><thead><tr><th class="sn1">ETF</th><th class="chg2">股價<br>漲跌幅</th><th class="cc">類型</th><th class="cc">分類</th><th class="cc">成交值</th></tr></thead><tbody>`
+    +list.map(s=>`<tr class="row" data-e="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span><span class="tvm">成交值 ${turnover(s)}</span></td>${chgCell(s)}<td class="cc"><span class="badge b-${s.kind==="主動"?"good":"range"}">${s.kind}式</span></td><td class="cc">${s.cls}</td><td class="cc">${turnover(s)}</td></tr>`).join("")+`</tbody></table></div>`;
+  if(!list.length) h+=`<p class="note">沒有符合的 ETF。</p>`;
+  $("#app").innerHTML=h;
+  document.querySelectorAll("tr.row[data-e]").forEach(r=>r.onclick=()=>{location.hash="e-"+r.dataset.e});
+  document.querySelectorAll("[data-etf]").forEach(b=>b.onclick=()=>{location.hash=b.dataset.etf.slice(1)});
+}
+async function openEtf(code){
+  const E=await etfLoad(), r=E&&E.rows.find(x=>x.code===code); if(!r) return;
+  closeModal(); document.body.style.overflow="hidden";
+  const el=document.createElement("div"); el.className="modal"; el.innerHTML='<div class="mpanel"><div class="mute" style="padding:30px;text-align:center">載入中…</div></div>';
+  el.addEventListener("click",e=>{ if(e.target===el) goBack(); }); document.body.appendChild(el); modalEl=el;
+  const j=await fetch("s/"+code+".json").then(x=>x.ok?x.json():null).catch(()=>null);
+  if(location.hash!=="#e-"+code) return;
+  if(!j||!j.bars||!j.bars.length){el.querySelector(".mpanel").innerHTML='<div class="mute" style="padding:30px;text-align:center">這檔 ETF 的 K 線暫時讀不到。<br><button class="btn" onclick="goBack()">關閉</button></div>';return}
+  const s={code:r.code,name:r.name,group:"ETF",industry:r.cls,bars:j.bars,geo:[],tags:[],defInd:{},etf:1,market:r.market};
+  mountModal(s,`<div class="mtitle"><b>${r.code} ${r.name}</b> <span class="badge b-${r.kind==="主動"?"good":"range"}">${r.kind}式</span><span class="mute"> ETF・${r.cls}</span></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span></div>`,
+    {notes:`<p>ETF 不做型態判斷。K 線價格未做配息還原（配息日會有向下缺口）。</p>`});
+  startLive(chart, code+(r.market==="TPEX"?".TWO":".TW"), false);
 }
 function openIndex(key){
   const ix=(D.index||{})[key]; if(!ix) return;
@@ -1767,10 +1807,11 @@ async function myDraw(){
 let baseRaw=null;                 // 目前底層頁面的 hash（列表頁）
 function renderBase(h){
   baseRaw=h;
-  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&!h.startsWith("mix")&&h!=="mydraw"&&h!=="learn");
+  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&!h.startsWith("mix")&&h!=="mydraw"&&h!=="learn"&&h!=="etf"&&!h.startsWith("etf-"));
   $("#n-scr").classList.toggle("on", h.startsWith("scr")||h==="learn");
   $("#n-mix").classList.toggle("on", h.startsWith("mix"));
   $("#n-draw").classList.toggle("on", h==="mydraw");
+  $("#n-etf").classList.toggle("on", h==="etf"||h.startsWith("etf-"));
   { const lb=h==="learn"; document.documentElement.classList.toggle("lrn",lb); ["lb1","lb2","lb3"].forEach((c,i)=>document.documentElement.classList.toggle(c,lb&&(window.LBG||1)===i+1)); const de=document.documentElement; const ltp=window.LTP||"B"; de.classList.toggle("ltA",lb&&ltp==="A"); de.classList.toggle("ltB",lb&&ltp==="B"); const lcv=window.LCV||"X"; de.classList.toggle("lcX",lb&&lcv==="X"); de.classList.toggle("lcY",lb&&lcv==="Y"); if(!lb){const d=document.getElementById("ldock");if(d)d.classList.remove("on")} de.classList.toggle("lmb2",lb&&window.LMB===2) }
   if(h.startsWith("g-")) group((D.groups[+h.slice(2)]||{}).name);
   else if(h.startsWith("find-")) finder(h.slice(5));
@@ -1778,13 +1819,14 @@ function renderBase(h){
   else if(h.startsWith("scr")) screener(h.slice(4));
   else if(h==="mix"||h.startsWith("mix-")) screener(h.slice(4),1);
   else if(h==="mydraw") myDraw();
+  else if(h==="etf"||h.startsWith("etf-")) etfPage(h.slice(4));
   else if(h==="learn") learnPage();
   else home();
 }
 function goBack(){
   const h = decodeURIComponent(location.hash.slice(1));
-  if(h.startsWith("s-")||h.startsWith("i-")){ if(navStack.length>1&&navStack[navStack.length-2]===(baseRaw||"")) history.back(); else {window.__navRep=true;location.replace("#"+(baseRaw||""))} }
-  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("mix") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn") location.hash = "";
+  if(h.startsWith("s-")||h.startsWith("i-")||h.startsWith("e-")){ if(navStack.length>1&&navStack[navStack.length-2]===(baseRaw||"")) history.back(); else {window.__navRep=true;location.replace("#"+(baseRaw||""))} }
+  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("mix") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn" || h==="etf" || h.startsWith("etf-")) location.hash = "";
 }
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
@@ -1795,9 +1837,9 @@ document.addEventListener("keydown",e=>{
 });
 function route(){
   const h = decodeURIComponent(location.hash.slice(1));
-  if(h.startsWith("s-")||h.startsWith("i-")){
-    if(baseRaw===null){ renderBase(""); }
-    if(h.startsWith("s-")) openStock(h.slice(2)); else openIndex(h.slice(2));
+  if(h.startsWith("s-")||h.startsWith("i-")||h.startsWith("e-")){
+    if(baseRaw===null){ renderBase(h.startsWith("e-")?"etf":""); }
+    if(h.startsWith("s-")) openStock(h.slice(2)); else if(h.startsWith("e-")) openEtf(h.slice(2)); else openIndex(h.slice(2));
     return;
   }
   closeModal();
@@ -1868,6 +1910,7 @@ if(D.market==="US") $("#n-mix").style.display="none";   // 美股沒有重訊／
 if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textContent="美股"}
 /* 11/17 使用者：手機版「美股／台股」鈕移到「設定」左邊（上班模式那一列），電腦版維持在導覽列 */
 {const mq=matchMedia("(max-width:900px)"),pl=()=>{const m=$("#n-mkt"),fz=document.querySelector("header .fz"),st=$("#n-set");if(mq.matches)fz.insertBefore(m,st);else document.querySelector("header nav").appendChild(m)};pl();mq.addEventListener&&mq.addEventListener("change",pl)}
+if(D.market==="US") $("#n-etf").style.display="none";   /* ETF 專區只有台股 */
 if(D.market==="US"||/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-set").style.display="";   /* 11/17 使用者：設定鈕在最右邊，台股登入後也要有 */   // 登入後顯示「美股」，登入前才顯示「管理者專區」
 renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
