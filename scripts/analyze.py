@@ -432,9 +432,11 @@ def main():
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
             "market": mk.get(code), "state": state, "sub": sub, "tags": tags,
-            "close": raw[T]["c"], "pc": raw[T - 1]["c"] if T else None,     # 前一日收盤（前端算漲跌金額、漲跌停）
-            "r5": [r2((raw[i]["c"] / raw[i - 1]["c"] - 1) * 100) for i in range(max(1, T - 4), T + 1)],   # 近 5 日每日漲跌幅（相對抗跌族群的「近 5 日也抗跌」）
-            "chg": r2((raw[T]["c"] / raw[T - 1]["c"] - 1) * 100) if T else 0,
+            "close": raw[T]["c"],
+            # 11/17 Fable 審查：除權息當天要用「還原後的參考價」算漲跌（原本用沒還原的昨收，除息日會顯示假下跌、誤判跌停）
+            "pc": r2(raw[T - 1]["c"] * raw[T - 1]["f"] / raw[T]["f"]) if T else None,     # 前一日收盤（前端算漲跌金額、漲跌停；已換成今天的除權息基準）
+            "r5": [r2((bars[i]["c"] / bars[i - 1]["c"] - 1) * 100) for i in range(max(1, T - 4), T + 1)],   # 近 5 日每日漲跌幅（相對抗跌族群的「近 5 日也抗跌」，用還原價）
+            "chg": r2((bars[T]["c"] / bars[T - 1]["c"] - 1) * 100) if T else 0,
             "vol": round(raw[T]["v"] / 1000),
         }
         dn_ = dmi_now(bars)

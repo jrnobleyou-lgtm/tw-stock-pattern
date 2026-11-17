@@ -567,7 +567,8 @@ function limPx(pc,up){const raw=pc*(up?1.1:.9),t=tick(raw);const v=up?Math.floor
 function chgCell(s){
   if(s.new&&!s.pc) return `<td class="chg2"><div class="p mute">—</div><div class="a mute">上市櫃首日</div></td>`;   /* 新股第一天沒有前一日收盤可比 */
   const pc=s.pc||(s.chg>-100?s.close/(1+s.chg/100):null), amt=pc?s.close-pc:0, col=chgColor(s.chg), V=window.CHV||2;
-  const lu=D.market!=="US"&&pc&&s.close>=limPx(pc,1)-1e-9, ld=D.market!=="US"&&pc&&s.close<=limPx(pc,0)+1e-9;
+  const lim=D.market!=="US"&&!s.new&&pc;   /* 新股前 5 天沒有漲跌幅限制，不標漲跌停 */
+  const lu=lim&&s.close>=limPx(pc,1)-1e-9, ld=lim&&s.close<=limPx(pc,0)+1e-9;
   const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
   const lm=lu?"lm u":ld?"lm d":"";
   const CP=window.CPV||2, px=s.close, pct=`${lu?"漲停 ":ld?"跌停 ":""}${p}`;
