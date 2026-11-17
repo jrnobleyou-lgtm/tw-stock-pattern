@@ -35,6 +35,11 @@ html.work body::before{background:linear-gradient(rgba(5,3,14,.35),rgba(5,3,14,.
 .fz #n-set,.fz #n-mkt{color:var(--fg);text-decoration:none;padding:3px 12px;border:1px solid var(--line-t);border-radius:8px;font-size:13px;margin-right:6px}
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,4,24,.5),rgba(8,4,24,.5)),url(bg.jpg) center/cover no-repeat,var(--bg)}
 svg text{text-shadow:none}
+/* 11/17 使用者：標題做成框（🏠 圖示＋紫色發光），不在首頁時框內多一個「↩ 回首頁」小標（緊貼標題、左邊不留空白） */
+#home-link{padding:5px 14px 5px 10px;border:1.5px solid #a78bfa;border-radius:10px;background:rgba(167,139,250,.14);box-shadow:0 0 10px rgba(167,139,250,.35);cursor:pointer;display:inline-flex;align-items:center;gap:0;white-space:nowrap}
+#home-link:hover{background:rgba(167,139,250,.26)}
+#home-link::before{content:"🏠";font-size:.9em;margin-right:6px}
+html.sub #home-link::after{content:"↩ 回首頁";font-size:12px;font-weight:400;color:#c4b5fd;background:rgba(167,139,250,.22);padding:2px 8px;border-radius:6px;margin-left:8px;margin-right:-6px}
 header{position:sticky;top:0;z-index:30;background:rgba(9,5,26,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:16px;border-bottom:1px solid var(--line-t);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
 h1{font-size:18px;margin:0}
 header p{min-width:0;max-width:100%}
@@ -297,7 +302,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
-<footer class="wrap mute" style="font-size:12px;padding-bottom:40px">資料來源：證交所、櫃買中心盤後資料（價格未做除權息還原）。本站內容由程式自動計算，僅供研究與資訊參考，不構成任何投資建議；型態判定為系統規則，可能與實際看盤有落差，請自行判斷、風險自負。</footer>
+<footer class="wrap mute" style="font-size:12px;padding-bottom:40px">資料來自公開市場資訊（價格未做除權息還原）。本站內容由程式自動計算，僅供研究與資訊參考，不構成任何投資建議；型態判定為系統規則，可能與實際看盤有落差，請自行判斷、風險自負。</footer>
 <script src="data.js"></script>
 <script>
 const D = window.DATA;
@@ -355,7 +360,7 @@ function txQuote(j){              // 標籤用：目前時段的最新價、漲�
   const spot=useN?(j.spotNight&&j.spotNight.ref):(j.spot&&(j.spot.c||j.spot.ref));
   return {c:q.c,ref:q.ref,ses:useN?"夜盤":"日盤",time:hms(q.time),basis:spot?q.c-spot:null,id:q.id};
 }
-const liveIdx={};   // 即時行情（證交所）：{TWII:{...},OTC:{...}}
+const liveIdx={};   // 即時行情：{TWII:{...},OTC:{...}}
 function renderIdx(){
   const ix=D.index||{}, el=$("#idx"); if(!el) return;
   let txh="";
@@ -443,7 +448,7 @@ function mktCards(){
   const h=(D.market==="US"?"":inst()+fut());
   return h?`<div class="mkr">${h}</div>`:"";
 }
-/* ───────── 盤後一眼看懂：匯率、原油、美債（美股頁：美股指數＋VIX）。資料來自 Worker /api/macro（Yahoo），標資料時間 ───────── */
+/* ───────── 盤後一眼看懂：匯率、原油、美債（美股頁：美股指數＋VIX）。資料來自 Worker /api/macro，標資料時間 ───────── */
 function loadMacro(){
   const el=document.getElementById("macro"); if(!el) return;
   const US=D.market==="US";
@@ -763,7 +768,7 @@ function screener(key,mix){
   } else if(DMI_NOTE[cur.k]) h += sortBar([["dmid","DMI差值"],["adx","ADX"]])+stockTable(list,false,true,true);
   else h += sortBar()+stockTable(list,false,true);
   if(DMI_NOTE[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${DMI_NOTE[cur.k]}</p>${DMI_HELP}<div class="sortbar">`);
-  const RVN={mops:"<b>條件：</b>上一個交易日收盤（13:30）之後到現在，有公告重大訊息的股票（同一則天天重發的只算第一次）。當天的重訊取自鉅亨網轉載的公開資訊觀測站公告，隔天早上以證交所／櫃買開放資料校正；這個名單在網站每次更新時重算（盤中約每 2 分鐘、收盤後到傍晚、隔天清晨）。點股票後切到「消息」看內容。",
+  const RVN={mops:"<b>條件：</b>上一個交易日收盤（13:30）之後到現在，有公告重大訊息的股票（同一則天天重發的只算第一次）。重訊取自公開資訊觀測站公告，隔天早上校正；這個名單在網站每次更新時重算（盤中約每 2 分鐘、收盤後到傍晚、隔天清晨）。點股票後切到「消息」看內容。",
     revhi:"<b>條件：</b>這檔最新公布的月營收，比前 11 個月都高（近 12 個月新高；要有 13 個月以上資料）。每月約 10 號前公布完，公布下個月之前標籤都保留。點股票後切到「消息」看近 6 個月營收。",
     yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。",
     m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。財報公布後（Q3 約 11/14 前）更新。點股票後切到「消息」看近 3 季營收與三率。"};
@@ -798,14 +803,14 @@ async function loadNews(s,np){
   const [f,n]=await Promise.all([fetch("f/"+s.code+".json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),fetch("/api/news?c="+s.code).then(r=>r.ok?r.json():null).catch(()=>null)]);
   const today=D.dates[D.dates.length-1], DIR=window.NWDIR!==false;   /* ▲▼＋理由：11/16 使用者確認後打開 */
   const tw=(t,day)=>{if(!(t>0))return{d:"",t:""};const d=new Date((t+28800)*1000).toISOString();return{d:d.slice(0,10),t:day?"":d.slice(11,16)}};
-  const cut=mopsCut();   /* 11/16：重訊（鉅亨轉載＋官方隔天校正）跟新聞同一包；上一交易日收盤後的標「今天」 */
+  const cut=mopsCut();   /* 11/16：重訊跟新聞同一包；上一交易日收盤後的標「今天」 */
   const mops=(n&&n.items||[]).filter(x=>x.mo).map(x=>({...tw(x.t),title:x.title,link:/^https:\/\//.test(x.link||"")?x.link:"",src:x.src==="公開資訊觀測站"?"":x.src,mo:1,nw:x.t>=cut}));
   const news=(n&&n.items||[]).filter(x=>!x.mo&&/^https:\/\//.test(x.link||"")).map(x=>({...tw(x.t,x.day),title:x.title,link:x.link,src:x.src,dir:x.d,why:x.w}));
   const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
   const dm=x=>!DIR||x.dir==null?"":x.dir>0?'<b class="up">▲</b> ':x.dir<0?'<b class="dn">▼</b> ':'<b class="mute">↔️</b> ';   /* 持平符號：使用者 11/17 指定 ↔️ */
   const row=x=>`<div class="it"><div class="dt">${x.d.slice(5).replace("-","/")} ${x.t||""}</div><div>${dm(x)}${x.mo?`<span class="mk mo">重訊</span>`:""}${x.mo&&x.nw?`<span class="mk td">今天</span>`:""}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}${x.src?`<span class="mute" style="font-size:12px">　${esc(x.src)}</span>`:""}${DIR&&x.why?`<div class="mute" style="font-size:12px;margin-top:2px">${esc(x.why)}</div>`:""}</div></div>`;
   const empty=t=>`<div class="mute" style="padding:6px 2px">${t}</div>`;
-  const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"<br>重訊：當天取自鉅亨網轉載的公開資訊觀測站公告（約每 30 分更新），隔天以證交所／櫃買開放資料校正；「今天」＝上一交易日收盤後":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
+  const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"<br>重訊：取自公開資訊觀測站公告（約每 30 分更新，隔天校正）；「今天」＝上一交易日收盤後":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
   const hi=f?`${f.revHi?'<span class="hib">月營收創新高</span>':""}${f.yoyHi?'<span class="hib">年增新高</span>':""}`:"";
   const rev=f&&f.rev||[], eps=f&&f.eps||[], qq=f&&f.q||[];
   const mx=Math.max(1,...rev.map(r=>r[1]));
@@ -841,7 +846,7 @@ function mountModal(s, headHTML, opts){
   document.body.appendChild(el); modalEl=el;
   chart=new Chart(el.querySelector("#chart"), s, opts||{});
 }
-/* ───────── 盤中即時 K 棒（向 /api/quote 取 Yahoo 當日 1 分 K 合成今天的 開高低收量） ───────── */
+/* ───────── 盤中即時 K 棒（向 /api/quote 取當日 1 分 K 合成今天的 開高低收量） ───────── */
 function twMarketOpen(){
   const p=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Taipei",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date()).reduce((a,x)=>(a[x.type]=x.value,a),{});
   const m=(+p.hour%24)*60+ +p.minute; return !/Sat|Sun/.test(p.weekday)&&m>=540&&m<=815;
@@ -864,7 +869,7 @@ function startLive(c,sym,isIndex){
       if(last&&q.date<last.d) return;
       if(last&&q.date===last.d&&!open&&!(D.live&&D.live.date===q.date)) return;   // 收盤後，若靜態資料是官方收盤資料就不覆蓋；若是盤中暫時價（D.live）就用最後的即時價更新
       c.setLive({d:q.date,o:q.o,h:q.h,l:q.l,c:q.c,v:isIndex?(q.amt||0):US?q.v*q.c:Math.round(q.v/1000),f:1});
-      const t=tag(); if(t){const hm=q.hms||(US?new Date(q.t*1000).toLocaleTimeString("zh-TW",{timeZone:"America/New_York",hour12:false,hour:"2-digit",minute:"2-digit"})+" 美東":new Date((q.t+28800)*1000).toISOString().slice(11,16));t.style.display="";t.textContent=open?("盤中 "+hm+(q.src==="yahoo"?"（延遲約20分）":"")):("收盤 "+hm+(US?"":isIndex?"（官方資料稍後更新）":sym.endsWith(".TWO")?"（官方資料今天 15:10 後更新）":"（官方資料明天 06:00 後更新）"))}
+      const t=tag(); if(t){const hm=q.hms||(US?new Date(q.t*1000).toLocaleTimeString("zh-TW",{timeZone:"America/New_York",hour12:false,hour:"2-digit",minute:"2-digit"})+" 美東":new Date((q.t+28800)*1000).toISOString().slice(11,16));t.style.display="";t.textContent=open?("盤中 "+hm+(q.delay>0?"（延遲約20分）":"")):("收盤 "+hm+(US?"":isIndex?"（官方資料稍後更新）":sym.endsWith(".TWO")?"（官方資料今天 15:10 後更新）":"（官方資料明天 06:00 後更新）"))}
     }catch(_){}
     if(chart===c&&isOpen()) liveTimer=setTimeout(run,10000);
   };
@@ -909,7 +914,7 @@ function openIndex(key){
     const s={code:key,name:"台指期",group:"台指期",industry:"",bars:ix.bars,geo:[],tags:[],defInd:ix.defInd||{}};
     const sw=`<span class="chip2" style="margin-left:6px">${[["TX","全盤"],["TXD","日盤"],["TXN","夜盤"]].map(([k,t])=>`<button class="btn ${key===k?"on":""}" onclick="location.hash='i-${k}'">${t}</button>`).join("")}</span>`;
     mountModal(s,`<div class="mtitle"><b>台指期</b> <span class="mute"> 大台近月</span>${sw}</div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span></div>`,
-      {notes:`<p>台指期（大台 TX）近月連續日 K，資料來自期交所。全盤＝前一晚 15:00 夜盤＋當天日盤（夜盤算在下一個交易日）；日盤＝08:45–13:45；夜盤＝15:00–隔天 05:00。從首頁點標籤會依目前時段打開日盤或夜盤。結算日當天日盤仍是舊月份，15:00 夜盤起換到下個月，所以換月那天前後會有價差跳動。成交量單位為口。</p>`});
+      {notes:`<p>台指期（大台 TX）近月連續日 K，資料來自公開市場資訊。全盤＝前一晚 15:00 夜盤＋當天日盤（夜盤算在下一個交易日）；日盤＝08:45–13:45；夜盤＝15:00–隔天 05:00。從首頁點標籤會依目前時段打開日盤或夜盤。結算日當天日盤仍是舊月份，15:00 夜盤起換到下個月，所以換月那天前後會有價差跳動。成交量單位為口。</p>`});
     startLiveTX(chart,key==="TXD"?"day":key==="TXN"?"night":"all"); return;
   }
   const s={code:key,name:ix.name,group:"台股大盤",industry:"",bars:ix.bars,geo:[],tags:[],defInd:ix.defInd||{}};
@@ -1668,7 +1673,7 @@ class Chart{
     const ii=ci!=null&&ci>=0&&ci<B.length?ci:ve-1;          // 沒點選時預設顯示畫面最右邊（最新）那根
     if(ii>=0&&ii<B.length){
       const b=B[ii];let prev=ii>0?B[ii-1].c:b.o;
-      if(s.code==="TXN"&&this.tf==="D"){             // 夜盤的漲跌要跟前一個交易日的日盤收盤比（期交所的算法），不是跟前一晚夜盤比
+      if(s.code==="TXN"&&this.tf==="D"){             // 夜盤的漲跌要跟前一個交易日的日盤收盤比（期貨的算法），不是跟前一晚夜盤比
         const dB=((D.index||{}).TXD||{}).bars||[];let ref=null;for(const r of dB){if(r[0]<b.d)ref=r[4];else break}
         if(ref) prev=ref;
       }
@@ -1834,7 +1839,7 @@ $("#home-link").onclick=()=>{if(location.hash)location.hash="";else{window.scrol
 if(D.market==="US"){                 // 美股版：同一套頁面，換標題與說明，不抓台股即時
   document.title="美股型態確認"; $("#home-link").textContent="美股型態確認";
   $("#sq").placeholder="自訂搜尋：NVDA AAPL 微軟…";
-  const p=document.querySelector("header>p"); if(p) p.textContent="每日美股收盤後自動更新，依族群統計美股有多少檔轉強、弱轉強、型態好、盤整、走弱。資料來源：Yahoo Finance。";
+  const p=document.querySelector("header>p"); if(p) p.textContent="每日美股收盤後自動更新，依族群統計美股有多少檔轉強、弱轉強、型態好、盤整、走弱。資料來自公開市場資訊。";
   $("#asof").textContent="資料日期 "+D.asof+"（美東）";
   const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; 
 }

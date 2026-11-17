@@ -48,7 +48,7 @@ function parseMis(j) {
   const date = d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
   const tl = m.tlong ? Math.floor(Number(m.tlong) / 1000) : 0;
   const idx = m.c === "t00" || m.c === "o00", amt = idx && num(m.m) != null ? Math.round(num(m.m) * (m.c === "t00" ? 0.776 : 0.967)) / 1000 : null;   // 指數：m 換算成億元，再依 11/12 官方值校正（證交所即時的 m 比官方成交金額高：加權約 +29%、櫃買約 +3.5%）；收盤後以官方為準
-  return { date, o, h, l, c, amt, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, src: "mis", delay: 0 };
+  return { date, o, h, l, c, amt, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, delay: 0 };
 }
 async function misQuote(sym) {
   const ch = misChannel(sym); if (!ch) { misErr = "nochannel"; return null; }
@@ -325,7 +325,7 @@ async function yahooTX() {
   const q = { id: "WTX&", name: f.symbolName, date: ymd8, time: hms6, o: raw(f.regularMarketOpen), h: raw(f.regularMarketDayHigh), l: raw(f.regularMarketDayLow),
               c: raw(f.price), ref: raw(f.regularMarketPreviousClose), v: Number(f.volume) || 0, oi: Number(f.openInterest) || null };
   const spot = sp ? { c: raw(sp.price), ref: raw(sp.regularMarketPreviousClose) } : null;
-  return isDay ? { day: q, night: null, spot, spotNight: null, src: "yahoo" } : { day: null, night: q, spot: null, spotNight: spot ? { ref: spot.c } : null, src: "yahoo" };
+  return isDay ? { day: q, night: null, spot, spotNight: null } : { day: null, night: q, spot: null, spotNight: spot ? { ref: spot.c } : null };
 }
 
 // ── 管理者自己畫的型態線：KV 的 draw/<市場>/<代號>；所有人都能讀（管理者專區的美股本身就要登入），只有管理者能寫
@@ -445,7 +445,7 @@ export default {
         const hit = await cache.match(ck); if (hit) return hit;
         const [d, n] = await Promise.all([taifexList(0), taifexList(1)]);
         const day = txPick(d), night = txPick(n);
-        let out = { day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot, src: "taifex" };
+        let out = { day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot };
         if (!out.day && !out.night) {
           const err = txErr;
           try { const y = await yahooTX(); if (y) out = y; } catch (e) { /* 兩邊都失敗 */ }
@@ -504,7 +504,7 @@ export default {
     try { if (q) return new Response(JSON.stringify(q), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } }); } catch (e) { /* 改用 Yahoo */ }
     try {
       const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 20, cacheEverything: true } });
-      if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, src: isUS ? "yahoo-us" : "yahoo", delay: isUS ? 0 : 20, dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }; status = 200; } }
+      if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, delay: isUS ? 0 : 20, dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }; status = 200; } }
     } catch (e) { /* 回傳 502 */ }
     if (status !== 200) out.dbg = { colo: (req.cf && req.cf.colo) || "", misErr };   // 失敗原因（在失敗之後才取，才是這次的結果）
     return new Response(JSON.stringify(out), { status, headers: { "content-type": "application/json", "cache-control": "public, max-age=5" } });
