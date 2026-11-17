@@ -489,6 +489,9 @@ def main():
                       "volup": bool(g.get("volup")),
                       "stop": (r2(R(g["stop"], bars[g["rect"][0]]["d"])) if g.get("stop") else None), "stopA": (r2(g["stop"]) if g.get("stop") else None),
                       "rect": ([bars[g["rect"][0]]["d"], bars[g["rect"][1]]["d"], r2(R(g["rect"][2], bars[g["rect"][0]]["d"])), r2(R(g["rect"][3], bars[g["rect"][0]]["d"])), r2(g["rect"][2]), r2(g["rect"][3])] if g.get("rect") else None)} for g in geo]
+        gfull = st["geo"]
+        if not us:                                       # 台股：data.js 只留篩選要用的欄位，畫圖座標放進個股檔 s/<代號>.json（點開才下載）
+            st["geo"] = [{k: g[k] for k in ("kind", "dir", "status", "day")} for g in gfull]
         st["candle"] = [{"n": n, "d": d} for n, d in candle]
         if rb:
             rb["low"] = r2(R(rb["low"], bars[rb["low_idx"]]["d"]))
@@ -505,7 +508,7 @@ def main():
         rows = [[di[b["d"]], b["o"], b["h"], b["l"], b["c"], round(b["v"] / 1000), round(b["f"], 5)] for b in raw[n0:]]
         if full:
             with open(os.path.join(OUT, "s", code + ".json"), "w") as f:
-                json.dump({"bars": rows}, f, separators=(",", ":"))
+                json.dump({"bars": rows, **({"geo": gfull} if not us else {})}, f, separators=(",", ":"))
             fin = dict(rv or {})                         # 消息分頁左欄：月營收近 6 個月＋單季 EPS 近 3 季
             if code in epss:
                 fin["eps"] = epss[code]

@@ -867,6 +867,7 @@ function openStock(code){
   const s = D.stocks[code]; if(!s) return;
   if(!s.bars){   // 全市場版：K 線資料點開才載入
     fetch("s/"+code+".json").then(r=>r.json()).then(j=>{const DI=window.__DI||(window.__DI=Object.fromEntries(D.dates.map((d,i)=>[d,i])));   /* 美股方案 B：K 線存日期字串 → 換成總表第幾天 */
+    if(j.geo) s.geo=j.geo;   /* 台股：形態座標搬到個股檔，點開才載入（data.js 只留 kind/dir/status/day） */
     s.bars=j.bars.map(b=>typeof b[0]==="string"?[DI[b[0]]].concat(b.slice(1)):b).filter(b=>D.dates[b[0]]!==undefined);   /* K 線分包比總表新（上傳只成功一半）時，日期對不上的先不顯示 */ if(location.hash==="#s-"+code) openStock(code)}).catch(()=>{const m=document.querySelector(".modal .mpanel");if(m)m.innerHTML=`<div class="mute" style="padding:30px;text-align:center;line-height:1.8">${s.code} ${s.name}<br>這個預覽版只內嵌 207 檔的 K 線；正式網站會有全部個股。<br><button class="btn" onclick="goBack()">關閉</button></div>`});
     closeModal(); document.body.style.overflow="hidden";
     const el=document.createElement("div"); el.className="modal"; el.innerHTML='<div class="mpanel"><div class="mute" style="padding:30px;text-align:center">載入中…</div></div>';
@@ -1381,7 +1382,7 @@ class Chart{
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
         const isV=gm.kind.startsWith("V形");                                  // V 形用鈷藍色粗圓角虛線（使用者 11/14 選定）
         const ZC="#4D7CFF", LC=col;                                            // 所有型態折線固定鈷藍色（使用者 11/14 定）；趨勢線與頸線依多空紅綠
-        const pts=gm.pts.map(q=>[idxOf(B,q[0]),ad&&q[2]!=null?q[2]:q[1]]).filter(([i])=>i>=0);
+        const pts=(gm.pts||[]).map(q=>[idxOf(B,q[0]),ad&&q[2]!=null?q[2]:q[1]]).filter(([i])=>i>=0);
         if(!pts.length||pts[pts.length-1][0]<vs) continue;
         if(gm.rect){const R=gm.rect,a=idxOf(B,R[0]),b=idxOf(B,R[1]),h1=ad&&R[4]!=null?R[4]:R[2],l1=ad&&R[5]!=null?R[5]:R[3];
           if(a>=0&&b>=0)o+=`<rect x="${x(a)-cw/2-2}" y="${y(h1)-3}" width="${(b-a+1)*cw+4}" height="${y(l1)-y(h1)+6}" rx="6" fill="#7dd3fc" fill-opacity=".08" stroke="#7dd3fc" stroke-dasharray="4 3"/>`}
