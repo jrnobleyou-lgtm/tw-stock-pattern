@@ -304,7 +304,9 @@ const STATES = ["轉強","弱轉強","型態好","盤整","走弱"];
 const CLS = {"轉強":"strong","弱轉強":"wstrong","型態好":"good","盤整":"range","走弱":"weak","新股":"new"};   /* 新股：剛上市櫃不到 40 根，不算進五種型態 */
 const $ = s => document.querySelector(s);
 const AM=D.asofM||{};
-$("#asof").textContent = D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 " + D.asof;
+/* 13:30 收盤後的那幾輪＝收盤價，別再寫「盤中」（官方日資料隔天早上才會換上） */
+function liveTxt(){const d=D.live.date.slice(5),h=D.live.hms;return h>="13:30"?`型態依 ${d} 收盤價計算（官方資料隔日更新）`:`型態依 ${d} ${h} 盤中價格計算（每 10 分鐘更新）`}
+$("#asof").textContent = D.live ? liveTxt() : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 " + D.asof;
 
 /* ───────── 共用 ───────── */
 function badge(s,sub){return `<span class="badge b-${CLS[s]}">${s}</span>` + (sub?`<span class="tag ${sub==="破底走弱"?"bad":""}">${sub}</span>`:"")}
@@ -381,7 +383,7 @@ async function pollIdx(){
   if(ix.TX) await fetchTX();
   renderIdx();
   const t=Object.values(liveIdx).map(q=>q.t).filter(Boolean).sort().pop(), q0=liveIdx.TWII||liveIdx.OTC;
-  const base=D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 "+D.asof;
+  const base=D.live ? liveTxt() : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TPEX) ? `資料日期　上市 ${AM.TWSE.slice(5)}・上櫃 ${AM.TPEX.slice(5)}` : "資料日期 "+D.asof;
   $("#asof").innerHTML=base+(q0?`<span style="color:#f0d34a">　${twMarketOpen()?"盤中":"即時"} ${q0.date.slice(5)} ${q0.hms||""}</span>`:"");
   idxTimer=setTimeout(pollIdx,(twMarketOpen()||txSession())?10000:120000);
 }
@@ -473,7 +475,7 @@ function swLiveTick(){
     const i=t.indexOf("{"); const nd=JSON.parse(t.slice(i).replace(/;\s*$/,""));
     /* 11/15 使用者：盤中整個首頁都跟著更新（五種型態統計、盤後一眼看懂、強弱族群、族群表），保留捲動位置 */
     for(const k of ["total","groups","stocks","live","asof","asofM","inst","fut","index","dates"]) if(nd[k]!==undefined) D[k]=nd[k];
-    const am=D.asofM||{}; $("#asof").textContent = D.live ? `型態依 ${D.live.date.slice(5)} ${D.live.hms} 盤中價格計算（每 10 分鐘更新）` : (am.TWSE&&am.TPEX&&am.TWSE!==am.TPEX) ? `資料日期　上市 ${am.TWSE.slice(5)}・上櫃 ${am.TPEX.slice(5)}` : "資料日期 " + D.asof;
+    const am=D.asofM||{}; $("#asof").textContent = D.live ? liveTxt() : (am.TWSE&&am.TPEX&&am.TWSE!==am.TPEX) ? `資料日期　上市 ${am.TWSE.slice(5)}・上櫃 ${am.TPEX.slice(5)}` : "資料日期 " + D.asof;
     if(!document.getElementById("swwrap")) return;
     const y=scrollY, sx=(document.querySelector("#app .sum")||{}).scrollLeft||0;
     const app=$("#app"); app.style.minHeight=app.offsetHeight+"px";              /* 重畫時先撐住高度，避免捲動位置跳動 */
