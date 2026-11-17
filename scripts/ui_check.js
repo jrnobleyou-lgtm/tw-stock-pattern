@@ -17,6 +17,7 @@ const srv = http.createServer((q, r) => { let u = decodeURIComponent(q.url.split
         for (const s of subs) { await pg.goto('http://localhost:8790/#' + base + '-' + s); await pg.waitForTimeout(150); n++ }
       }
     }
+    for (const h of ['etf', 'etf-active', 'etf-passive', 'etf-all.高股息', 'etf-all.槓桿', 'etf-all.債券', 'e-0050']) { await pg.goto('http://localhost:8790/#' + h); await pg.waitForTimeout(500); n++ }   // 11/18 ETF 專區
     await pg.goto('http://localhost:8790/#'); await pg.waitForTimeout(1500);
     const gs = await pg.evaluate(() => [...document.querySelectorAll('[data-swg],[data-g]')].slice(0, 6).map(x => x.dataset.swg || x.dataset.g));
     for (const g of gs) { await pg.goto('http://localhost:8790/#g-' + encodeURIComponent(g)); await pg.waitForTimeout(200); n++ }
