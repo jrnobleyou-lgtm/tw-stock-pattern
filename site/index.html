@@ -41,13 +41,13 @@ nav{display:flex;gap:8px}
 nav a{color:var(--fg);text-decoration:none;padding:4px 12px;border:1px solid var(--line-t);border-radius:8px;font-size:13px}
 nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 @media(min-width:901px){
-  /* 11/17 使用者：導覽列那排置中、設定放最右邊、搜尋框加大（HDV 1／2／3＝搜尋框 340／460／撐滿） */
-  .hr{flex:1 1 100%;margin-left:0}
+  /* 11/17 使用者選版本 3：搜尋框在「上班模式」右邊撐滿；三個指數置中；導覽列置中、設定在最右邊 */
+  header .hr{display:contents}
+  header .sf{flex:1 1 420px}header .sf input{flex:1;width:auto;font-size:16px;padding:9px 14px}header .sf .btn{font-size:16px;padding:7px 18px}
+  header #idx{flex:1 1 100%;justify-content:center}
   header nav{flex:1 1 100%;justify-content:center;position:relative}
   header nav #n-set{position:absolute;right:0;top:50%;transform:translateY(-50%)}
-  .hdv1 .sf input{width:340px;font-size:15px;padding:8px 12px}.hdv1 .sf .btn{font-size:15px;padding:6px 16px}
-  .hdv2 .sf input{width:460px;font-size:16px;padding:9px 14px}.hdv2 .sf .btn{font-size:16px;padding:7px 18px}
-  .hdv3 .sf{flex:1 1 420px}.hdv3 .sf input{flex:1;width:auto;font-size:16px;padding:9px 14px}.hdv3 .sf .btn{font-size:16px;padding:7px 18px}
+  header .fz{flex:1 1 100%;justify-content:flex-end;margin-left:0}
 }
 @media(max-width:900px){nav{flex-wrap:wrap;justify-content:center}.hr{justify-content:center}}
 
@@ -1799,8 +1799,7 @@ if(D.market==="US"){                 // 美股版：同一套頁面，換標題�
 }
 if(D.market==="US") $("#n-mix").style.display="none";   // 美股沒有重訊／月營收
 if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textContent="美股"}
-if(D.market==="US"||/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-set").style.display="";   /* 11/17 使用者：設定鈕在最右邊，台股登入後也要有 */
-document.documentElement.classList.add("hdv"+(window.HDV||1));   // 登入後顯示「美股」，登入前才顯示「管理者專區」
+if(D.market==="US"||/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-set").style.display="";   /* 11/17 使用者：設定鈕在最右邊，台股登入後也要有 */   // 登入後顯示「美股」，登入前才顯示「管理者專區」
 renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
