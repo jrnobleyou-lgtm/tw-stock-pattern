@@ -164,6 +164,35 @@ def stocks_map():
     return names, codes
 
 
+def priority_codes():
+    """優先判斷的股票：使用者的關注清單（data/watchlist_tw.txt）＋成交值前 100 名（讀線上 data.js）。11/17 使用者：全部都判，但排隊先判這些。"""
+    pri = set()
+    try:
+        for ln in open(os.path.join(ROOT, "data", "watchlist_tw.txt"), encoding="utf-8"):
+            c = ln.split("#")[0].split(",")[0].strip()
+            if c:
+                pri.add(c)
+    except Exception as e:
+        print("關注清單讀不到（略過）：", repr(e)[:80], file=sys.stderr)
+    try:
+        r = subprocess.run(["curl", "-sS", "-m", "60", os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev") + "/data.js"], capture_output=True, text=True)
+        d = json.loads(r.stdout[r.stdout.index("{"):r.stdout.rindex("}") + 1])
+        top = sorted(d["stocks"].values(), key=lambda s: -((s.get("close") or 0) * (s.get("vol") or 0)))[:100]
+        pri |= {s["code"] for s in top}
+    except Exception as e:
+        print("成交值前 100 名讀不到（略過）：", repr(e)[:80], file=sys.stderr)
+    return pri
+
+
+def is_priority(a, pri, codes):
+    txt = a["title"] + "\n" + a["text"]
+    for c in pri:
+        n = codes.get(c)
+        if (n and (len(n) >= 3 or n not in AMBIG) and n in txt) or re.search(r"[（(]" + c + r"[）)\-]", txt):
+            return True
+    return False
+
+
 def mentions_any(txt, names):
     """內文有沒有出現任何上市櫃公司（名稱或「(代號」）——都沒有就不送 AI（省額度）。"""
     if re.search(r"[（(]\d{4,6}[A-Z]?[）)\-]", txt):
@@ -328,7 +357,7 @@ def main(out):
         mo_rows = load("mops.json", [])
     daily = load("daily.json", {})                       # 11/17 使用者：每日新聞判斷統計表（比對要不要改付費 Claude Haiku），設定頁顯示
     dkey = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
-    day_stat = daily.setdefault(dkey, {"runs": 0, "articles": 0, "chars": 0, "batches": 0, "withStock": 0, "up": 0, "flat": 0, "down": 0, "skipped": 0, "by": {}, "busy": 0, "quota": 0})
+    day_stat = daily.setdefault(dkey, {"runs": 0, "articles": 0, "chars": 0, "batches": 0, "withStock": 0, "up": 0, "flat": 0, "down": 0, "skipped": 0, "pri": 0, "non": 0, "by": {}, "busy": 0, "quota": 0})
     day_stat["runs"] += 1
     daily = {k: v for k, v in daily.items() if k >= (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=60)).strftime("%Y-%m-%d")}
     prov = providers()
@@ -403,7 +432,11 @@ def main(out):
             continue
         todo.append(a)
     print(f"新文章 {len(new)} 篇：送 AI {len(todo)}（本輪最多 {RUN_MAX}）、跳過 {nskip}（付費／會員／太舊／沒提到上市櫃）")
-    todo = sorted(todo, key=lambda a: -(a["t"] or now))[:RUN_MAX]   # 新的先判，舊的留下一輪
+    pri = priority_codes()
+    for a in todo:
+        a["pri"] = is_priority(a, pri, codes)
+    todo = sorted(todo, key=lambda a: (not a["pri"], -(a["t"] or now)))[:RUN_MAX]   # 11/17：優先名單（關注清單＋成交值前 100）先判，其次新的先；沒判到的留下一輪
+    print(f"優先名單 {len(pri)} 檔；本輪待判 {len(todo)} 篇中優先 {sum(1 for a in todo if a['pri'])} 篇")
 
     batches, cur, size = [], [], 0
     for a in todo:
@@ -448,6 +481,7 @@ def main(out):
                     continue
                 got.add(a["id"])
                 day_stat["articles"] += 1
+                day_stat["pri" if a.get("pri") else "non"] = day_stat.get("pri" if a.get("pri") else "non", 0) + 1
                 day_stat["by"][who] = day_stat["by"].get(who, 0) + 1
                 ss = []
                 for s in x.get("stocks") or []:
