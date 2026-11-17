@@ -32,6 +32,7 @@ html.work body::before{background:linear-gradient(rgba(5,3,14,.35),rgba(5,3,14,.
 #work.on{background:var(--accent,#f0d34a);color:#241c00}
 .fz{flex-basis:100%;display:flex;justify-content:flex-end;gap:6px;align-items:center;font-size:12px}
 .fz .btn{padding:2px 10px}
+.fz #n-set{color:var(--fg);text-decoration:none;padding:3px 12px;border:1px solid var(--line-t);border-radius:8px;font-size:13px;margin-right:6px}
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,4,24,.5),rgba(8,4,24,.5)),url(bg.jpg) center/cover no-repeat,var(--bg)}
 svg text{text-shadow:none}
 header{position:sticky;top:0;z-index:30;background:rgba(9,5,26,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:16px;border-bottom:1px solid var(--line-t);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
@@ -43,13 +44,15 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 @media(min-width:901px){
   /* 11/17 使用者選版本 3：搜尋框在「上班模式」右邊撐滿；三個指數置中；導覽列置中、設定在最右邊 */
   header .hr{display:contents}
-  header .sf{flex:1 1 420px}header .sf input{flex:1;width:auto;font-size:16px;padding:9px 14px}header .sf .btn{font-size:16px;padding:7px 18px}
+  header .sf{flex:1 1 240px}header .sf input{flex:1;width:auto;font-size:16px;padding:9px 14px}header .sf .btn{font-size:16px;padding:7px 18px}
   header #idx{flex:1 1 100%;justify-content:center}
   header nav{flex:1 1 100%;justify-content:center;position:relative}
-  header nav #n-set{position:absolute;right:0;top:50%;transform:translateY(-50%)}
-  header .fz{flex:1 1 100%;justify-content:flex-end;margin-left:0}
+  /* 11/17 使用者：設定＋字體移到第一列（搜尋框右邊），置頂列少一排 */
+  header .fz{flex:0 0 auto;order:1;margin-left:0}
+  header #idx{order:2}header nav{order:3}header>p{order:4}
 }
 @media(max-width:900px){nav{flex-wrap:wrap;justify-content:center}.hr{justify-content:center}}
+@media(max-width:900px){header .hr{display:contents}header .fz{flex:0 0 auto;order:1;margin-left:auto}header .sf{order:2;flex:1 1 100%}header #idx{order:3;flex:1 1 100%}header nav{order:4;flex:1 1 100%}header>p{order:5}}
 
 .mute{color:var(--mute)}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}@media(min-width:1140px){header{padding-left:calc((100% - 1100px)/2 + 16px);padding-right:calc((100% - 1100px)/2 + 16px)}}
@@ -284,7 +287,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a><a href="/admin/settings" id="n-set" style="display:none">設定</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
