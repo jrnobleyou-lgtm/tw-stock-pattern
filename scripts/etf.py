@@ -6,7 +6,7 @@
   etf.py backfill [N] 逐檔逐月補最近 N 個月（預設 8；每筆請求間隔 1.7 秒，可續跑，快取在 ETF_CACHE 或 data/.etf_cache）
   etf.py build      產生 site/etf.json（清單）與 site/s/<代號>.json（K 線）
 """
-import csv, glob, io, json, os, re, sys, time, urllib.request, datetime, collections
+import csv, glob, io, json, os, re, sys, time, urllib.request, urllib.error, datetime, collections
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HIST = os.path.join(ROOT, "data", "hist_etf")
@@ -204,6 +204,46 @@ def backfill(nmonths=8):
     write_class(u)
 
 
+def yahoo_backfill(rng="1y"):
+    """用 Yahoo chart 一檔一次補近 rng 的日 K（原始價，未還原；每檔間隔 2 秒，429 就停 3 分鐘再試）。"""
+    u = universe_today()
+    allrows, n = [], 0
+    for c in sorted(u):
+        sym = c + (".TW" if u[c]["market"] == "TWSE" else ".TWO")
+        j = None
+        for k in range(3):
+            try:
+                j = json.loads(urllib.request.urlopen(urllib.request.Request(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range={rng}&interval=1d", headers=UA), timeout=40).read())
+                break
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    time.sleep(180)
+                else:
+                    break
+            except Exception:
+                time.sleep(5)
+        try:
+            r = j["chart"]["result"][0]
+            q = r["indicators"]["quote"][0]
+            for i, t in enumerate(r["timestamp"]):
+                o, h, l, cl, v = (q[k][i] for k in ("open", "high", "low", "close", "volume"))
+                if None in (o, h, l, cl):
+                    continue
+                d = (datetime.datetime.fromtimestamp(t, datetime.timezone.utc) + datetime.timedelta(hours=8)).strftime("%Y-%m-%d")
+                allrows.append({"date": d, "code": c, "name": u[c]["name"], "market": u[c]["market"], "open": round(o, 2), "high": round(h, 2), "low": round(l, 2), "close": round(cl, 2), "volume": int(v or 0)})
+            n += 1
+        except Exception:
+            pass
+        if n % 50 == 0 and n:
+            print("Yahoo 已補", n, "檔", flush=True)
+        time.sleep(2)
+    # 官方日 K（證交所／櫃買）優先：已有的 (代號,日期) 不被 Yahoo 蓋掉
+    have = set(read_hist().keys())
+    merge_rows([r for r in allrows if (r["code"], r["date"]) not in have])
+    print("Yahoo 回補完成", n, "檔", len(allrows), "筆")
+    write_class(u)
+
+
 def build():
     """site/etf.json（清單）＋ site/s/<代號>.json（K 線，日期用字串）。ETF 不進 data.js。"""
     hist = collections.defaultdict(list)
@@ -246,5 +286,7 @@ if __name__ == "__main__":
         daily()
     elif cmd == "backfill":
         backfill(*(sys.argv[2:3] or [8]))
+    elif cmd == "yahoo":
+        yahoo_backfill(*(sys.argv[2:3] or ["1y"]))
     elif cmd == "build":
         build()
