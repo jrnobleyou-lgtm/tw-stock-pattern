@@ -144,13 +144,16 @@ async function usAuthed(req, env) {
   if (!m || Number(m[1]) < Date.now()) return false;
   return (await hmac(auth.hash, m[1])) === m[2];               // 改密碼後舊的登入自動失效
 }
-const page = (title, body) => new Response(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="icon" href="/favicon.ico">
+const page = (title, body, wide = false) => new Response(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="icon" href="/favicon.ico">
 <script>try{if(localStorage.getItem("work")==="1"){document.documentElement.classList.add("work");document.querySelector("link[rel=icon]").href="/icon-work-32.png"}}catch(_){}</script>
 <style>html.work body{background:#07060d url(/bg-work.jpg) center/cover}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#100c1f url(/bg.jpg) center/cover;font:15px/1.6 -apple-system,"Noto Sans TC","PingFang TC",sans-serif;color:#ece8f5}
 .box{background:rgba(20,16,32,.92);border:1px solid #3a3450;border-radius:12px;padding:24px;width:min(92vw,380px);display:flex;flex-direction:column;gap:12px}
 h1{font-size:19px;margin:0}input{font:inherit;padding:9px 11px;border-radius:8px;border:1px solid #3a3450;background:#0c0a16;color:#ece8f5}
 button{font:inherit;padding:9px;border-radius:8px;border:0;background:#f0d34a;color:#241c00;font-weight:700;cursor:pointer}.m{color:#9a93ad;font-size:13px}.e{color:#fb7185;font-size:13px}a{color:#c9b6ff}
-table{border-collapse:collapse;font-size:13px}td{padding:3px 8px 3px 0}</style></head><body><div class="box">${body}</div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+table{border-collapse:collapse;font-size:13px}td{padding:3px 8px 3px 0}
+.box.w{width:min(96vw,960px);margin:16px 0}table.st{width:100%;font-size:14px}table.st td,table.st th{border:1px solid #3a3450;padding:8px 10px;vertical-align:top}table.st td.k{white-space:nowrap;background:rgba(255,255,255,.05);color:#b9b2cc;width:1%}
+table.st th{background:rgba(255,255,255,.08);color:#d8d2ea;font-weight:600;white-space:nowrap;text-align:center}table.st td.n{text-align:center;white-space:nowrap}.xs{overflow-x:auto}
+button.ghost{background:rgba(255,255,255,.08);color:#ece8f5;border:1px solid #3a3450;text-align:left;padding:10px 14px}</style></head><body><div class="box${wide ? " w" : ""}">${body}</div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 const loginForm = (err = "", next = "/admin/") => page("管理者專區", `<h1>管理者專區</h1><div class="m">請輸入密碼</div>
 <form method="post" action="/admin/login" style="display:flex;flex-direction:column;gap:10px"><input type="hidden" name="next" value="${next.replace(/"/g, "")}"><input type="password" name="pw" id="pw" autocomplete="current-password" autofocus required><button>登入</button></form>
 ${err ? `<div class="e">${err}</div>` : ""}<a href="/" class="m">← 回台股</a>`);
@@ -225,17 +228,17 @@ async function usRoute(req, env, u) {
       const ds = Object.keys(dj).sort().reverse().slice(0, 14), sum = (f) => ds.reduce((s, k) => s + (f(dj[k]) || 0), 0);
       const lite = (d) => Object.entries(d.by || {}).filter(([k]) => /lite/.test(k)).reduce((s, [, v]) => s + v, 0);
       const th = ["日期", "判斷篇數", "有個股", "上修", "持平", "下修", "flash-lite", "flash", "忙碌 503", "額度 429", "預估 Haiku（美元）"];
-      const tr = ds.map(k => { const d = dj[k], fl = (d.articles || 0) - lite(d); return `<tr><td>${k.slice(5)}</td><td>${d.articles}</td><td>${d.withStock}</td><td style="color:#f87171">${d.up}</td><td>${d.flat}</td><td style="color:#4ade80">${d.down}</td><td>${lite(d)}</td><td>${fl}</td><td>${d.busy}</td><td>${d.quota}</td><td>${(d.usd || 0).toFixed(2)}</td></tr>`; }).join("");
+      const tr = ds.map(k => { const d = dj[k], fl = (d.articles || 0) - lite(d); return `<tr><td class="n">${k.slice(5)}</td><td class="n">${d.articles}</td><td class="n">${d.withStock}</td><td class="n" style="color:#f87171">${d.up}</td><td class="n">${d.flat}</td><td class="n" style="color:#4ade80">${d.down}</td><td class="n">${lite(d)}</td><td class="n">${fl}</td><td class="n">${d.busy}</td><td class="n">${d.quota}</td><td class="n">${(d.usd || 0).toFixed(2)}</td></tr>`; }).join("");
       const full = ds.filter(k => dj[k].runs >= 20), avg = full.length ? full.reduce((s, k) => s + (dj[k].usd || 0), 0) / full.length : null;   // 一整天（≥20 輪）才算進平均
-      dayTbl = `<table><tr>${th.map(x => `<td class="m">${x}</td>`).join("")}</tr>${tr}</table><div class="m" style="margin-top:6px">近 14 天合計判斷 ${sum(d => d.articles)} 篇，預估 Haiku 費用 ${sum(d => d.usd).toFixed(2)} 美元；${avg != null ? `完整天數（${full.length} 天）平均每天 ${avg.toFixed(2)} 美元，一個月約 ${(avg * 30).toFixed(1)} 美元` : "還沒有完整一天的資料，累積幾天後才估得準"}。<br>預估算法：輸入約每字 1.3 token＋每批提示詞 700，輸出每篇約 450 token（含思考），Haiku 5.5 每百萬 token 輸入 0.10、輸出 0.50 美元。「有個股」＝AI 認出主要公司且不是盤面的篇數。</div>`;
+      dayTbl = `<div class="xs" style="margin-top:8px"><table class="st"><tr>${th.map(x => `<th>${x}</th>`).join("")}</tr>${tr}</table></div><div class="m" style="margin-top:6px">近 14 天合計判斷 ${sum(d => d.articles)} 篇，預估 Haiku 費用 ${sum(d => d.usd).toFixed(2)} 美元；${avg != null ? `完整天數（${full.length} 天）平均每天 ${avg.toFixed(2)} 美元，一個月約 ${(avg * 30).toFixed(1)} 美元` : "還沒有完整一天的資料，累積幾天後才估得準"}。<br>預估算法：輸入約每字 1.3 token＋每批提示詞 700，輸出每篇約 450 token（含思考），Haiku 5.5 每百萬 token 輸入 0.10、輸出 0.50 美元。「有個股」＝AI 認出主要公司且不是盤面的篇數。</div>`;
     } catch (e) {}
     const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
-      .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
-    return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
-<h1 style="font-size:16px;margin-top:6px">每日新聞判斷統計</h1>${dayTbl}
+      .map(([a, b]) => `<tr><td class="k">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
+    return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table class="st">${rows}</table>
+<button type="button" class="ghost" onclick="const d=document.getElementById('daytbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>每日新聞判斷統計（按一下展開／收合）</button><div id="daytbl" hidden>${dayTbl}</div>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
 <input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
-<div class="m"><a href="/admin/">← 回管理者專區</a>　<a href="/admin/logout">登出</a></div>`);
+<div class="m"><a href="/admin/">← 回管理者專區</a>　<a href="/admin/logout">登出</a></div>`, true);
   }
   const sm = p.match(/^\/admin\/s\/([A-Za-z0-9.\-^]+)\.json$/);          // 個股 K 線：從分包裡取出那一檔
   if (sm) {
