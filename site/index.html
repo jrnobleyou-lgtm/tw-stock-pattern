@@ -48,8 +48,12 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
   header #idx{flex:1 1 100%;justify-content:center}
   header nav{flex:1 1 100%;justify-content:center;position:relative}
   /* 11/17 使用者：設定＋字體移到第一列（搜尋框右邊），置頂列少一排 */
-  header .fz{flex:0 0 auto;order:1;margin-left:0}
-  header #idx{order:2}header nav{order:3}header>p{order:4}
+  /* 設定＋字體放在三個指數那一列的右邊（左邊用空白撐開，指數維持置中），不佔第一列 */
+  header .hr::before{content:"";flex:1 1 100%;height:0;margin:-4px 0;order:1}
+  header .hr::after{content:"";flex:1 1 0;order:2}
+  header #idx{order:3;flex:0 0 auto}
+  header .fz{order:4;flex:1 1 0;justify-content:flex-end;margin-left:0}
+  header nav{order:5}header>p{order:6}
 }
 @media(max-width:900px){nav{flex-wrap:wrap;justify-content:center}.hr{justify-content:center}}
 @media(max-width:900px){.fz .mute{display:none}header .hr{display:contents}header .fz{flex:0 0 auto;order:1;margin-left:auto}header .sf{order:2;flex:1 1 100%}header #idx{order:3;flex:1 1 100%}header nav{order:4;flex:1 1 100%}header>p{order:5}}
