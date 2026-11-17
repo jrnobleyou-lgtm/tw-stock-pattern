@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  id-token: write                 # 用 GitHub 身分從 Cloudflare 讀關注清單（不放公開的 GitHub）
 concurrency:
   group: news
   cancel-in-progress: false

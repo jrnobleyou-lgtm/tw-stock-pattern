@@ -165,14 +165,18 @@ def stocks_map():
 
 
 def priority_codes():
-    """優先判斷的股票：使用者的關注清單（data/watchlist_tw.txt）＋成交值前 100 名（讀線上 data.js）。11/17 使用者：全部都判，但排隊先判這些。"""
+    """優先判斷的股票：使用者的關注清單（Cloudflare KV state/watchlist_tw）＋成交值前 100 名（讀線上 data.js）。11/17 使用者：全部都判，但排隊先判這些。"""
     pri = set()
-    try:
-        for ln in open(os.path.join(ROOT, "data", "watchlist_tw.txt"), encoding="utf-8"):
+    try:                                          # 11/17 關注清單不放公開的 GitHub：存在 Cloudflare KV（state/watchlist_tw），用 GitHub 身分（OIDC）從 Worker 讀
+        import us_sync as US
+        raw = US.get("state/watchlist_tw")
+        if raw is None:
+            raise ValueError("KV 裡沒有 state/watchlist_tw")
+        for ln in raw.decode("utf-8", "replace").splitlines():
             c = ln.split("#")[0].split(",")[0].strip()
             if c:
                 pri.add(c)
-    except Exception as e:
+    except BaseException as e:                     # us_sync 在沒有身分時會 sys.exit，一併接住
         print("關注清單讀不到（略過）：", repr(e)[:80], file=sys.stderr)
     try:
         r = subprocess.run(["curl", "-sS", "-m", "60", os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev") + "/data.js"], capture_output=True, text=True)

@@ -1,6 +1,6 @@
 ---
 name: weekly-sync
-description: 每週六 15:15 同步台美股族群與台股關注清單（讀 Google 試算表 → 套用到網站 → 寫異動紀錄 → 回報）。排程「每週六同步台美股族群」使用；步驟改動都改這個檔，不必改排程指令。
+description: 每週六 15:15 同步台美股族群與台股關注清單（關注清單存 Cloudflare KV）（讀 Google 試算表 → 套用到網站 → 寫異動紀錄 → 回報）。排程「每週六同步台美股族群」使用；步驟改動都改這個檔，不必改排程指令。
 ---
 
 # 每週六族群＋關注清單同步
@@ -18,9 +18,9 @@ description: 每週六 15:15 同步台美股族群與台股關注清單（讀 Go
 - `python3 scripts/apply_groups.py tw tw.json`；有變動就 commit（訊息「每週族群同步」）並 push 到 main。
 - `python3 scripts/apply_groups.py us us.json --upload`（直接寫 Cloudflare KV，**美股清單絕不能進 GitHub**）。美股有變動就執行 `gh api -X POST repos/jrnobleyou-lgtm/tw-stock-pattern/actions/workflows/us.yml/dispatches -f ref=main`。
 
-## 2b. 同步關注清單
-用 `get_values` 讀台股試算表的「關注股票_台股!A2:B500」，把每一列的「代號,名稱」逐行寫入 `data/watchlist_tw.txt`（保留第一行 `#` 註解，空列略過）。內容有變動才 commit（訊息「每週關注清單同步」）並 push 到 main；讀不到或少於 20 列就不要動檔案並回報。
-（美股「關注股票_美股」不進版控，不用處理。）
+## 2b. 同步關注清單（不進公開的 GitHub，存 Cloudflare KV）
+用 `get_values` 讀台股試算表的「關注股票_台股!A1:B500」，原封不動存成 `wl.json`（二維陣列），執行 `python3 scripts/apply_watchlist.py wl.json`（直接寫 Cloudflare KV `state/watchlist_tw`；少於 20 檔會自己拒絕、不動舊清單）。**不要把關注清單寫進專案檔案或 commit。** 回報裡寫程式印出的「新增／移除」。讀不到就略過並回報。
+（美股「關注股票_美股」不處理。）
 
 ## 3. 確認上線
 約 10 分鐘後確認 https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev/data.js 的族群有沒有更新、`us.yml` 有沒有成功。
