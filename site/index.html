@@ -570,7 +570,7 @@ function chgCell(s){
   const lu=D.market!=="US"&&pc&&s.close>=limPx(pc,1)-1e-9, ld=D.market!=="US"&&pc&&s.close<=limPx(pc,0)+1e-9;
   const p=`${s.chg>0?"+":""}${s.chg}%`, a=`${amt>0?"+":""}${(+amt.toFixed(2))}`;
   const lm=lu?"lm u":ld?"lm d":"";
-  const CP=window.CPV||1, px=s.close, pct=`${lu?"漲停 ":ld?"跌停 ":""}${p}`;
+  const CP=window.CPV||2, px=s.close, pct=`${lu?"漲停 ":ld?"跌停 ":""}${p}`;
   if(CP===1) return `<td class="chg2 cp"><div class="p" style="color:${col}">${px}</div><div class="a2"><span class="${lm}" style="${lm?"":"color:"+col}">${pct}</span></div></td>`;
   if(CP===2) return `<td class="chg2 cp"><div class="blk ${lm}"><div class="p" style="${lm?"":"color:"+col}">${px}</div><div class="a2" style="${lm?"":"color:"+col}">${pct}</div></div></td>`;
   if(CP===3) return `<td class="chg2 cp"><div class="p ${lm}" style="${lm?"":"color:"+col}">${px}</div><div class="a2 ${lm}" style="${lm?"":"color:"+col}">${pct}</div></td>`;
@@ -578,7 +578,7 @@ function chgCell(s){
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
 function stockTable(list,withGroup,showVal,dmiCols,gline){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">漲跌</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
     h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
