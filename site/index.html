@@ -51,6 +51,7 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
   /* 設定＋字體放在三個指數那一列的右邊（左邊用空白撐開，指數維持置中），不佔第一列 */
   header .hr::before{content:"";flex:1 1 100%;height:0;margin:-4px 0;order:1}
   header .hr::after{content:"";flex:1 1 0;order:2}
+  header #home-link,header #asof{order:-2}header .sf{order:-1}header #work{order:0}   /* 11/17 使用者：上班模式移到第一列最右邊（搜尋框右邊） */
   header #idx{order:3;flex:0 0 auto}
   header .fz{order:4;flex:1 1 0;justify-content:flex-end;margin-left:0}
   header nav{order:5}header>p{order:6}
@@ -643,7 +644,30 @@ function findStocks(token){
   let hit=all.filter(s=>s.code.toLowerCase()===t);
   if(!hit.length) hit=all.filter(s=>s.name.toLowerCase()===t);
   if(!hit.length) hit=all.filter(s=>s.code.toLowerCase().startsWith(t)||s.name.toLowerCase().includes(t)).slice(0,3);
+  if(!hit.length) hit=fuzzyStocks(t,all);
   return hit;
+}
+/* 11/17 使用者：多打／少打一個字也要找得到 → 相近名稱／代號（標「相近」並提示）。名稱用雙字組相似度，代號只容許差 1 碼（含兩碼對調） */
+function fuzzyStocks(t,all){
+  const nz=x=>x.toLowerCase().replace(/[\s\-_.*（）()]/g,""), q=nz(t); if(q.length<2) return [];
+  const bg=x=>{const r=new Set();for(let i=0;i<x.length-1;i++)r.add(x.slice(i,i+2));return r};
+  const dice=(a,b)=>{const A=bg(a),B=bg(b);if(!A.size||!B.size)return 0;let n=0;A.forEach(g=>{if(B.has(g))n++});return 2*n/(A.size+B.size)};
+  const ov=(a,b)=>{const B=new Set(b);let n=0;for(const c of new Set(a))if(B.has(c))n++;return n/Math.max(new Set(a).size,new Set(b).size)};
+  const ed1=(a,b)=>{if(a===b)return true;if(Math.abs(a.length-b.length)>1)return false;
+    if(a.length===b.length){let d=[];for(let i=0;i<a.length;i++)if(a[i]!==b[i])d.push(i);return d.length===1||(d.length===2&&d[1]===d[0]+1&&a[d[0]]===b[d[1]]&&a[d[1]]===b[d[0]])}
+    const [s,l]=a.length<b.length?[a,b]:[b,a];for(let i=0;i<l.length;i++)if(l.slice(0,i)+l.slice(i+1)===s)return true;return false};
+  const sc=[];
+  for(const s of all){
+    const n=nz(s.name), c=s.code.toLowerCase(); let v=0;
+    if(q.length>=3&&q.length<=7&&/^[0-9a-z]+$/.test(q)&&/^[0-9a-z]+$/.test(c)&&ed1(q,c)) v=0.9;                   // 代號差一碼
+    if(n.length>=2&&q.includes(n)&&q!==n) v=Math.max(v,0.85);                                                     // 多打字：「台積電公司」含「台積電」
+    if(q.length>=3&&n.length>=3){const d=dice(q,n);if(d>=0.5)v=Math.max(v,d)}
+    else if(/[一-鿿]/.test(q)&&q.length>=3){}
+    if(q.length>=3&&/[一-鿿]/.test(q)&&Math.abs(q.length-n.length)<=1&&ov(q,n)>=0.66) v=Math.max(v,0.7*ov(q,n));    // 少打／錯一個字
+    if(v>0) sc.push([v,s]);
+  }
+  sc.sort((a,b)=>b[0]-a[0]||(b[1].close*b[1].vol)-(a[1].close*a[1].vol));
+  const r=sc.slice(0,3).map(x=>x[1]); r.fz=true; return r;
 }
 function finder(q){
   const tokens=q.split(/[\s,，、;；]+/).filter(Boolean);
@@ -654,6 +678,7 @@ function finder(q){
   for(const tk of tokens){
     const found=findStocks(tk).filter(s=>!seen.has(s.code));
     if(!found.length){miss.push(tk);continue}
+    const fzs=findStocks(tk); if(fzs.fz) h+=`<p class="note">找不到完全符合「${tk}」的，改顯示相近的：${fzs.map(x=>x.code+" "+x.name).join("、")}。</p>`;
     for(const s of found){
       seen.add(s.code);
       const mset=[...new Set((s.groups||[s.group]).flatMap(n=>{const g=D.groups.find(x=>x.name===n);return g?g.stocks:[]}))], mates=mset.filter(c=>c!==s.code).map(c=>D.stocks[c]);
