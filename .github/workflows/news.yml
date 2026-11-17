@@ -38,3 +38,6 @@ jobs:
           git add -A
           git commit -qm "新聞 $(TZ=Asia/Taipei date '+%m/%d %H:%M')"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/news-data
+      - name: 全部 AI 型號都被 Google 停用時讓這個工作失敗（GitHub 會自動寄 email 通知）
+        run: |
+          if [ -f news_fatal.flag ]; then cat news_fatal.flag; exit 1; fi

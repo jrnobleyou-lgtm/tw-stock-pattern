@@ -38,3 +38,8 @@
 - ⏸ `data.js` 瘦身：1.5MB（gzip 後只有 275KB），最大是各股 `geo`（386KB）；效益小，先不動。
 - ❌ 登入防連續猜密碼：使用者決定不做。
 - ✅ 每天台灣 07:47 的新排程 `trig_01Uhcg4uxGQoczg7zAGxg21B`（新對話，只讀）：算前一天新聞判斷量，含優先名單（關注清單＋成交值前 100）占比、各來源篇數、預估 Haiku 費用，推播給使用者。
+
+## 2026-11-17 深夜：data.js 瘦身上線、Google 模型自動換新
+- ✅ `data.js` 瘦身（Opus 設計）：台股 `st["geo"]` 只留 kind/dir/status/day，畫圖座標（pts/lines/rect/neck/stop…）搬到 `site/s/<代號>.json` 的 `geo`；前端 `openStock` 載入後 `s.geo=j.geo`，`gm.pts||[]` 防呆。美股（`us` 模式）不變。線上 data.js 1.5MB→1.19MB（gzip 0.27→0.20MB），電腦／手機各開 3 檔形態股驗證 OK。
+- ✅ 新聞 AI 型號自動挑（Opus 設計，`scripts/news.py`）：每輪 `list_models()` 取 Google 型號清單，`pick_models()` 挑最新正式版 flash-lite → flash（正規式只收 `gemini-<版本>-flash(-lite)`，排除 preview／exp／pro／omni 等；版本低於預設 3.5 不用；挑不到退回寫死預設）。新型號第一次用前跑 `self_check()`（8 篇編造樣本：3 上修／2 持平／3 下修，格式對、≥7 篇回、≥6 對、不可上下修顛倒）；沒過且還有舊型號就先不用。型號 404／免費額度 0 → `Gone` 直接換下一個。紀錄：`meta.json` 的 `models`／`model_ok`／`ai_ok_t`，`daily.json` 當天的 `models`／`gone`／`alert`／`allfail`。全部型號被停用 → 寫 `news_fatal.flag`，`news.yml` 最後一步讓工作失敗（GitHub 寄 email）。設定頁新聞列顯示 AI 型號、最後成功時間（06–23 點超過 3 小時標紅）、alert 紅字。固定檢查 `scripts/tests/test_news_models.py`；測試用環境變數 `NEWS_FORCE_MODELS`。
+- 實測 11/17 晚：Google 清單已有 `gemini-3.8-flash`（比 3.5-flash 新），會在後備位被自我檢查後採用（當時 503 忙碌，未通過，下輪再試）。日報提示詞建議加一句「若 daily.json 今天有 alert，第一行照抄」（只有使用者能在 claude.ai 改排程，使用者尚未改；要提醒一次即可）。

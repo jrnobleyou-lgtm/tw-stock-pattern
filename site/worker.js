@@ -220,6 +220,13 @@ async function usRoute(req, env, u) {
         const t = typeof v === "number" ? `${v} 篇` : "抓取失敗";
         return `<span style="${bad ? "color:#f87171;font-weight:bold" : ""}">${NM[k] || k} ${t}${(z[k] || 0) >= 3 ? `（連續 ${z[k]} 輪沒抓到）` : ""}</span>`;
       }).join("　");
+      const stale = nm.ai_ok_t && (Date.now() / 1000 - nm.ai_ok_t) > 3 * 3600, hr = +new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 13);
+      nwRow += `<br>AI 型號：${(nm.models || []).join("、") || "—"}　最後一次判斷成功：${nm.ai_ok_t ? new Date(nm.ai_ok_t * 1000).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }) : "—"}` + (stale && hr >= 6 && hr < 23 ? `<span style="color:#f87171;font-weight:bold">（超過 3 小時沒判斷成功）</span>` : "");
+      try {
+        const dj0 = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/daily.json", { cf: { cacheTtl: 300 } })).json();
+        const al = Object.keys(dj0).sort().slice(-3).map(k => dj0[k].alert).filter(Boolean).pop();
+        if (al) nwRow += `<br><span style="color:#f87171;font-weight:bold">⚠ ${String(al).replace(/[<>&]/g, "")}</span>`;
+      } catch (e) {}
     } catch (e) {}
     // 11/17 使用者：每日新聞判斷統計（news-data 的 daily.json），比對要不要改用付費 Claude Haiku
     let dayTbl = '<div class="m">讀不到</div>';

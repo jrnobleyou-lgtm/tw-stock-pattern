@@ -8,7 +8,7 @@
     s/<0-63>.json      依股票代號分包（Worker 的 /api/news 讀這個）
     meta.json          本輪時間、各家篇數、額度用完到幾點
 規則（使用者定）：不花錢；付費、要登入會員的文章不抓（抓不到全文就整篇跳過）；Yahoo 不用；AI 要讀全文。
-AI：Gemini 免費 API（GEMINI_API_KEY），先 flash-lite、再 flash（11/16 實測：flash 偏樂觀；GitHub Models 已被 GitHub 停掉，Groq／Cloudflare 免費模型品質也不夠，都不用）。兩個都用完就當輪不判，等額度回來再補。
+AI：Gemini 免費 API（GEMINI_API_KEY），每輪向 Google 取型號清單，自動挑最新正式版 flash-lite、再 flash（新型號第一次用前先跑 8 篇自我檢查；抓不到清單退回寫死預設；全部被停用就寄信）；先 flash-lite、再 flash（11/16 實測：flash 偏樂觀；GitHub Models 已被 GitHub 停掉，Groq／Cloudflare 免費模型品質也不夠，都不用）。兩個都用完就當輪不判，等額度回來再補。
 2026-11-16 依 Fable 審查修正：編碼錯誤、AI 回傳格式防呆、股票比對（名稱／代號須出現在文中、撞名清單）、
 篇號用 A1…、限流等待、全文上限 6000 字、文章時間、先濾掉沒提到上市櫃的文章、每批存檔、同標題去重。"""
 import concurrent.futures as cf, csv, email.utils, hashlib, html, json, os, re, subprocess, sys, time
@@ -249,13 +249,108 @@ class Busy(Exception):
     pass
 
 
+class Gone(Exception):                    # Google 回報這個型號不存在（已停用）
+    pass
+
+
+DEFAULT_MODELS = ("gemini-3.5-flash-lite", "gemini-3.5-flash")      # 抓不到型號清單時的預設；版本號低於這兩個的不用（避免清單出錯時退回舊一代）
+MODEL_RE = re.compile(r"^models/gemini-(\d+(?:\.\d+)?)-flash(-lite)?$")   # 只收「正式版」：排除 preview／exp／-001／latest／tts／image／live／pro／embedding／gemma
+GONE, MINFO = [], {}                                                # 本輪被 Google 回報不存在的型號；選型號過程的紀錄
+
+
+def model_ver(name):
+    m = re.match(r"^gemini-(\d+(?:\.\d+)?)-flash", name)
+    return float(m.group(1)) if m else 0.0
+
+
+def pick_models(listing, defaults=DEFAULT_MODELS):
+    """由 Google 型號清單挑：最新 flash-lite → 最新 flash → 寫死預設（清單裡還在才加）。回傳 (型號串列, 沒辨識的 flash 型號)。"""
+    floor = min(model_ver(m) for m in defaults)
+    lite, full, odd = {}, {}, []
+    for m in listing or []:
+        n = m.get("name", "")
+        if "generateContent" not in (m.get("supportedGenerationMethods") or ["generateContent"]):
+            continue
+        g = MODEL_RE.match(n)
+        if not g:
+            if re.search(r"flash", n) and not re.search(r"preview|exp|image|tts|live|audio|thinking|latest|-\d{3}$|gemma|embedding|omni", n):
+                odd.append(n[7:])
+            continue
+        v = float(g.group(1))
+        if v >= floor:
+            (lite if g.group(2) else full)[v] = n[7:]
+    out = [lite[max(lite)]] if lite else []
+    out += [full[max(full)]] if full else []
+    names = {m.get("name", "")[7:] for m in listing or []}
+    out += [d for d in defaults if d in names and d not in out]
+    return out, odd
+
+
+def list_models(key):
+    """向 Google 取型號清單（不佔生成額度）；失敗回 None。"""
+    for u, h in (("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", "x-goog-api-key: " + key),
+                 ("https://generativelanguage.googleapis.com/v1beta/openai/models", "Authorization: Bearer " + key)):
+        try:
+            r = subprocess.run(["curl", "-sS", "-m", "30", u, "-H", h], capture_output=True)
+            d = json.loads(r.stdout.decode("utf-8", "replace"))
+            ms = d.get("models") or [{"name": "models/" + str(x.get("id", "")).replace("models/", "")} for x in d.get("data", [])]
+            if ms:
+                return ms
+        except Exception as e:
+            print("型號清單讀取失敗：", repr(e)[:100], file=sys.stderr)
+    return None
+
+
 def providers():
-    """（名稱, 網址, 金鑰, 模型）依序嘗試：Gemini flash-lite → flash。"""
+    """（名稱, 網址, 金鑰, 模型）依序嘗試：自動挑最新的 Gemini flash-lite → flash（11/17 使用者：Google 換型號要自動跟上）。"""
     out = []
     gk = os.environ.get("GEMINI_API_KEY") or ("" if os.environ.get("CI") else "proxy-injected")   # 雲端測試環境：網路代理會換成真的金鑰
     if gk:
-        out += [("Gemini", GEMINI, gk, m) for m in ("gemini-3.5-flash-lite", "gemini-3.5-flash")]
+        ms = list_models(gk)
+        picked, odd = pick_models(ms) if ms else ([], [])
+        MINFO.update({"listed": bool(ms), "odd": odd})
+        if os.environ.get("NEWS_FORCE_MODELS"):                       # 測試用：強制指定型號（逗號分隔）
+            picked = os.environ["NEWS_FORCE_MODELS"].split(",")
+        if not picked:
+            picked = list(DEFAULT_MODELS)
+            MINFO["fallback"] = True
+        out += [("Gemini", GEMINI, gk, m) for m in picked]
     return out
+
+
+SELF_CHECK = [   # 自我檢查樣本（編造的短文，答案很明確）：新型號第一次上線前跑一次
+    ("A1", "台積電上調全年營收展望", "台積電2330法說會宣布，受AI需求強勁帶動，上調全年營收成長預測至三成以上，並提高資本支出，下季毛利率預期優於市場預期。", 1),
+    ("A2", "聯發科接獲大單訂單能見度延長", "聯發科2454表示，旗艦手機晶片獲多家客戶追加訂單，訂單能見度已延伸至明年第三季，法人預期明年獲利大幅成長。", 1),
+    ("A3", "鴻海AI伺服器出貨倍增", "鴻海2317公布AI伺服器本季出貨量較上季倍增，單月營收創歷史新高，公司並調高全年展望。", 1),
+    ("A4", "長榮股東會照常召開", "長榮2603今日召開例行股東會，通過去年度盈餘分配案，股利與去年相同，營運展望維持不變。", 0),
+    ("A5", "友達公告董事改選結果", "友達2409公告完成董事改選，新任董事名單如公告，公司表示營運方針不變。", 0),
+    ("A6", "華邦電下修全年展望", "華邦電2344法說會表示，客戶庫存調整延長，下修全年營收預測，本季毛利率將較上季明顯下滑，並調降資本支出。", -1),
+    ("A7", "大立光訂單遭砍單", "大立光3008傳出主要客戶砍單，法人調降明年獲利預估，公司證實本季出貨量將較預期大幅減少。", -1),
+    ("A8", "台泥因工安事件停產", "台泥1101因廠區工安事件遭主管機關勒令停工，預期本季出貨受影響，法人下修本季獲利預估。", -1),
+]
+
+
+def self_check(prov1):
+    """拿 8 篇已知答案的樣本測一個型號：格式正確、至少回 7 篇、方向至少對 6 篇、不可把上修判成下修（或相反）。回傳 (通過, 對幾篇)。"""
+    name, url, key, model = prov1
+    body = PROMPT + "".join(f"\n=== {i}（自我檢查）\n標題：{ti}\n內文：{tx}\n" for i, ti, tx, _ in SELF_CHECK)
+    try:
+        res = call(url, key, model, body)
+    except Exception as e:
+        print(f"自我檢查 {model} 失敗：{repr(e)[:120]}", file=sys.stderr)
+        return False, -1
+    ans = {i: d for i, _, _, d in SELF_CHECK}
+    got = ok = flip = 0
+    for x in res:
+        i = str(x.get("id")).strip()
+        if i not in ans:
+            continue
+        got += 1
+        ss = x.get("stocks") or []
+        d = {"上修": 1, "持平": 0, "下修": -1}.get(ss[0].get("dir")) if ss and isinstance(ss[0], dict) else 0
+        ok += d == ans[i]
+        flip += d is not None and d * ans[i] == -1
+    return (got >= 7 and ok >= 6 and flip == 0), ok
 
 
 def call(url, key, model, body):
@@ -265,6 +360,10 @@ def call(url, key, model, body):
     out, _, code = r.stdout.decode("utf-8", "replace").rpartition("\n@@HTTP")
     if code[:1] == "5" or code == "000":
         raise Busy(f"HTTP {code}")
+    if code == "404" or '"status": "NOT_FOUND"' in out or '"status":"NOT_FOUND"' in out:
+        raise Gone(f"{model} 不存在")
+    if "limit: 0" in out and ("429" in code or "RESOURCE_EXHAUSTED" in out):
+        raise Gone(f"{model} 免費額度為 0")
     if '"code": 429' in out or '"code":429' in out or "RESOURCE_EXHAUSTED" in out or "RateLimitReached" in out or "rate limit" in out.lower():
         raise Quota(out[:300])
     try:
@@ -301,6 +400,10 @@ def judge(batch, prov):
                     continue
                 print(f"{model} 額度用完：{e}", file=sys.stderr)
                 break
+            except Gone as e:                           # 型號已下架：直接換下一個並記錄
+                GONE.append(model)
+                print(f"{e}", file=sys.stderr)
+                break
             except Busy as e:                           # AI 伺服器暫時忙：等一下再試
                 EV["busy"] += 1
                 print(f"{model} 暫時忙：{e}", file=sys.stderr)
@@ -315,6 +418,8 @@ def judge(batch, prov):
                     raise BadBatch(str(e))
                 time.sleep(5)
         prov.pop(0)                                    # 這個模型今天不能用了，換下一個
+    if GONE:
+        MINFO["fatal"] = True                          # 清單裡的型號全被 Google 回報不存在：要寄信
     raise Quota("所有 AI 都不能用")
 
 
@@ -363,6 +468,25 @@ def main(out):
     prov = providers()
     if not prov:
         sys.exit("缺 GEMINI_API_KEY（請到 GitHub Settings → Secrets 新增）")
+    day_stat.setdefault("alert", "")
+    okm = meta.setdefault("model_ok", list(DEFAULT_MODELS))      # 已通過自我檢查的型號（預設的兩個視為已通過）
+    prev = meta.get("models") or []
+    for pv in list(prov):                                        # 新出現、沒檢查過的型號：先自我檢查，沒過就先不用（舊型號還在時）
+        if pv[3] not in okm:
+            ok_, n_ = self_check(pv)
+            if ok_:
+                okm.append(pv[3])
+                day_stat["alert"] = f"新聞 AI 換了型號：{'、'.join(prev) or '（無）'} → {pv[3]}（自我檢查 {n_}/8 通過）"
+            else:
+                day_stat["alert"] = (f"新聞 AI 出現新型號 {pv[3]}，自我檢查沒通過（{n_}/8），先不使用" if n_ >= 0 else f"新聞 AI 出現新型號 {pv[3]}，暫時連不上無法檢查，下一輪再試")
+                if any(q[3] in okm for q in prov):
+                    prov.remove(pv)
+    meta["models"] = [q[3] for q in prov]
+    if MINFO.get("fallback"):
+        day_stat["alert"] = day_stat["alert"] or "新聞 AI：讀不到 Google 型號清單，先用預設型號"
+    if MINFO.get("odd"):
+        day_stat["alert"] = (day_stat["alert"] + "；" if day_stat["alert"] else "") + "Google 清單有沒辨識的 flash 型號：" + "、".join(MINFO["odd"][:3])
+    day_stat["models"] = meta["models"]
 
     def save():
         nonlocal items
@@ -503,6 +627,14 @@ def main(out):
                 print("解析失敗：", e, file=sys.stderr)
         save()                                          # 每批存一次，額度白費的機會降到最低
     meta["ai"] = used
+    if used:
+        meta["ai_ok_t"] = now                            # 最後一次 AI 判斷成功的時間（設定頁超過 3 小時標紅）
+    if GONE:
+        day_stat["gone"] = sorted(set(day_stat.get("gone", []) + GONE))
+    if MINFO.get("fatal"):
+        day_stat["alert"] = "新聞 AI 全部型號都被 Google 回報不存在，已停止判斷，請找 Claude 處理"
+        day_stat["allfail"] = day_stat.get("allfail", 0) + 1
+        open(os.path.join(os.path.dirname(os.path.abspath(out)), "news_fatal.flag"), "w").write(day_stat["alert"])
     day_stat["busy"] += EV["busy"]; day_stat["quota"] += EV["quota"]
     print(f"本輪判斷 {done} 篇（{used}），近 {KEEP_DAYS} 天有個股的文章 {len(items)} 篇")
     save()
