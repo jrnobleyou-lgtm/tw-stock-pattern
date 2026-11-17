@@ -36,3 +36,19 @@ class ApplyPatterns(unittest.TestCase):
         st, tags, sub = EN.apply_patterns("盤整", [], None, self.BEAR)
         self.assertEqual(st, "走弱")
         self.assertEqual(sub, "回檔走弱")
+
+
+class TestVLate(unittest.TestCase):
+    """11/17 使用者：V 形底第 4～10 天只加標籤，不改五種型態（比照島型反轉）"""
+    def geo(self, day):
+        return [{"kind": "V形底", "status": "confirmed", "dir": "bull", "day": day, "neck": None}]
+
+    def test_early_v_changes_state(self):
+        st, tags, sub = EN.apply_patterns("走弱", [], "破底走弱", self.geo(2))
+        self.assertEqual(st, "轉強")
+
+    def test_late_v_keeps_state_but_tags(self):
+        st, tags, sub = EN.apply_patterns("走弱", [], "破底走弱", self.geo(6))
+        self.assertEqual(st, "走弱")
+        self.assertEqual(sub, "破底走弱")
+        self.assertIn("V形底", tags)
