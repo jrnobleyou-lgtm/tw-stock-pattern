@@ -40,6 +40,17 @@ header p{min-width:0;max-width:100%}
 nav{display:flex;gap:8px}
 nav a{color:var(--fg);text-decoration:none;padding:4px 12px;border:1px solid var(--line-t);border-radius:8px;font-size:13px}
 nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
+@media(min-width:901px){
+  /* 11/17 使用者：導覽列那排置中、設定放最右邊、搜尋框加大（HDV 1／2／3＝搜尋框 340／460／撐滿） */
+  .hr{flex:1 1 100%;margin-left:0}
+  header nav{flex:1 1 100%;justify-content:center;position:relative}
+  header nav #n-set{position:absolute;right:0;top:50%;transform:translateY(-50%)}
+  .hdv1 .sf input{width:340px;font-size:15px;padding:8px 12px}.hdv1 .sf .btn{font-size:15px;padding:6px 16px}
+  .hdv2 .sf input{width:460px;font-size:16px;padding:9px 14px}.hdv2 .sf .btn{font-size:16px;padding:7px 18px}
+  .hdv3 .sf{flex:1 1 420px}.hdv3 .sf input{flex:1;width:auto;font-size:16px;padding:9px 14px}.hdv3 .sf .btn{font-size:16px;padding:7px 18px}
+}
+@media(max-width:900px){nav{flex-wrap:wrap;justify-content:center}.hr{justify-content:center}}
+
 .mute{color:var(--mute)}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}@media(min-width:1140px){header{padding-left:calc((100% - 1100px)/2 + 16px);padding-right:calc((100% - 1100px)/2 + 16px)}}
 .swp{margin:14px 0;padding:12px 14px;border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.7)}.swh{font-weight:800;font-size:16px;margin-bottom:8px}.swh .mute{font-weight:400;font-size:12px}.mkr{display:flex;gap:12px;flex-wrap:wrap}.mkc{flex:1 1 220px;padding:10px 14px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5);display:flex;flex-direction:column;gap:3px}.mkv{font-size:26px;font-weight:800;letter-spacing:.5px}.mkc>.mute:first-child{color:#fff;font-weight:800;font-size:15px}.mkd{margin-left:8px;font-size:12px;font-weight:400;color:#a5b4fc}.swbar b,.swr b,.swchip b{color:#fff;font-weight:800}.swbar small.mute,.swr>.mute,.swchip small.mute{color:#fff;font-size:13px}.mki{display:grid;grid-template-columns:48px 1fr 56px;gap:8px;align-items:center;font-size:13px;color:#fff}.mki .swtr{height:8px;background:#1c1738;border-radius:4px;overflow:hidden}.mki .swtr i{display:block;height:100%}.mki>span:last-child{text-align:right}.mkbtn{float:right;padding:3px 12px;font-size:13px}.swp.mkcol .swbody{display:none}.swchips{display:flex;flex-wrap:wrap;gap:8px}.swchip{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5)}.swchip b{font-size:15px}.swchip small{font-size:12px}.swbar{display:grid;grid-template-columns:96px 1fr 64px;gap:2px 8px;align-items:center;padding:5px 0;border-top:1px solid #2a2450}.swbar .swtr{height:10px;background:#1c1738;border-radius:5px;overflow:hidden}.swbar .swtr i{display:block;height:100%}.bg-s{background:var(--s-strong)}.bg-w{background:var(--s-weak)}.swbar small{grid-column:1/4}.swbar>span:nth-child(3){text-align:right}.swg{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.swc h3{margin:0 0 6px;font-size:14px}.swr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 0;border-top:1px solid #2a2450}.swr b{font-size:15px}.swr .mute{grid-column:1/3;font-size:12px}@media(max-width:640px){.swg{grid-template-columns:1fr}}
@@ -273,7 +284,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a><a href="/admin/settings" id="n-set" style="display:none">設定</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
@@ -1784,10 +1795,12 @@ if(D.market==="US"){                 // 美股版：同一套頁面，換標題�
   $("#sq").placeholder="自訂搜尋：NVDA AAPL 微軟…";
   const p=document.querySelector("header>p"); if(p) p.textContent="每日美股收盤後自動更新，依族群統計美股有多少檔轉強、弱轉強、型態好、盤整、走弱。資料來源：Yahoo Finance。";
   $("#asof").textContent="資料日期 "+D.asof+"（美東）";
-  const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; nm.insertAdjacentHTML("afterend",'<a href="/admin/settings">設定</a>');
+  const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; 
 }
 if(D.market==="US") $("#n-mix").style.display="none";   // 美股沒有重訊／月營收
-if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textContent="美股"}   // 登入後顯示「美股」，登入前才顯示「管理者專區」
+if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textContent="美股"}
+if(D.market==="US"||/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-set").style.display="";   /* 11/17 使用者：設定鈕在最右邊，台股登入後也要有 */
+document.documentElement.classList.add("hdv"+(window.HDV||1));   // 登入後顯示「美股」，登入前才顯示「管理者專區」
 renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
