@@ -449,6 +449,8 @@ function swLiveTick(){
   if(D.market==="US"||!document.getElementById("swwrap")) return;
   const tp=new Date(new Date().toLocaleString("en-US",{timeZone:"Asia/Taipei"})), m=tp.getHours()*60+tp.getMinutes(), wd=tp.getDay();
   if(wd<1||wd>5||m<540||m>815) return;
+  if(document.hidden){swPend=true;return}      /* 11/17 Fable：分頁在背景（切到別的分頁／螢幕關閉）就不抓，回到前景再補一次，省手機流量 */
+  swPend=false;
   fetch("data.js?t="+Date.now(),{cache:"no-store"}).then(r=>r.text()).then(t=>{
     const i=t.indexOf("{"); const nd=JSON.parse(t.slice(i).replace(/;\s*$/,""));
     /* 11/15 使用者：盤中整個首頁都跟著更新（五種型態統計、盤後一眼看懂、強弱族群、族群表），保留捲動位置 */
@@ -464,6 +466,8 @@ function swLiveTick(){
     setTimeout(()=>{app.style.minHeight=""},1500);
   }).catch(()=>{});
 }
+let swPend=false;
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&swPend) swLiveTick()});
 function swLiveStart(){ if(swTimer) clearInterval(swTimer); swTimer=setInterval(swLiveTick,120000); }
 /* 11/16 使用者：強弱族群三欄表頭切齊——表頭一律一行，括號說明字自動縮到一行放得下（電腦版）；三欄都在標題列（收合鈕）下方，SWL 1＝中間加橫線 */
 let swRO=null;

@@ -23,5 +23,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
           git add data/adjust.csv
-          git diff --cached --quiet || (git commit -m "weekly adjust $(date -u +%F)" && git push)
+          git diff --cached --quiet || (git commit -m "weekly adjust $(date -u +%F)" && (git push || (git pull --rebase -q origin main && git push)))
           gh workflow run update.yml

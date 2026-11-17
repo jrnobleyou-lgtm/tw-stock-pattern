@@ -1,12 +1,13 @@
 name: news
 # 個股新聞：7 家媒體免費文章 → AI 判斷上修／持平／下修 → 存到 news-data 分支（網站 /api/news 讀它）
-# 觸發：Cloudflare Worker 的排程（jobsAt）平日每 30 分、週末每小時；也可在 GitHub 手動執行
+# 觸發：Cloudflare Worker 的排程（jobsAt）平日每 30 分、週末每小時；GitHub 自己的每小時排程當備援；也可手動執行
 # AI：Gemini 免費 API（Secrets 的 GEMINI_API_KEY），先 flash-lite、再 flash；都用完就當輪不判
 on:
+  schedule:
+    - cron: '20 * * * *'    # 備援：Cloudflare 排程失敗（金鑰到期等）時每小時至少跑一次（11/17 Fable 審查）
   workflow_dispatch:
 permissions:
   contents: write
-  models: read
 concurrency:
   group: news
   cancel-in-progress: false

@@ -204,6 +204,7 @@ async function usRoute(req, env, u) {
     if (u.searchParams.get("ok")) msg = `<div class="m" style="color:#7ee0a1">密碼已更新，其他裝置需要重新登入。</div>`;
     const meta = (await env.US.get("meta", "json")) || {};
     const cl = (await env.US.get("cron/last", "json")) || null;
+    const nf = await env.US.get("cron/newsfail", "json");
     const dl = (await env.US.get("deploy/last", "json")) || null, dc = await env.US.get("deploy/check");
     // 11/16：新聞各家這輪篇數，連續 ≥3 輪 0 篇或失敗標紅（news-data 分支的 meta.json）
     let nwRow = "讀不到";
@@ -217,7 +218,7 @@ async function usRoute(req, env, u) {
         return `<span style="${bad ? "color:#f87171;font-weight:bold" : ""}">${NM[k] || k} ${t}${(z[k] || 0) >= 3 ? `（連續 ${z[k]} 輪沒抓到）` : ""}</span>`;
       }).join("　");
     } catch (e) {}
-    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
+    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="m">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
     return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table>${rows}</table>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
@@ -260,7 +261,9 @@ async function usIngest(req, env, u) {          // 每日更新程式用：上�
   if (req.method === "GET") {
     if (u.searchParams.get("key") === "draw-list/US")          // 分析程式讀美股畫線（只讀取、不寫入 KV）
       return new Response(JSON.stringify(await drawList(env, "US", true)), { headers: { "content-type": "application/json" } });
-    const v = await env.US.get(u.searchParams.get("key") || "", "arrayBuffer");
+    const rk = u.searchParams.get("key") || "";
+    if (!/^(site|state)\/[\w\-./]+$/.test(rk) && rk !== "meta") return new Response("bad key", { status: 400 });   // 11/17 Fable：只能讀頁面與狀態檔，不能讀密碼雜湊等
+    const v = await env.US.get(rk, "arrayBuffer");
     return v ? new Response(v) : new Response("not found", { status: 404 });
   }
   if (req.method === "PUT") {                       // 一次一個檔案、原始內容直接寫入（不解析，避免超過 Worker 的 CPU 上限）
@@ -342,11 +345,11 @@ async function deployWatchdog(env) {
   const bl = await cf(`/accounts/${acc}/builds/workers/${tag}/builds?per_page=5`);
   if (!bl.success) return chk("讀不到部署紀錄（缺 Workers Builds Configuration 權限？）");
   await chk("正常");
-  if (!head || Date.now() - head < 4 * 60000) return;                   // 剛推的先等 Cloudflare 自己處理
+  if (!head) return;
   const builds = bl.result || [];
   if (builds.some(b => b.status !== "stopped")) return;                  // 正在部署
   const last = Math.max(0, ...builds.map(b => Date.parse(b.created_on) || 0));
-  if (last >= head) return;                                              // 已經部署過這一版
+  if (head - last < 4 * 60000) return;                                   // 11/17 Fable：改成比對「最後一次建置比最新版舊多久」（盤中每 3 分鐘推一版，原本「等 4 分鐘」永遠等不到）；4 分鐘內的落差算正常
   const trig = (await cf(`/accounts/${acc}/builds/workers/${tag}/triggers`)).result?.[0]?.trigger_uuid; if (!trig) return;
   const r = await cf(`/accounts/${acc}/builds/triggers/${trig}/builds`, { method: "POST", body: JSON.stringify({ branch: "deploy" }) });
   if (env.US) await env.US.put("deploy/last", JSON.stringify({ at: new Date().toISOString(), ok: !!r.success }));
@@ -362,6 +365,11 @@ async function runSchedule(env, when) {
       headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-cron", "content-type": "application/json" },
       body: JSON.stringify({ ref: "main" }) });
     res.push(`${wf} ${r.status}`);
+    if (wf === "news.yml" && env.US) {                                  // 11/17 Fable：新聞觸發失敗（金鑰到期等）要讓設定頁標紅；平時只讀不寫，省 KV 額度
+      const prev = await env.US.get("cron/newsfail");
+      if (r.status !== 204) await env.US.put("cron/newsfail", JSON.stringify({ at: new Date(when).toISOString(), status: r.status }));
+      else if (prev) await env.US.delete("cron/newsfail");
+    }
   }
   if (env.US && jobs.some(j => j !== "news.yml")) await env.US.put("cron/last", JSON.stringify({ at: new Date(when).toISOString(), res }));   // 新聞每 30 分觸發，不蓋掉收盤更新的紀錄
 }
@@ -383,8 +391,12 @@ export default {
     if (u.pathname === "/api/draw-list") {
       // 預設：台股（公開，分析程式用）；?all=1：管理者的「我的畫線」，台股＋美股（美股要登入）
       const all = u.searchParams.get("all") === "1" && env.US && (await usAuthed(req, env));
+      const ck = new Request(u.origin + "/__cache/draw-list" + u.search), cache = caches.default;     // 11/17 Fable：公開、每次都列 KV 清單，加 90 秒快取避免被連打耗光額度
+      if (!all) { const hit = await cache.match(ck); if (hit) return hit; }
       const body = !env.US ? {} : all ? { TW: await drawList(env, "TW"), US: await drawList(env, "US") } : await drawList(env, "TW", u.searchParams.get("span") === "1");   // ?span=1：附每條線的起訖日期（分析程式比對系統形態用）
-      return new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+      const resp = new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": all ? "no-store" : "public, max-age=90" } });
+      if (!all) ctx.waitUntil(cache.put(ck, resp.clone()));
+      return resp;
     }
     if (u.pathname === "/api/draw") return drawRoute(req, env, u);
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
@@ -416,17 +428,6 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({ error: "unavailable" }), { status: 502, headers: { "content-type": "application/json" } });
       }
-    }
-    if (u.pathname === "/api/misraw") {      // 除錯用：只允許證交所即時行情網站的 stock/data、stock/api 路徑
-      const path = u.searchParams.get("p") || "";
-      if (!/^stock\/(data|api)\/[A-Za-z_]+\.jsp(\?[A-Za-z0-9_=&.|%]*)?$/.test(path)) return new Response("bad path", { status: 400 });
-      try {
-        const r0 = await fetch(MIS_URL + "index.jsp", { headers: { "user-agent": "Mozilla/5.0" } });
-        const sc = r0.headers.getSetCookie ? r0.headers.getSetCookie() : [];
-        const ck = sc.map(x => x.split(";")[0]).join("; ");
-        const r = await fetch("https://mis.twse.com.tw/" + path, { headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": ck } });
-        return new Response((await r.text()).slice(0, 4000), { status: r.status, headers: { "content-type": "text/plain; charset=utf-8" } });
-      } catch (e) { return new Response("err " + e, { status: 502 }); }
     }
     if (u.pathname === "/api/mis") {
       const arr = await misBatch(u.searchParams.get("ex_ch") || "");

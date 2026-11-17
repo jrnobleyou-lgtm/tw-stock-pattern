@@ -202,6 +202,7 @@ kind 填：事件（公司營運、財報、訂單、法說）／法人（外資
 請以內文為準，不要被標題的聳動語氣誤導。
 以下情況一律判持平：公司宣布投資、取得資產、簽約、試車或測試達標這類里程碑，內文沒有營收、獲利、訂單金額等財務結果；多空意見並陳；法人只是預估數字、沒有調高或調低評等或目標價。
 只有內文明確寫出營收／獲利成長、訂單增加、調升目標價或評等，才判上修；明確寫出衰退、砍單、調降目標價，才判下修。
+公司明確表示訂單能見度延長、上調財測或出貨目標，即使沒有金額也算上修。外資報告只點名受惠股、沒給目標價或評等，kind 填點名。獲利主要來自處分資產、業外一次性收益，判持平。kind 是盤面的一律判持平。
 盤勢綜述、選股清單、整理很多檔股票的文章，只列文章真正主要在談的公司，沒有就給空陣列。code 填台股代號（4～6 碼，不確定就空字串）。理由用繁體中文 25 字內。
 只輸出 JSON：{"r":[{"id":"原樣的編號","stocks":[{"name":"公司簡稱","code":"代號","dir":"上修|持平|下修","kind":"事件|法人|點名|盤面","why":"理由"}]}]}，沒有主要公司就 stocks 給空陣列，每篇都要回。
 """
@@ -330,7 +331,7 @@ def main(out):
         shards = [dict() for _ in range(NSHARD)]
         for x in items:
             for s in x["ai"]:
-                if s.get("k") in ("點名", "盤面") and s["d"] == 0:      # 盤勢文、投顧點名又沒利多利空：不顯示
+                if s.get("k") == "盤面" or (s.get("k") == "點名" and s["d"] == 0):      # 盤面（股價漲跌）一律不顯示；投顧點名又沒利多利空：不顯示（11/17 Fable：盤面不該有上修下修）
                     continue
                 lst = shards[shard(s["c"])].setdefault(s["c"], [])
                 if any(tkey(y["title"]) == tkey(x["title"]) for y in lst):   # 同一篇多家轉載只留一則
@@ -435,8 +436,8 @@ def main(out):
                 for s in x.get("stocks") or []:
                     c = resolve(s, a, names, codes)
                     d = {"上修": 1, "持平": 0, "下修": -1}.get(s.get("dir")) if isinstance(s, dict) else None
-                    if c and d is not None and str(s.get("kind")) in ("盤面", "點名") and d == 0:
-                        continue                        # 盤勢文章或投顧點名、又沒有利多利空：不收
+                    if c and d is not None and (str(s.get("kind")).startswith("盤面") or (str(s.get("kind")) == "點名" and d == 0)):
+                        continue                        # 盤面（股價漲跌）一律不收；投顧點名又沒有利多利空：不收
                     if c and d is not None and c not in [y["c"] for y in ss]:
                         ss.append({"c": c, "d": d, "k": str(s.get("kind") or "")[:4], "w": str(s.get("why") or "")[:40]})
                 seen[a["k"]] = now
