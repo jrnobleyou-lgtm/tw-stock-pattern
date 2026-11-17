@@ -168,15 +168,22 @@ def priority_codes():
     """優先判斷的股票：使用者的關注清單（Cloudflare KV state/watchlist_tw）＋成交值前 100 名（讀線上 data.js）。11/17 使用者：全部都判，但排隊先判這些。"""
     pri = set()
     try:                                          # 11/17 關注清單不放公開的 GitHub：存在 Cloudflare KV（state/watchlist_tw），用 GitHub 身分（OIDC）從 Worker 讀
-        import us_sync as US
-        raw = US.get("state/watchlist_tw")
-        if raw is None:
-            raise ValueError("KV 裡沒有 state/watchlist_tw")
+        import urllib.request                      # us_sync.py 載入時會直接執行主程式，所以這裡自己取身分、自己讀
+        site = os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev").rstrip("/")
+        h = {"User-Agent": "Mozilla/5.0"}
+        if os.environ.get("INGEST_KEY"):
+            h["X-Ingest-Key"] = os.environ["INGEST_KEY"]
+        elif os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL"):
+            rq = urllib.request.Request(os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"] + "&audience=tw-stock-us", headers={"Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]})
+            h["Authorization"] = "Bearer " + json.loads(urllib.request.urlopen(rq, timeout=30).read())["value"]
+        else:
+            raise ValueError("沒有讀取身分（只有 GitHub Actions 上才讀得到關注清單）")
+        raw = urllib.request.urlopen(urllib.request.Request(site + "/api/us-ingest?key=state/watchlist_tw", headers=h), timeout=60).read()
         for ln in raw.decode("utf-8", "replace").splitlines():
             c = ln.split("#")[0].split(",")[0].strip()
             if c:
                 pri.add(c)
-    except BaseException as e:                     # us_sync 在沒有身分時會 sys.exit，一併接住
+    except Exception as e:
         print("關注清單讀不到（略過）：", repr(e)[:80], file=sys.stderr)
     try:
         r = subprocess.run(["curl", "-sS", "-m", "60", os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev") + "/data.js"], capture_output=True, text=True)
