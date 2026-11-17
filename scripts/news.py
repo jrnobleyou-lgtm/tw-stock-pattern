@@ -478,9 +478,9 @@ def main(out):
                 okm.append(pv[3])
                 day_stat["alert"] = f"新聞 AI 換了型號：{'、'.join(prev) or '（無）'} → {pv[3]}（自我檢查 {n_}/8 通過）"
             else:
-                day_stat["alert"] = (f"新聞 AI 出現新型號 {pv[3]}，自我檢查沒通過（{n_}/8），先不使用" if n_ >= 0 else f"新聞 AI 出現新型號 {pv[3]}，暫時連不上無法檢查，下一輪再試")
-                if any(q[3] in okm for q in prov):
-                    prov.remove(pv)
+                day_stat["alert"] = (f"新聞 AI 出現新型號 {pv[3]}，自我檢查沒通過（{n_}/8），先不使用" if n_ >= 0 else f"新聞 AI 試用新型號 {pv[3]}（自我檢查暫時連不上，先直接判斷看看，額度或忙碌時自動退回舊型號）")
+                if n_ >= 0 and any(q[3] in okm for q in prov):
+                    prov.remove(pv)                                  # 品質沒過才排除；只是暫時連不上（503）就照常排進去試，不行會自動退回舊型號（11/17 使用者要求）
     meta["models"] = [q[3] for q in prov]
     if MINFO.get("fallback"):
         day_stat["alert"] = day_stat["alert"] or "新聞 AI：讀不到 Google 型號清單，先用預設型號"
