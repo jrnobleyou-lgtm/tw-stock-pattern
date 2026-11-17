@@ -36,6 +36,7 @@ html.work body::before{background:linear-gradient(rgba(5,3,14,.35),rgba(5,3,14,.
 body::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(8,4,24,.5),rgba(8,4,24,.5)),url(bg.jpg) center/cover no-repeat,var(--bg)}
 svg text{text-shadow:none}
 /* 11/17 使用者：標題做成框（🏠 圖示＋紫色發光），不在首頁時框內多一個「↩ 回首頁」小標（緊貼標題、左邊不留空白） */
+#modal .pevr,.mhead .pevr{font-size:13px;margin-top:4px;color:var(--ink)}.pevr b{color:#a78bfa;font-weight:600}
 #home-link{padding:5px 14px 5px 10px;border:1.5px solid #a78bfa;border-radius:10px;background:rgba(167,139,250,.14);box-shadow:0 0 10px rgba(167,139,250,.35);cursor:pointer;display:inline-flex;align-items:center;gap:0;white-space:nowrap}
 #home-link:hover{background:rgba(167,139,250,.26)}
 #home-link::before{content:"㊙️";font-size:.9em;margin-right:6px}
@@ -577,15 +578,24 @@ const gtxt=s=>(s.groups||[s.group]).join("、");
 function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
 function turnover(s){const v=s.close*s.vol*1000;return D.market==="US"?fmtUSD(v):(v/1e8>=1?(v/1e8).toFixed(1)+" 億":(v/1e4).toFixed(0)+" 萬")}
 let SORTK="tv";            // 列表排序方式（預設成交值）
+const VALK=/^(pelo|pemid|pehi|dyhi|pblo|pels)$/;
 const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["state","目前型態（強到弱）"]];
 function sortList(list){
   const tv=s=>s.close*s.vol;
   const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
+    pe:(a,b)=>(a.pe||1e9)-(b.pe||1e9)||tv(b)-tv(a),dy:(a,b)=>(b.dy||0)-(a.dy||0)||tv(b)-tv(a),pb:(a,b)=>(a.pb||1e9)-(b.pb||1e9)||tv(b)-tv(a),
     state:(a,b)=>((STATES.indexOf(a.state)+1)||99)-((STATES.indexOf(b.state)+1)||99)||tv(b)-tv(a),   /* 新股排最後 */
     dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
   return list.sort(f);
 }
 function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select></div>`}
+/* 11/18 使用者：本益比／股價淨值比／殖利率（官方收盤後資料，固定收盤值；PE 虧損顯示「虧損」，超過 100 倍標「獲利低基期」） */
+function peTxt(s){return s.pe!=null?s.pe.toFixed(1)+(s.pe>100?'<small class="mute"> 獲利低基期</small>':""):s.pl?"虧損":"—"}
+function valCells(s){return `<td class="cc">${peTxt(s)}</td><td class="cc">${s.pb!=null?s.pb.toFixed(2):"—"}</td><td class="cc">${s.dy!=null?s.dy.toFixed(2)+"%":"—"}</td>`}
+function valBar(s){
+  if(D.market==="US"||s.pe===undefined&&s.pb===undefined&&s.dy===undefined) return "";
+  const d=(D.valDate||"").slice(5).replace("-","/");
+  return `<span class="pev"><b>本益比</b> ${peTxt(s)}${s.pe!=null&&s.pq?`<small class="mute">（近四季，${s.pq.replace("/","Q")}）</small>`:""}　<b>股價淨值比</b> ${s.pb!=null?s.pb.toFixed(2):"—"}　<b>殖利率</b> ${s.dy!=null?s.dy.toFixed(2)+"%":"—"}${d?`　<small class="mute">${d} 收盤值</small>`:""}</span>`}
 /* DMI 篩選頁的兩欄：DMI差值（+DI − -DI，正＝買方占優勢，紅；負＝賣方，綠）、ADX（數值＋和 3 天前比的方向，ADX<20 標「弱」＝趨勢偏弱、訊號容易騙人） */
 function dmiCells(s){
   if(!s.dmi) return `<td class="cc">-</td><td class="cc">-</td>`;
@@ -610,11 +620,11 @@ function chgCell(s){
   if(V===2) return `<td class="chg2"><div class="p ${lm}" style="${lm?"":"color:"+col}">${lu?"漲停 ":ld?"跌停 ":""}${p}</div><div class="a" style="color:${col}">${a}</div></td>`;
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
-function stockTable(list,withGroup,showVal,dmiCols,gline){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+function stockTable(list,withGroup,showVal,dmiCols,gline,vcols){
+  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc">成交值</th>':""}<th class="cc">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}${vcols?valCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc">${turnover(s)}</td>`:""}<td class="cc">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`;
   }
   return h + `</tbody></table></div>`;
 }
@@ -732,6 +742,12 @@ const FILTERS = [
   {k:"mops", m:1, name:"今天有重訊", f:s=>has(s,/今天有重訊/)},   /* 11/16：上一交易日收盤後到現在有重訊 */
   {k:"revhi", m:1, name:"月營收創新高", f:s=>has(s,/月營收創新高/)},   /* 11/16 使用者：最新月營收比前 11 個月都高 */
   {k:"yoyhi", m:1, name:"年增新高", f:s=>has(s,/年增新高/)},   /* 月營收創歷史新高且年增 > 0 */
+  {k:"pelo", m:1, name:"本益比 15 倍以下", f:s=>s.pe>0&&s.pe<=15},   /* 11/18：官方資料，虧損（沒有本益比）自動排除 */
+  {k:"pemid", m:1, name:"本益比 15～25 倍", f:s=>s.pe>15&&s.pe<=25},
+  {k:"pehi", m:1, name:"本益比 25 倍以上", f:s=>s.pe>25},
+  {k:"dyhi", m:1, name:"殖利率 5% 以上", f:s=>s.dy>=5},
+  {k:"pblo", m:1, name:"股價淨值比 1 以下", f:s=>s.pb>0&&s.pb<=1},
+  {k:"pels", m:1, name:"近四季虧損", f:s=>!!s.pl},
   {k:"m3up", m:1, name:"三率三升", f:s=>has(s,/三率三升/)},   /* 11/17 使用者：毛利率、營益率、淨利率都比上一季高 */
 ];
 const KD_UP="KD 的 K 大於 D 或差距在 5 以內，且 K 不到 80（沒過熱）";
@@ -766,12 +782,14 @@ function screener(key,mix){
     h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th class="sn1">股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${turnover(s)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else if(DMI_NOTE[cur.k]) h += sortBar([["dmid","DMI差值"],["adx","ADX"]])+stockTable(list,false,true,true);
+  else if(VALK.test(cur.k)) h += sortBar([["pe","本益比低到高"],["dy","殖利率高到低"],["pb","股價淨值比低到高"]])+stockTable(list,false,true,false,false,true);
   else h += sortBar()+stockTable(list,false,true);
   if(DMI_NOTE[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${DMI_NOTE[cur.k]}</p>${DMI_HELP}<div class="sortbar">`);
   const RVN={mops:"<b>條件：</b>上一個交易日收盤（13:30）之後到現在，有公告重大訊息的股票（同一則天天重發的只算第一次）。重訊取自公開資訊觀測站公告，隔天早上校正；這個名單在網站每次更新時重算（盤中約每 2 分鐘、收盤後到傍晚、隔天清晨）。點股票後切到「消息」看內容。",
     revhi:"<b>條件：</b>這檔最新公布的月營收，比前 11 個月都高（近 12 個月新高；要有 13 個月以上資料）。每月約 10 號前公布完，公布下個月之前標籤都保留。點股票後切到「消息」看近 6 個月營收。",
     yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。",
     m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。財報公布後（Q3 約 11/14 前）更新。點股票後切到「消息」看近 3 季營收與三率。"};
+  RVN.pelo=RVN.pemid=RVN.pehi=RVN.pblo=RVN.dyhi=RVN.pels=`<b>條件：</b>${{pelo:"本益比 15 倍以下（虧損沒有本益比，不列入）",pemid:"本益比 15～25 倍",pehi:"本益比 25 倍以上（超過 100 倍多半是獲利剛好很低，會標「獲利低基期」）",pblo:"股價淨值比 1 以下（股價低於每股淨值）",dyhi:"現金殖利率 5% 以上",pels:"近四季合計虧損（本益比不存在）"}[cur.k]}。<br>資料為證交所、櫃買中心公布的收盤後數字（${D.valDate||"—"} 收盤），盤中不會跳動；本益比用最近四季財報，殖利率用最近一次股利。便宜不代表會漲，只是多一個參考；請搭配型態與消息一起看。`;
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
@@ -904,7 +922,7 @@ function openStock(code){
     el.addEventListener("click",e=>{ if(e.target===el) goBack(); }); document.body.appendChild(el); modalEl=el;
     return;
   }
-  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span><div class="mg">${gtxt(s)}${s.industry?"・"+s.industry:""}</div></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>`;
+  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span><div class="mg">${gtxt(s)}${s.industry?"・"+s.industry:""}</div></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>${valBar(s)?`<div class="pevr">${valBar(s)}</div>`:""}`;
   mountModal(s, head, {notes:notesHTML(s),news:D.market!=="US"&&/^\d/.test(s.code)});
   startLive(chart, D.market==="US"?code:code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
