@@ -83,7 +83,7 @@ def src_cnyes():
     return out
 
 
-def factset_rows(known_links, now, max_pages=6, max_new=40):
+def factset_rows(known_links, now, max_pages=3, max_new=40):
     """11/18 使用者：主動抓鉅亨「Factset 最新調查」速報（只存標題裡的目標價；不抓內文、不用 AI）。
     鉅亨搜尋 API 的標題會被截斷，所以只用它找出含「(代號-TW)」的速報 ID，再讀文章頁的完整標題；已存過的連結不重抓。"""
     import urllib.parse, targets as TG
@@ -628,7 +628,8 @@ def main(out):
             for x in items:
                 rows_ += TG.from_article(x, names, codes, with_text=False)
         try:
-            rows_ += factset_rows({r["link"] for r in trs}, now)          # 主動抓 FactSet 速報（失敗不影響其他）
+            if time.gmtime(now).tm_hour % 2 == 0 and time.gmtime(now).tm_min < 30:      # 每 2 小時只掃一次（請求量壓低）
+                rows_ += factset_rows({r["link"] for r in trs}, now)          # 主動抓 FactSet 速報（失敗不影響其他）
         except Exception as e:
             print("FactSet 主動抓取失敗（略過）：", repr(e)[:100], file=sys.stderr)
         n0 = len(trs)
