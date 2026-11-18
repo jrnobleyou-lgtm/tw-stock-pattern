@@ -299,11 +299,13 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:900px){html.mc1 .stt .c-dup,html.mc2 .stt .c-dup{display:none}}   /* 11/18 使用者：手機版名稱下已有成交值、股價欄已有收盤，右邊不用再放（window.MCV：1 只拿掉重複欄、2 再讓標記自動換行不用左右滑） */
 .stt tr.tgr{display:none}.stt .tgl{display:none}
 /* 11/18 使用者：手機版「標記」要有標題；名稱＋成交值、股價＋漲跌幅各用框框起來（window.MBX：1 細框線、2 淡底色框） */
-@media(max-width:900px){html.mc3 .stt .tgl{display:inline-block;font-size:11px;color:#a5b4fc;border-right:1px solid rgba(165,180,252,.4);padding:0 7px 0 0;margin:0 7px 2px 2px;vertical-align:middle}
-html.mc3.bx1 .stt,html.mc3.bx2 .stt{border-collapse:separate;border-spacing:6px 0}
+@media(max-width:900px){html.mc3 .stt .tgl{display:inline-block;font-size:12px;font-weight:700;color:#f1f5ff;border-right:1px solid rgba(255,255,255,.55);padding:0 7px 0 0;margin:0 7px 2px 2px;vertical-align:middle}
+html.mc3.bx1 .stt,html.mc3.bx2 .stt{border-collapse:separate;border-spacing:4px 0}
 html.mc3.bx1 .stt tr.row:not(.tgr) td.sn1,html.mc3.bx1 .stt tr.row:not(.tgr) td.chg2{box-shadow:inset 0 0 0 1px rgba(165,180,252,.45);border-radius:10px}
-html.mc3.bx2 .stt tr.row:not(.tgr) td.sn1,html.mc3.bx2 .stt tr.row:not(.tgr) td.chg2{background:rgba(120,110,200,.16);box-shadow:inset 0 0 0 1px rgba(165,180,252,.2);border-radius:10px}}
-@media(max-width:900px){html.mc3 .stt .c-dup,html.mc3 .stt td.tg,html.mc3 .stt th.tg{display:none}html.mc3 .stt th.ty-h,html.mc3 .stt td.ty{padding-right:78px}html.mc3 .stt tr.tgr{display:table-row}html.mc3 .stt tr.tgr td{padding:0 6px 8px;border-top:0;text-align:left;white-space:normal}html.mc3 .stt tr.tgr .tag{white-space:nowrap;display:inline-block;margin:2px 4px 2px 0}html.mc3 .stt tr.row:not(.tgr) td{border-bottom:0}}
+html.mc3.bx2 .stt tr.row:not(.tgr) td.sn1,html.mc3.bx2 .stt tr.row:not(.tgr) td.chg2{background:var(--mbg,rgba(120,110,200,.16));box-shadow:inset 0 0 0 1px var(--mbd,rgba(165,180,252,.2));border-radius:10px}
+html.mbc1{--mbg:rgba(30,58,120,.5);--mbd:rgba(147,197,253,.4)}html.mbc2{--mbg:rgba(0,0,0,.5);--mbd:rgba(255,255,255,.28)}html.mbc3{--mbg:rgba(130,95,20,.38);--mbd:rgba(250,204,21,.4)}
+html.mc3 .cv2 .chg2 .p{font-size:16.5px}html.mc3 .stt td.chg2{font-size:15px}html.mc3 .chg2 .a{font-size:14px}html.mc3 .chg2.cp .p{font-size:16.5px}html.mc3 .chg2.cp .a2{font-size:14px}}
+@media(max-width:900px){html.mc3 .stt .c-dup,html.mc3 .stt td.tg,html.mc3 .stt th.tg{display:none}html.mc3 .stt th.ty-h,html.mc3 .stt td.ty{padding-right:56px;padding-left:0}html.mc3 .stt tr.tgr{display:table-row}html.mc3 .stt tr.tgr td{padding:0 6px 8px;border-top:0;text-align:left;white-space:normal}html.mc3 .stt tr.tgr .tag{white-space:nowrap;display:inline-block;margin:2px 4px 2px 0}html.mc3 .stt tr.row:not(.tgr) td{border-bottom:0}}
 @media(max-width:900px){html.mc2 .stt td.tg,html.mc2 .stt th.tg{min-width:0;width:100%}html.mc2 .stt td.tg .tag{white-space:normal;display:inline-block}}
 @media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
 </style>
@@ -1906,7 +1908,7 @@ function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,40
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
-{const v=window.MCV||3;document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2))}
+{const v=window.MCV||3;document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));if(window.MBC)document.documentElement.classList.add("mbc"+window.MBC)}
 if(window.NVA!==false) document.documentElement.classList.add("nvA");
 if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
 let stuckNow=false;
