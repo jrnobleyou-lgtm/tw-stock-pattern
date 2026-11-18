@@ -353,7 +353,7 @@ def main():
     nbias = cached("nbias", news_bias(), {}) if full and not us else {}
     mtoday = cached("mtoday", mops_today(all_dates), set()) if full and not us else set()
     trows = {}                                            # 11/18 法人目標價（代號 → 該檔所有具名目標價列）
-    if full and not us:
+    if full and not us and os.environ.get("SHOW_TARGETS") == "1":     # 11/18 使用者：目標價先不上線（預設關閉，設環境變數才開）
         for r_ in (cached("targets", target_rows(), []) or []):
             trows.setdefault(r_["c"], []).append(r_)
     revs, epss, mgs = {}, {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
