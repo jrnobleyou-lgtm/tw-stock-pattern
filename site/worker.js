@@ -283,6 +283,26 @@ async function githubOidcOk(tok) {
     return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64u(sig), enc.encode(h + "." + p));
   } catch (e) { return false; }
 }
+// 11/18 使用者：法人目標價只有登入後看得到。資料在 KV state/targets_tw.json（news.py 整理），這裡驗證現價（0.3～3 倍）、近 60 天、同家只留最新、≥3 家才給最高／中位數／最低
+async function targetsRoute(req, env, u) {
+  if (!env.US || !(await usAuthed(req, env))) return new Response("{}", { status: 401, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  const c = u.searchParams.get("c") || "", close = Number(u.searchParams.get("close")) || 0;
+  const raw = await env.US.get("state/targets_tw.json", "text");
+  const now = Date.now() / 1000, last = {}, prev = {};
+  const rows = (raw ? JSON.parse(raw) : []).filter(r => r.c === c && r.t > now - 60 * 86400 && close && r.p >= 0.3 * close && r.p <= 3 * close).sort((a, b) => a.t - b.t);
+  for (const r of rows) { if (last[r.who]) prev[r.who] = last[r.who]; last[r.who] = r; }
+  const list = Object.entries(last).sort((a, b) => b[1].t - a[1].t).map(([who, r]) => {
+    let d = r.d || 0; if (prev[who] && prev[who].p !== r.p) d = r.p > prev[who].p ? 1 : -1;
+    return { who, p: r.p, t: r.t, d, title: r.title, link: r.link, fs: r.fs || 0 };
+  });
+  const brokers = list.filter(x => !x.fs), out = { list: list.slice(0, 12), fs: list.find(x => x.fs) || null, n: brokers.length };
+  if (brokers.length >= 3) {
+    const ps = brokers.map(x => x.p).sort((a, b) => a - b), m = ps.length >> 1;
+    out.hi = ps[ps.length - 1]; out.lo = ps[0]; out.med = ps.length % 2 ? ps[m] : Math.round((ps[m - 1] + ps[m]) * 5) / 10;
+  }
+  return new Response(JSON.stringify(list.length ? out : null), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+}
+
 async function usIngest(req, env, u) {          // 每日更新程式用：上傳／下載 KV。GitHub Actions 用 OIDC，手動用 X-Ingest-Key
   const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   const ok = (env.US_INGEST_KEY && req.headers.get("x-ingest-key") === env.US_INGEST_KEY) || (bearer && await githubOidcOk(bearer));
@@ -428,6 +448,7 @@ export default {
       return resp;
     }
     if (u.pathname === "/api/draw") return drawRoute(req, env, u);
+    if (u.pathname === "/api/targets") return targetsRoute(req, env, u);
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
     if (u.pathname.startsWith("/admin/")) {
       const r = await usRoute(req, env, u);

@@ -11,7 +11,7 @@
 AI：Gemini 免費 API（GEMINI_API_KEY），每輪向 Google 取型號清單，自動挑最新正式版 flash-lite、再 flash（新型號第一次用前先跑 8 篇自我檢查；抓不到清單退回寫死預設；全部被停用就寄信）；先 flash-lite、再 flash（11/16 實測：flash 偏樂觀；GitHub Models 已被 GitHub 停掉，Groq／Cloudflare 免費模型品質也不夠，都不用）。兩個都用完就當輪不判，等額度回來再補。
 2026-11-16 依 Fable 審查修正：編碼錯誤、AI 回傳格式防呆、股票比對（名稱／代號須出現在文中、撞名清單）、
 篇號用 A1…、限流等待、全文上限 6000 字、文章時間、先濾掉沒提到上市櫃的文章、每批存檔、同標題去重。"""
-import concurrent.futures as cf, csv, email.utils, hashlib, html, json, os, re, subprocess, sys, time
+import urllib.error, concurrent.futures as cf, csv, email.utils, hashlib, html, json, os, re, subprocess, sys, time
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -162,6 +162,27 @@ def stocks_map():
         codes[r["代號"]] = n
         names.setdefault(n, r["代號"])
     return names, codes
+
+
+def kv(key, data=None):
+    """讀（data=None）或寫 Cloudflare KV（經 Worker /api/us-ingest，GitHub Actions 用 OIDC 身分）。讀不到回傳 None；寫失敗丟例外。"""
+    import urllib.request
+    site = os.environ.get("SITE_URL", "https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev").rstrip("/")
+    h = {"User-Agent": "Mozilla/5.0"}
+    if os.environ.get("INGEST_KEY"):
+        h["X-Ingest-Key"] = os.environ["INGEST_KEY"]
+    elif os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL"):
+        rq = urllib.request.Request(os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"] + "&audience=tw-stock-us", headers={"Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]})
+        h["Authorization"] = "Bearer " + json.loads(urllib.request.urlopen(rq, timeout=30).read())["value"]
+    else:
+        raise ValueError("沒有讀寫身分（只有 GitHub Actions 上才行）")
+    try:
+        req = urllib.request.Request(site + "/api/us-ingest?key=" + key, data=data, method="PUT" if data is not None else "GET", headers=h)
+        return urllib.request.urlopen(req, timeout=60).read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404 and data is None:
+            return None
+        raise
 
 
 def priority_codes():
@@ -568,20 +589,22 @@ def main(out):
         for a, (txt, st) in zip(new, ex.map(fulltext, new)):
             a["text"], a["st"] = txt, st
     try:                                                # 11/18 法人目標價參考清單（scripts/targets.py，不用 AI）：新文章（含內文）＋第一次時用 items 的標題補回過去 30 天
-        if os.environ.get("SHOW_TARGETS") != "1":       # 11/18 使用者：目標價先不上線，不累積也不公開 targets.json
-            raise StopIteration
         import targets as TG
-        trs = load("targets.json", [])
+        raw_ = kv("state/targets_tw.json")                # 11/18 使用者：目標價只有登入後看得到 → 存在 KV（不放公開的 GitHub），Worker 登入後才給
+        trs = json.loads(raw_) if raw_ else []
         rows_ = []
         for a in new:
             if a.get("st") in ("ok", "paid"):
                 rows_ += TG.from_article({**a, "t": a["t"] or now}, names, codes)
-        if not os.path.exists(P("targets.json")):
+        if raw_ is None:
             for x in items:
                 rows_ += TG.from_article(x, names, codes, with_text=False)
+        n0 = len(trs)
         trs = TG.merge(trs, rows_, now)
-        json.dump(trs, open(P("targets.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-        print(f"目標價：新增 {len(rows_)} 筆候選，累計 {len(trs)} 筆")
+        if raw_ is not None and len(trs) == n0 and not rows_:
+            raise StopIteration                          # 沒有新資料就不寫 KV（免費額度每天只有 1000 次寫入）
+        kv("state/targets_tw.json", json.dumps(trs, ensure_ascii=False, separators=(",", ":")).encode())
+        print(f"目標價：新增 {len(rows_)} 筆候選，累計 {len(trs)} 筆（存 KV）")
     except StopIteration:
         pass
     except Exception as e:
