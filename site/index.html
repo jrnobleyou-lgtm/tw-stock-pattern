@@ -211,6 +211,10 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 @media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
 /* 11/18 本週強勢／今日強勢標籤：火焰感，分別上色（window.FLV 1 暖橘漸層／2 暗底發光邊／3 由下往上的火苗漸層；預設 2 之前由使用者選） */
 .nfzb{display:none;gap:4px;margin-left:6px}.nfzb .btn:disabled{opacity:.35;cursor:default}@media(max-width:900px){.mhead .nfzb{order:4;flex:0 0 100%;justify-content:flex-end;margin:0}.mhead .nfzb .btn{padding:3px 12px;font-size:13px}}
+.filters .btn.flb{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-weight:700}.filters .btn.flb::before{content:"🔥";margin-right:3px}.filters .btn.flbd::before{content:"🔥🔥";letter-spacing:-2px}
+.filters .btn.flbw{background:rgba(245,158,11,.14);color:#fdba74;border-color:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,.55)}.filters .btn.flbw.on{background:rgba(245,158,11,.55);color:#fff;box-shadow:0 0 10px rgba(245,158,11,.9)}
+.filters .btn.flbd{background:rgba(239,68,68,.18);color:#fecaca;border-color:#ef4444;box-shadow:0 0 9px rgba(239,68,68,.75)}.filters .btn.flbd.on{background:rgba(239,68,68,.6);color:#fff;box-shadow:0 0 12px rgba(239,68,68,1)}
+.filters .btn.flb small,.filters .btn.flb.on small{color:inherit;opacity:.8}
 .a20l{display:inline-block;margin-left:14px;padding:3px 10px;border:1px solid var(--line-t);border-radius:8px;cursor:pointer;white-space:nowrap}
 html .tag.fl{font-weight:700!important;position:relative}
 html .tag.fl::before{content:"🔥";margin-right:3px}
@@ -813,7 +817,7 @@ function screener(key,mix){
   const subs=SUBF[cur.k], sb=subs&&subs.find(x=>x[0]===sk);
   /* 小分類：電腦版放在所有按鈕下面（subf-o）；手機版接在被選的按鈕正下方（subf-i，11/16 使用者） */
   const subH=c=>subs?`<div class="subf ${c}"><button class="btn ${sb?"":"on"}" data-k="${cur.k}">全部<small>${list.length}</small></button>`+subs.map(([k,n,f])=>`<button class="btn ${sb&&sb[0]===k?"on":""}" data-k="${cur.k}.${k}">${n}<small>${list.filter(s=>s.geo.some(f)).length}</small></button>`).join("")+`</div>`:"";
-  let h = (mix?`<p class="note" style="margin-top:0">綜合篩選：看消息與基本面（非型態）。之後會陸續放更多非技術面的條件。點股票看 K 線，切到「消息」看內容。</p>`:`<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button>`)+`<div class="filters">` + GF.map(x=>`<button class="btn ${x.k===cur.k?"on":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`+(x.k===cur.k?subH("subf-i"):"")).join("") + `</div>` + subH("subf-o");
+  let h = (mix?`<p class="note" style="margin-top:0">綜合篩選：看消息與基本面（非型態）。之後會陸續放更多非技術面的條件。點股票看 K 線，切到「消息」看內容。</p>`:`<button class="btn learnb" onclick="location.hash='learn'">📖 什麼是股票型態？</button>`)+`<div class="filters">` + GF.map(x=>`<button class="btn ${x.k===cur.k?"on":""}${x.k==="wk"?" flb flbw":x.k==="td"?" flb flbd":""}" data-k="${x.k}">${x.name}<small>${all.filter(x.f).length}</small></button>`+(x.k===cur.k?subH("subf-i"):"")).join("") + `</div>` + subH("subf-o");
   if(sb) list=list.filter(s=>s.geo.some(sb[2]));
   const tv=s=>s.close*s.vol;            // 成交值（收盤×成交張數）
   sortList(list);            // 預設依成交值由大到小，右上角可改排序

@@ -331,6 +331,16 @@ def r2(x):
     return None if x is None else round(x, 2)
 
 
+def at_limit_up(s):
+    """今天收在漲停價（台股 10%、升降單位依價位；新股前 5 天不算）。用還原後的前一日收盤 pc 推算。"""
+    pc, c = s.get("pc"), s.get("close")
+    if not pc or not c or s.get("new"):
+        return False
+    tick = 0.01 if pc < 10 else 0.05 if pc < 50 else 0.1 if pc < 100 else 0.5 if pc < 500 else 1 if pc < 1000 else 5
+    lim = int(pc * 1.1 / tick + 1e-9) * tick
+    return c >= lim - 1e-6
+
+
 def strong_flags(stocks, live):
     """11/18 使用者＋Opus 顧問：本週強勢／今日強勢標籤（只加標籤與欄位 w5／vr／vd／a20，不改五種型態）。
     本週強勢＝近 5 日（含今日）累計漲幅 ≥10% 且比全市場中位數多 ≥5 點、近 5 日均量 ≥ 前 20 日均量 1.5 倍、近 5 日均成交值 ≥5 千萬。
@@ -371,11 +381,12 @@ def strong_flags(stocks, live):
         s["a20"] = x["a20"]
         if x["tv5"] < 5e7:
             continue
-        if x["w5"] >= 10 and x["w5"] - m5 >= 5 and s["vr"] and s["vr"] >= 1.5:
+        lu = at_limit_up(s)                  # 11/18 使用者：一字鎖死／漲停的股票沒有量是正常的，量能條件放行
+        if x["w5"] >= 10 and x["w5"] - m5 >= 5 and ((s["vr"] and s["vr"] >= 1.5) or lu):
             s["tags"].append("本週強勢")
         up = s["chg"] >= 5 and s["chg"] - m1 >= 3
         keep = partial and code in prev and s["chg"] >= 3 and s["chg"] - m1 >= 1
-        if (up or keep) and s["vd"] and s["vd"] >= 1.5 and not (partial and tw.hour * 60 + tw.minute < 9 * 60 + 30):
+        if (up or keep) and ((s["vd"] and s["vd"] >= 1.5) or lu) and not (partial and tw.hour * 60 + tw.minute < 9 * 60 + 30):
             s["tags"].append("今日強勢（盤中）" if partial else "今日強勢")
             tdnow.append(code)
     if partial:
