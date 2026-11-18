@@ -209,7 +209,7 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .tt2 .ttb{padding:9px 14px;border-radius:999px;background:rgba(20,12,48,.88);color:#e9e4ff;border:1px solid #8b5cf6;box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .tt3 .ttb{width:40px;height:40px;border-radius:10px;background:rgba(9,5,26,.6);color:#c4b5fd;border:1px solid rgba(196,181,253,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-size:18px}
 @media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
-[data-swg]{cursor:pointer}.swgo{color:#a5b4fc;font-weight:400}@media(hover:hover){[data-swg]:hover{background:rgba(124,58,237,.15)}}
+.glk{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}[data-swg]{cursor:pointer}.swgo{color:#a5b4fc;font-weight:400}@media(hover:hover){[data-swg]:hover{background:rgba(124,58,237,.15)}}
 /* 手機表格左右滑動提示（window.SLV：1 表格上方文字箭頭／2 標記欄標題箭頭＋右緣漸層／3 浮動箭頭鈕） */
 .hsh{display:none}
 @media(max-width:900px){
@@ -593,6 +593,7 @@ function group(name){
   $("#app").innerHTML = h; bindRows();
 }
 const gtxt=s=>(s.groups||[s.group]).join("、");
+const glk=s=>(s.groups||[s.group]).map(g=>`<span class="glk" data-swg="${String(g).replace(/"/g,"&quot;")}" title="看 ${String(g).replace(/"/g,"")} 族群的股票">${g}</span>`).join("、");
 function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
 function turnover(s){const v=s.close*s.vol*1000;return D.market==="US"?fmtUSD(v):(v/1e8>=1?(v/1e8).toFixed(1)+" 億":(v/1e4).toFixed(0)+" 萬")}
 let SORTK="tv";            // 列表排序方式（預設成交值）
@@ -944,7 +945,7 @@ function openStock(code){
     el.addEventListener("click",e=>{ if(e.target===el) goBack(); }); document.body.appendChild(el); modalEl=el;
     return;
   }
-  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${gtxt(s)}・${s.industry}</span><div class="mg">${gtxt(s)}${s.industry?"・"+s.industry:""}</div></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>${valBar(s)?`<div class="pevr">${valBar(s)}</div>`:""}`;
+  const head=`<div class="mtitle"><b>${s.code} ${s.name}</b> ${badge(s.state,s.sub)}<span class="mute"> ${glk(s)}・${s.industry}</span><div class="mg">${glk(s)}${s.industry?"・"+s.industry:""}</div></div><div class="mtags"><span class="tag hot" id="livetag" style="display:none"></span>${tags(s.tags)}</div>${valBar(s)?`<div class="pevr">${valBar(s)}</div>`:""}`;
   mountModal(s, head, {notes:notesHTML(s),news:D.market!=="US"&&/^\d/.test(s.code)});
   startLive(chart, D.market==="US"?code:code+(s.market==="TPEX"?".TWO":".TW"), false);
 }
