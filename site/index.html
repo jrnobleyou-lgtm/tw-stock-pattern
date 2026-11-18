@@ -818,9 +818,10 @@ const SUBF={   /* 11/16 使用者：底部反轉可以分開看（頁內小分�
     .map(([k,n,kind])=>[k,n,g=>g.kind===kind&&g.status==="confirmed"&&g.dir==="bear"])};   /* 頂部也分開（與「頂部反轉」同條件：已跌破、看跌） */
 function screener(key,mix){
   if(!mix&&/^(nwup|mops|revhi|yoyhi|m3up)$/.test(key||"")){location.replace("#mix-"+key);return}   /* 舊網址 #scr-revhi 等轉到「綜合篩選」 */
-  key = key || (mix?"mops":"rb3");
+  const US_=D.market==="US";
+  key = key || (mix?(US_?"wk":"mops"):"rb3");
   const [bk,sk] = key.split(".");
-  const GF=FILTERS.filter(x=>!!x.m===!!mix), cur = GF.find(x=>x.k===bk) || GF[0];
+  const GF=FILTERS.filter(x=>!!x.m===!!mix&&(!mix||!US_||/^(wk|td|m3up)$/.test(x.k))), cur = GF.find(x=>x.k===bk) || GF[0];
   const all = Object.values(D.stocks);
   let list = all.filter(cur.f);
   if(STRK.test(cur.k)&&window.A20F) list=list.filter(s=>s.a20);   /* 11/18 使用者：站上 20 日線改成可勾選 */
@@ -843,10 +844,10 @@ function screener(key,mix){
   const RVN={mops:"<b>條件：</b>上一個交易日收盤（13:30）之後到現在，有公告重大訊息的股票（同一則天天重發的只算第一次）。重訊取自公開資訊觀測站公告，隔天早上校正；這個名單在網站每次更新時重算（盤中約每 2 分鐘、收盤後到傍晚、隔天清晨）。點股票後切到「消息」看內容。",
     revhi:"<b>條件：</b>這檔最新公布的月營收，比前 11 個月都高（近 12 個月新高；要有 13 個月以上資料）。每月約 10 號前公布完，公布下個月之前標籤都保留。點股票後切到「消息」看近 6 個月營收。",
     yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。",
-    m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。財報公布後（Q3 約 11/14 前）更新。點股票後切到「消息」看近 3 季營收與三率。"};
+    m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。"+(D.market==="US"?"財報公布後約 1 天內更新（季別為日曆季）。":"財報公布後（Q3 約 11/14 前）更新。")+"點股票後切到「消息」看近 3 季營收與三率。"};
   RVN.pelo=RVN.pemid=RVN.pehi=RVN.pblo=RVN.dyhi=RVN.pels=`<b>條件：</b>${{pelo:"本益比 15 倍以下（虧損沒有本益比，不列入）",pemid:"本益比 15～25 倍",pehi:"本益比 25 倍以上（超過 100 倍多半是獲利剛好很低，會標「獲利低基期」）",pblo:"股價淨值比 1 以下（股價低於每股淨值）",dyhi:"現金殖利率 5% 以上",pels:"近四季合計虧損（本益比不存在）"}[cur.k]}。<br>資料為證交所、櫃買中心公布的收盤後數字（${D.valDate||"—"} 收盤），盤中不會跳動；本益比用最近四季財報，殖利率用最近一次股利。便宜不代表會漲，只是多一個參考；請搭配型態與消息一起看。`;
-  RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。漲停照列。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
-  RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；不設量能條件（等量出來就太晚了），「日量比」欄只供參考；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。盤中 09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥${D.market==="US"?"500 萬美元":"5 千萬"}；新股與停牌不列。${D.market==="US"?"":"漲停照列。"}<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；不設量能條件（等量出來就太晚了），「日量比」欄只供參考；近 5 日平均成交值 ≥${D.market==="US"?"500 萬美元":"5 千萬"}；新股與停牌不列。${D.market==="US"?"美股只用收盤資料，每天台灣早上更新一次。":"盤中 09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。"}<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
@@ -900,7 +901,7 @@ async function loadNews(s,np){
   const tp=D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)?await fetch("/api/targets?c="+s.code+"&close="+s.close,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null):null;   /* 11/18 使用者：目標價只有登入後看得到（Worker 驗證登入）；原註解： 使用者：近 60 天法人目標價參考清單（整理自公開新聞，非投資建議；≥3 家才算最高／最低／中位數，不算平均） */
   const tpD=t=>{const d=new Date((t+28800)*1000).toISOString();return d.slice(5,10).replace("-","/")};
   const tpHTML=tp?`<h4>近 60 天法人目標價<small>${tp.n}家券商${tp.fs?"＋FactSet":""}</small></h4>${tp.hi?`<div class="src" style="margin:0 0 4px">最高 <b>${tp.hi}</b>　中位數 <b>${tp.med}</b>　最低 <b>${tp.lo}</b>（${tp.n} 家，不是平均）</div>`:""}<div style="overflow-x:auto"><table class="qt"><tr><th>日期</th><th>來源</th><th>目標價</th><th>變動</th></tr>${tp.list.map(r=>`<tr><td>${tpD(r.t)}</td><td>${/^https:\/\//.test(r.link||"")?`<a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.who)}</a>`:esc(r.who)}</td><td><b>${r.p}</b></td><td>${r.d>0?'<b class="up">↑上調</b>':r.d<0?'<b class="dn">↓下調</b>':'<span class="mute">—</span>'}</td></tr>`).join("")}</table></div><div class="src">整理自公開新聞，非投資建議；沒列出的券商表示近 60 天新聞沒提到。FactSet 為多位分析師預估的中位數。</div>`:"";
-  if(D.market==="US"){np.innerHTML=eps.length||qq.length?`<div class="nw"><div>${eps.length?`<h4>EPS<small>近 3 季</small></h4>${epsHTML}`:""}${qq.length?`<h4>季營收與三率<small>近 3 季</small></h4>${qHTML}`:""}<div class="src">資料：美國證券交易委員會（SEC）公開財報；季別以季末月份所在的日曆季表示（和公司自己的財年季別可能不同）；營收單位為美元（億＝1 億美元）；EPS 為稀釋後每股盈餘。公司公布財報後約 1 天內更新。</div></div></div>`:`<div class="nw"><div class="mute" style="padding:20px">這檔沒有季財報資料（例如只交年報的外國公司）。</div></div>`;return}
+  if(D.market==="US"){np.innerHTML=eps.length||qq.length?`<div class="nw"><div>${eps.length?`<h4>EPS<small>近 3 季</small></h4>${epsHTML}`:""}${qq.length?`<h4>季營收與三率<small>近 3 季</small></h4>${qHTML}`:""}<div class="src">資料：美國證券交易委員會（SEC）公開財報；季別以季末月份所在的日曆季表示（和公司自己的財年季別可能不同）；營收單位為美元（億＝1 億美元）；EPS 為稀釋後每股盈餘（累計＝各單季加總）。公司公布財報後約 1 天內更新。</div></div></div>`:`<div class="nw"><div class="mute" style="padding:20px">這檔沒有季財報資料（例如只交年報的外國公司）。</div></div>`;return}
   np.innerHTML=rev.length||eps.length||qq.length||tp
     ?`<div class="nw nw2"><div>${hi?`<div style="margin:8px 0 0">${hi}</div>`:""}${rev.length?`<h4>月營收<small>近 6 個月</small></h4>${revBars}`:""}${eps.length?`<h4>EPS<small>近 3 季</small></h4>${epsHTML}`:""}${qq.length?`<h4>季營收與三率<small>近 3 季</small></h4>${qHTML}`:""}${tpHTML}</div><div>${right}</div></div>`
     :`<div class="nw">${right}</div>`;
@@ -1980,7 +1981,7 @@ if(D.market==="US"){                 // 美股版：同一套頁面，換標題�
   $("#asof").textContent="資料日期 "+D.asof+"（美東）";
   const nm=$("#n-mkt"); nm.textContent="台股"; nm.href="/"; 
 }
-if(D.market==="US") $("#n-mix").style.display="none";   // 美股沒有重訊／月營收
+/* 11/18 使用者：美股也有綜合篩選（本週強勢／今日強勢／三率三升；沒有重訊、月營收、本益比、目標價） */
 if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textContent="美股"}
 /* 11/17 使用者：手機版「美股／台股」鈕移到「設定」左邊（上班模式那一列），電腦版維持在導覽列 */
 {const mq=matchMedia("(max-width:900px)"),pl=()=>{const m=$("#n-mkt"),fz=document.querySelector("header .fz"),st=$("#n-set");if(mq.matches)fz.insertBefore(m,st);else document.querySelector("header nav").appendChild(m)};pl();mq.addEventListener&&mq.addEventListener("change",pl)}

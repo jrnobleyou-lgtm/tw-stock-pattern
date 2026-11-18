@@ -108,7 +108,16 @@ def view(c):
     eps = [[qlabel(c["d"][i]), c["eps"][i]] for i in range(n - 1, max(n - 4, -1), -1) if c["eps"][i] is not None]
     last = rows[0] if rows else None
     m3 = bool(last and all(x is not None and x > 0 for x in last[7:10]))
-    return {"eps": eps, "q": rows, **({"m3": 1} if m3 else {})}
+    # 11/18 使用者：美股也要「今年累計／去年同期／去年全年」（和台股同格式 [年, 最新季, 今年累計, 去年同期, 去年全年]；年用西元、季別為日曆季、累計＝各單季 EPS 加總）
+    sv = {qlabel(c["d"][i]): c["eps"][i] for i in range(n) if c["eps"][i] is not None}
+    ey = None
+    if sv:
+        last = max(sv); y, k = int(last[:4]), int(last[-1])
+        def acc(yr, m):
+            vs = [sv.get(f"{yr}Q{j}") for j in range(1, m + 1)]
+            return None if any(v is None for v in vs) else round(sum(vs), 2)
+        ey = [y, k, acc(y, k), acc(y - 1, k), acc(y - 1, 4)]
+    return {"eps": eps, "q": rows, **({"ey": ey} if ey and ey[2] is not None else {}), **({"m3": 1} if m3 else {})}
 
 def main():
     codes = [r["代號"] for r in csv.DictReader(open(os.path.join(ROOT, "data", "groups_us_all.csv"), encoding="utf-8"))]

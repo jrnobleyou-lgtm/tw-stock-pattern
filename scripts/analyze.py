@@ -341,7 +341,7 @@ def at_limit_up(s):
     return c >= lim - 1e-6
 
 
-def strong_flags(stocks, live):
+def strong_flags(stocks, live, us=False):
     """11/18 使用者＋Opus 顧問：本週強勢／今日強勢標籤（只加標籤與欄位 w5／vr／vd／a20，不改五種型態）。
     本週強勢＝近 5 日（含今日）累計漲幅 ≥10% 且比全市場中位數多 ≥5 點、近 5 日均量 ≥ 前 20 日均量 1.5 倍、近 5 日均成交值 ≥5 千萬。
     今日強勢＝今日漲幅 ≥5% 且比全市場中位數多 ≥3 點、近 5 日均成交值 ≥5 千萬（11/18 使用者：今日強勢不設量能條件，等量出來就太晚）。
@@ -357,7 +357,8 @@ def strong_flags(stocks, live):
             frac, partial = min(max(m / 270, 0.1), 1.0), True
         except Exception:
             pass
-    liq = [s for s in stocks.values() if s.get("_s") and s["_s"]["tv"] >= 1e7]
+    TV_LIQ, TV_MIN = (1e6, 5e6) if us else (1e7, 5e7)        # 美股用美元：成交值 ≥100 萬美元才算進市場中位數、近 5 日均成交值 ≥500 萬美元才標（台股 1 千萬／5 千萬台幣）
+    liq = [s for s in stocks.values() if s.get("_s") and s["_s"]["tv"] >= TV_LIQ]
     def med(xs):
         xs = sorted(xs); n = len(xs)
         return 0 if not n else (xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2)
@@ -379,9 +380,9 @@ def strong_flags(stocks, live):
         s["vr"] = round(v5 / x["v20"], 1) if x["v20"] > 0 else None
         s["vd"] = round(vt / x["vp5"], 1) if x["vp5"] > 0 else None
         s["a20"] = x["a20"]
-        if x["tv5"] < 5e7:
+        if x["tv5"] < TV_MIN:
             continue
-        lu = at_limit_up(s)                  # 11/18 使用者：一字鎖死／漲停的股票沒有量是正常的，量能條件放行
+        lu = (not us) and at_limit_up(s)                  # 11/18 使用者：一字鎖死／漲停的股票沒有量是正常的，量能條件放行
         if x["w5"] >= 10 and x["w5"] - m5 >= 5 and ((s["vr"] and s["vr"] >= 1.5) or lu):
             s["tags"].append("本週強勢")
         up = s["chg"] >= 5 and s["chg"] - m1 >= 3
@@ -564,7 +565,7 @@ def main():
             st["stale"] = raw[T]["d"][5:]
             st["chg"], st["pc"], st["r5"] = 0, raw[T]["c"], [0]
             tags.append(f"停牌（資料至{raw[T]['d'][5:]}）")
-        if full and not us and T >= 25 and "stale" not in st:          # 11/18 本週／今日強勢（Opus 顧問定案）：先記每檔的原始數字，全部跑完再用市場中位數判斷
+        if full and T >= 25 and "stale" not in st:          # 11/18 本週／今日強勢（Opus 顧問定案）：先記每檔的原始數字，全部跑完再用市場中位數判斷
             try:
                 vs = [b["v"] for b in raw]
                 tv5 = sum(raw[i]["v"] * raw[i]["c"] for i in range(T - 4, T + 1)) / 5
@@ -684,8 +685,8 @@ def main():
     mp = os.path.join(ROOT, "data", "intraday_meta.json")
     if full and not us and os.path.exists(mp):
         live = json.load(open(mp))
-    if full and not us:
-        strong_flags(stocks, live)
+    if full:
+        strong_flags(stocks, live, us)
     out = {"valDate": (val or {}).get("date"), "live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
     if mode == "all":
         # 11/17 Fable 審查：盤中（15:00 前，這兩項資料要收盤後才公布）不重抓，沿用上次發布的；抓到新的才更新
