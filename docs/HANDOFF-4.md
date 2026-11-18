@@ -74,3 +74,11 @@
 - **ETF 歷史回補**在背景（`ETF_CACHE=<scratchpad>/etfc python3 scripts/etf.py backfill 7`，台灣 01:10 起；證交所偶爾連不上很慢）。補完後：`python3 scripts/etf.py build` → 提交 `data/hist_etf`、`data/etf_class.csv` → 把 ETF 相關程式（含 workflow／intraday_loop）推 main（先別推 index.html，等使用者看過）。被環境收掉就重跑同指令（會續跑）。
 - 待使用者看截圖後上線：PE 顯示（K 線標題列＋綜合篩選 6 顆）、目標價表、ETF 專區（清單頁＋K 線）；ETF 分類請使用者看 `data/etf_class.csv`（「其他」只剩 00981T）。成分股連結、折溢價、規模使用者說明天再說。
 - 三率回補：第一輪 2 小時被環境停掉（只補到 363 檔，卡在 FinMind 整點額度），01:10 重新啟動（背景 `b40oi08zn`，`MARGIN_FM=<scratchpad>/margin_fm.json`）；03:30 檢查提醒仍在。
+
+## 2026-11-18 白天（壓縮前最終狀態；已上線＝✅）
+- ✅ 11/18 08:25 三率回補完成（1,977 檔）上線；「三率三升」574 檔。
+- ✅ 本益比／股價淨值比／殖利率（K 線標題下一行＋綜合篩選 6 顆）、ETF 專區（導覽「ETF專區」、`#etf`、主動／被動＋分類、槓桿反向預設隱藏、`#e-<代號>` K 線）上線。ETF 歷史用 Yahoo 補近 1 年（`etf.py yahoo`，未還原配息）；每天由 `update.yml` 的 ETF 步驟更新、`intraday_loop.sh` 每輪 `etf.py build`。
+- ✅ **目標價（使用者 11/18）：只有登入後看得到**。`news.py` 把 `targets.py` 整理的資料存 Cloudflare KV `state/targets_tw.json`（沒新資料不寫，省額度），Worker `/api/targets?c=&close=` 驗證登入（cookie `us_auth`）才回；前端消息分頁只有 `adm=1` 才抓。公開的 `f/<代號>.json` 沒有目標價；`analyze.py` 的 `SHOW_TARGETS=1` 才會寫進（預設關）。鉅亨「Factset 最新調查」速報標題本來就在公開新聞列表裡，使用者決定不拿掉（視為新聞標題＋連結）。
+- ✅ 11/18 13:55 上線：華航 2610、長榮航 2618 改「航空/運輸」（台股試算表第 197、198 列＋異動紀錄；美股 UAL、CSX 是隔壁線改的，已用 API 寫進 KV `state/groups_us*.csv`，美股頁今晚 20:08 更新生效）；「聯絡我們／免責聲明」（頁尾連結 `#about`，正式語氣，信箱 swingbreakout888@gmail.com 用程式組字）；型態介紹頁電腦版圖放大＋「本站怎麼標、什麼時候失敗」收摺（`window.LZV` 2）；手機導覽五顆同一列（`html.nvA`）；手機股票列表版本 3（`MCV` 3：拿掉重複的成交值／收盤欄，標記放在每檔下面整排，名稱＋成交值、股價＋漲跌幅各用框框〔`MBX` 2、底色 `MBC` 4 較透明純黑〕、標記文字粗體淺灰 #cdd3e6、名稱成交值粗體、股價漲跌幅放大）；手機「底部」鈕放標題列右邊空白（`mc3`）。使用者決定：版本 1 細框線先 hold（`MBX=1` 可切）。
+- ⏳ **外部連結（未上線，待使用者說好）**：頁首「上班模式」旁一顆淡紫框按鈕「🔗 母子單計算器 ↗」（`#xl`，連到 `https://timber-quiet-heart-sapphire.grok.me/`，使用者請 Grok 做的「台股波段母子單計算器」，新分頁開啟 `rel=noopener`；`window.XLV` 2 可改首頁橫幅）。環境網路已加這個網址（`update_environment`），名稱「母子單計算器」是我依內容暫取，使用者可改。
+- 待辦／提醒：①09:00 前後日報 07:47 已跑；11/19 08:30 新聞統計對照（`trig_01EKR7bV9p6M9bjwKG983fWh`）；Haiku 付費不買（使用者同意免費 3.5 夠用）。②ETF 成分股連結、折溢價、規模使用者說之後再說。③美股 EPS／三率等待使用者決定；ANT 11/21 上市使用者會通知。④盤中 08:50–13:50 不推 main（使用者：保守規則，除非使用者明說現在推）。⑤目標價資料要新聞排程跑幾輪才有內容，登入後在消息分頁看。
