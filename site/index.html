@@ -227,7 +227,10 @@ html.fl2 .tag.flw{background:rgba(245,158,11,.14)!important;color:#fdba74!import
 html.fl2 .tag.fld{background:rgba(239,68,68,.18)!important;color:#fecaca!important;border-color:#ef4444!important;box-shadow:0 0 9px rgba(239,68,68,.75)}
 html.fl3 .tag.flw{background:linear-gradient(0deg,#b45309 0%,#f59e0b 55%,#fde68a 100%)!important;color:#2a1200!important;border-color:#fbbf24!important}
 html.fl3 .tag.fld{background:linear-gradient(0deg,#7f1d1d 0%,#ef4444 45%,#fb923c 80%,#fde047 100%)!important;color:#fff!important;border-color:#fb923c!important;text-shadow:0 1px 2px #000a}
-.aisum{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:4px 10px;font-size:12px;color:#e5e7eb;background:rgba(124,58,237,.16);border:1px solid rgba(196,181,253,.45);border-radius:8px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.aisum{display:block;width:fit-content;max-width:100%;box-sizing:border-box;margin-top:4px;padding:4px 10px;font-size:12px;color:#fff;border-radius:8px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}   /* 11/18 使用者：不要紫色、要亮一點、框寬貼合文字；window.AIV 1 白玻璃／2 天藍／3 琥珀（待使用者選） */
+html.ai1 .aisum{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+html.ai2 .aisum{background:rgba(56,189,248,.20);border:1px solid rgba(125,211,252,.75);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+html.ai3 .aisum{background:rgba(251,191,36,.18);border:1px solid rgba(252,211,77,.75);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
 html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小字改白（window.MTV 1 原色／2 柔白／3 純白，待使用者選） */
 .glk{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}[data-swg]{cursor:pointer}.swgo{color:#a5b4fc;font-weight:400}@media(hover:hover){[data-swg]:hover{background:rgba(124,58,237,.15)}}
 /* 手機表格左右滑動提示（window.SLV：1 表格上方文字箭頭／2 標記欄標題箭頭＋右緣漸層／3 浮動箭頭鈕） */
@@ -1952,7 +1955,7 @@ function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,40
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
-{const v=window.MCV||3;document.documentElement.classList.add("mt"+(window.MTV||2),"xl"+(window.XLV||1),"fl"+(window.FLV||2));document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));document.documentElement.classList.add("mbc"+(window.MBC||4))}
+{const v=window.MCV||3;document.documentElement.classList.add("mt"+(window.MTV||2),"ai"+(window.AIV||1),"xl"+(window.XLV||1),"fl"+(window.FLV||2));document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));document.documentElement.classList.add("mbc"+(window.MBC||4))}
 if(window.NVA!==false) document.documentElement.classList.add("nvA");
 if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
 let stuckNow=false;
