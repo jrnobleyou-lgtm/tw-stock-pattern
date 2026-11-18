@@ -836,7 +836,7 @@ function screener(key,mix){
     m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。財報公布後（Q3 約 11/14 前）更新。點股票後切到「消息」看近 3 季營收與三率。"};
   RVN.pelo=RVN.pemid=RVN.pehi=RVN.pblo=RVN.dyhi=RVN.pels=`<b>條件：</b>${{pelo:"本益比 15 倍以下（虧損沒有本益比，不列入）",pemid:"本益比 15～25 倍",pehi:"本益比 25 倍以上（超過 100 倍多半是獲利剛好很低，會標「獲利低基期」）",pblo:"股價淨值比 1 以下（股價低於每股淨值）",dyhi:"現金殖利率 5% 以上",pels:"近四季合計虧損（本益比不存在）"}[cur.k]}。<br>資料為證交所、櫃買中心公布的收盤後數字（${D.valDate||"—"} 收盤），盤中不會跳動；本益比用最近四季財報，殖利率用最近一次股利。便宜不代表會漲，只是多一個參考；請搭配型態與消息一起看。`;
   RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。漲停照列。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=scrollY;baseRaw=null;route();scrollTo(0,y)"> 只看站上 20 日線</label>`;
-  RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；今日成交張數 ≥ 前 5 日平均的 1.5 倍；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。盤中用「已開盤時間比例」推估全日量，09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=scrollY;baseRaw=null;route();scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；不設量能條件（等量出來就太晚了），「日量比」欄只供參考；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。盤中 09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=scrollY;baseRaw=null;route();scrollTo(0,y)"> 只看站上 20 日線</label>`;
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();

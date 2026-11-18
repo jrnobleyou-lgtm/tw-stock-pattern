@@ -344,7 +344,7 @@ def at_limit_up(s):
 def strong_flags(stocks, live):
     """11/18 使用者＋Opus 顧問：本週強勢／今日強勢標籤（只加標籤與欄位 w5／vr／vd／a20，不改五種型態）。
     本週強勢＝近 5 日（含今日）累計漲幅 ≥10% 且比全市場中位數多 ≥5 點、近 5 日均量 ≥ 前 20 日均量 1.5 倍、近 5 日均成交值 ≥5 千萬。
-    今日強勢＝今日漲幅 ≥5% 且比全市場中位數多 ≥3 點、今日量 ≥ 前 5 日均量 1.5 倍、近 5 日均成交值 ≥5 千萬。
+    今日強勢＝今日漲幅 ≥5% 且比全市場中位數多 ≥3 點、近 5 日均成交值 ≥5 千萬（11/18 使用者：今日強勢不設量能條件，等量出來就太晚）。
     「站上 20 日線」不是條件（使用者 11/18），改成篩選頁可勾選（欄位 a20）。
     盤中：今日量先按已開盤時間比例推估全日量；09:30 前不標今日強勢；盤中標過的，漲幅還在 3% 以上就保留（避免標籤來回跳）。"""
     import datetime
@@ -386,7 +386,7 @@ def strong_flags(stocks, live):
             s["tags"].append("本週強勢")
         up = s["chg"] >= 5 and s["chg"] - m1 >= 3
         keep = partial and code in prev and s["chg"] >= 3 and s["chg"] - m1 >= 1
-        if (up or keep) and ((s["vd"] and s["vd"] >= 1.5) or lu) and not (partial and tw.hour * 60 + tw.minute < 9 * 60 + 30):
+        if (up or keep) and not (partial and tw.hour * 60 + tw.minute < 9 * 60 + 30):
             s["tags"].append("今日強勢（盤中）" if partial else "今日強勢")
             tdnow.append(code)
     if partial:
