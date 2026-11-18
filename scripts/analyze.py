@@ -331,6 +331,57 @@ def r2(x):
     return None if x is None else round(x, 2)
 
 
+def strong_flags(stocks, live):
+    """11/18 使用者＋Opus 顧問：本週強勢／今日強勢標籤（只加標籤與欄位 w5／vr／vd／a20，不改五種型態）。
+    本週強勢＝近 5 日（含今日）累計漲幅 ≥10% 且比全市場中位數多 ≥5 點、近 5 日均量 ≥ 前 20 日均量 1.5 倍、近 5 日均成交值 ≥5 千萬。
+    今日強勢＝今日漲幅 ≥5% 且比全市場中位數多 ≥3 點、今日量 ≥ 前 5 日均量 1.5 倍、近 5 日均成交值 ≥5 千萬。
+    「站上 20 日線」不是條件（使用者 11/18），改成篩選頁可勾選（欄位 a20）。
+    盤中：今日量先按已開盤時間比例推估全日量；09:30 前不標今日強勢；盤中標過的，漲幅還在 3% 以上就保留（避免標籤來回跳）。"""
+    import datetime
+    tw = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
+    frac, partial = 1.0, False
+    if live and tw.weekday() < 5 and tw.hour * 60 + tw.minute < 13 * 60 + 35:
+        try:
+            hh, mm = [int(x) for x in str(live.get("hms", "13:30")).split(":")[:2]]
+            m = max(hh * 60 + mm - 9 * 60, 1)
+            frac, partial = min(max(m / 270, 0.1), 1.0), True
+        except Exception:
+            pass
+    liq = [s for s in stocks.values() if s.get("_s") and s["_s"]["tv"] >= 1e7]
+    def med(xs):
+        xs = sorted(xs); n = len(xs)
+        return 0 if not n else (xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2)
+    m5 = med([s["_s"]["w5"] for s in liq]); m1 = med([s["chg"] for s in liq])
+    prev = set()
+    if partial:
+        try:
+            prev = set(cached("tdprev", None, set()) or [])
+        except Exception:
+            prev = set()
+    tdnow = []
+    for code, s in stocks.items():
+        x = s.pop("_s", None)
+        if not x:
+            continue
+        vt = x["vt"] / frac if partial else x["vt"]
+        v5 = (x["v5"] * 5 - x["vt"] + vt) / 5 if partial else x["v5"]
+        s["w5"] = round(x["w5"], 1)
+        s["vr"] = round(v5 / x["v20"], 1) if x["v20"] > 0 else None
+        s["vd"] = round(vt / x["vp5"], 1) if x["vp5"] > 0 else None
+        s["a20"] = x["a20"]
+        if x["tv5"] < 5e7:
+            continue
+        if x["w5"] >= 10 and x["w5"] - m5 >= 5 and s["vr"] and s["vr"] >= 1.5:
+            s["tags"].append("本週強勢")
+        up = s["chg"] >= 5 and s["chg"] - m1 >= 3
+        keep = partial and code in prev and s["chg"] >= 3 and s["chg"] - m1 >= 1
+        if (up or keep) and s["vd"] and s["vd"] >= 1.5 and not (partial and tw.hour * 60 + tw.minute < 9 * 60 + 30):
+            s["tags"].append("今日強勢（盤中）" if partial else "今日強勢")
+            tdnow.append(code)
+    if partial:
+        cached("tdprev", tdnow, None)
+
+
 def main():
     # 用法：analyze.py        → 你的 207 檔（舊資料）
     #       analyze.py all    → 全市場（prices_all.csv + groups_tw_all.csv），個股 K 線拆成 site/s/<代號>.json
@@ -490,6 +541,14 @@ def main():
             st["stale"] = raw[T]["d"][5:]
             st["chg"], st["pc"], st["r5"] = 0, raw[T]["c"], [0]
             tags.append(f"停牌（資料至{raw[T]['d'][5:]}）")
+        if full and not us and T >= 25 and "stale" not in st:          # 11/18 本週／今日強勢（Opus 顧問定案）：先記每檔的原始數字，全部跑完再用市場中位數判斷
+            try:
+                vs = [b["v"] for b in raw]
+                tv5 = sum(raw[i]["v"] * raw[i]["c"] for i in range(T - 4, T + 1)) / 5
+                st["_s"] = {"w5": (bars[T]["c"] / bars[T - 5]["c"] - 1) * 100, "v5": sum(vs[T - 4:T + 1]) / 5, "v20": sum(vs[T - 24:T - 4]) / 20,
+                            "vp5": sum(vs[T - 5:T]) / 5, "vt": vs[T], "tv5": tv5, "a20": 1 if bars[T]["c"] >= ma[20][T] else 0, "tv": raw[T]["v"] * raw[T]["c"]}
+            except Exception:
+                pass
         dn_ = dmi_now(bars)
         if dn_:
             st["dmi"] = dn_                              # DMI 篩選頁的「DMI差值」「ADX」欄
@@ -600,6 +659,8 @@ def main():
     mp = os.path.join(ROOT, "data", "intraday_meta.json")
     if full and not us and os.path.exists(mp):
         live = json.load(open(mp))
+    if full and not us:
+        strong_flags(stocks, live)
     out = {"valDate": (val or {}).get("date"), "live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
     if mode == "all":
         # 11/17 Fable 審查：盤中（15:00 前，這兩項資料要收盤後才公布）不重抓，沿用上次發布的；抓到新的才更新

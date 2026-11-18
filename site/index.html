@@ -209,6 +209,17 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .tt2 .ttb{padding:9px 14px;border-radius:999px;background:rgba(20,12,48,.88);color:#e9e4ff;border:1px solid #8b5cf6;box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .tt3 .ttb{width:40px;height:40px;border-radius:10px;background:rgba(9,5,26,.6);color:#c4b5fd;border:1px solid rgba(196,181,253,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-size:18px}
 @media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
+/* 11/18 本週強勢／今日強勢標籤：火焰感，分別上色（window.FLV 1 暖橘漸層／2 暗底發光邊／3 由下往上的火苗漸層；預設 2 之前由使用者選） */
+.a20l{display:inline-block;margin-left:14px;padding:3px 10px;border:1px solid var(--line-t);border-radius:8px;cursor:pointer;white-space:nowrap}
+html .tag.fl{font-weight:700!important;position:relative}
+html .tag.fl::before{content:"🔥";margin-right:3px}
+html .tag.fld::before{content:"🔥🔥";letter-spacing:-2px}
+html.fl1 .tag.flw{background:linear-gradient(90deg,#f59e0b,#fb923c)!important;color:#1a0b00!important;border-color:#f59e0b!important}
+html.fl1 .tag.fld{background:linear-gradient(90deg,#dc2626,#f97316)!important;color:#fff!important;border-color:#ef4444!important}
+html.fl2 .tag.flw{background:rgba(245,158,11,.14)!important;color:#fdba74!important;border-color:#f59e0b!important;box-shadow:0 0 6px rgba(245,158,11,.55)}
+html.fl2 .tag.fld{background:rgba(239,68,68,.18)!important;color:#fecaca!important;border-color:#ef4444!important;box-shadow:0 0 9px rgba(239,68,68,.75)}
+html.fl3 .tag.flw{background:linear-gradient(0deg,#b45309 0%,#f59e0b 55%,#fde68a 100%)!important;color:#2a1200!important;border-color:#fbbf24!important}
+html.fl3 .tag.fld{background:linear-gradient(0deg,#7f1d1d 0%,#ef4444 45%,#fb923c 80%,#fde047 100%)!important;color:#fff!important;border-color:#fb923c!important;text-shadow:0 1px 2px #000a}
 .glk{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}[data-swg]{cursor:pointer}.swgo{color:#a5b4fc;font-weight:400}@media(hover:hover){[data-swg]:hover{background:rgba(124,58,237,.15)}}
 /* 手機表格左右滑動提示（window.SLV：1 表格上方文字箭頭／2 標記欄標題箭頭＋右緣漸層／3 浮動箭頭鈕） */
 .hsh{display:none}
@@ -337,6 +348,8 @@ $("#asof").textContent = D.live ? liveTxt() : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TP
 /* ───────── 共用 ───────── */
 function badge(s,sub){return `<span class="badge b-${CLS[s]}">${s}</span>` + (sub?`<span class="tag ${sub==="破底走弱"?"bad":""}">${sub}</span>`:"")}
 function tagCls(x){
+  if(x==="本週強勢") return "fl flw";
+  if(/^今日強勢/.test(x)) return "fl fld";   /* 11/18 使用者：本週／今日強勢要分開底色、火焰感（window.FLV 切版本） */
   if(/突破第1根|準備突破|強勢止跌反彈|蓄勢待發/.test(x)) return "hot";
   if(/破底走弱|跌破/.test(x)) return "bad";
   if(/底|頂|杯柄|楔|三角|吞沒|刺透|烏雲|星|傘形|錘|烏鴉/.test(x)) return "pat";
@@ -597,19 +610,21 @@ const glk=s=>(s.groups||[s.group]).map(g=>`<span class="glk" data-swg="${String(
 function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
 function turnover(s){const v=s.close*s.vol*1000;return D.market==="US"?fmtUSD(v):(v/1e8>=1?(v/1e8).toFixed(1)+" 億":(v/1e4).toFixed(0)+" 萬")}
 let SORTK="tv";            // 列表排序方式（預設成交值）
-const VALK=/^(pelo|pemid|pehi|dyhi|pblo|pels)$/;
+const VALK=/^(pelo|pemid|pehi|dyhi|pblo|pels)$/, STRK=/^(wk|td)$/;
 const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["state","目前型態（強到弱）"]];
 function sortList(list){
   const tv=s=>s.close*s.vol;
   const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
     pe:(a,b)=>(a.pe||1e9)-(b.pe||1e9)||tv(b)-tv(a),dy:(a,b)=>(b.dy||0)-(a.dy||0)||tv(b)-tv(a),pb:(a,b)=>(a.pb||1e9)-(b.pb||1e9)||tv(b)-tv(a),
     state:(a,b)=>((STATES.indexOf(a.state)+1)||99)-((STATES.indexOf(b.state)+1)||99)||tv(b)-tv(a),   /* 新股排最後 */
-    dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
+    dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a),
+    w5:(a,b)=>(b.w5??-999)-(a.w5??-999)||tv(b)-tv(a),vr:(a,b)=>(b.vr??-1)-(a.vr??-1)||tv(b)-tv(a),vd:(a,b)=>(b.vd??-1)-(a.vd??-1)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
   return list.sort(f);
 }
 function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select></div>`}
 /* 11/18 使用者：本益比／股價淨值比／殖利率（官方收盤後資料，固定收盤值；PE 虧損顯示「虧損」，超過 100 倍標「獲利低基期」） */
 function peTxt(s){return s.pe!=null?s.pe.toFixed(1)+(s.pe>100?'<small class="mute"> 獲利低基期</small>':""):s.pl?"虧損":"—"}
+function strCells(s){return `<td class="cc" style="color:${chgColor(s.w5)}">${s.w5!=null?(s.w5>0?"+":"")+s.w5.toFixed(1)+"%":"—"}</td><td class="cc">${s.vr!=null?s.vr.toFixed(1)+"倍":"—"}</td><td class="cc">${s.vd!=null?s.vd.toFixed(1)+"倍":"—"}</td>`}
 function valCells(s){return `<td class="cc">${peTxt(s)}</td><td class="cc">${s.pb!=null?s.pb.toFixed(2):"—"}</td><td class="cc">${s.dy!=null?s.dy.toFixed(2)+"%":"—"}</td>`}
 function valBar(s){
   if(D.market==="US"||s.pe===undefined&&s.pb===undefined&&s.dy===undefined) return "";
@@ -639,11 +654,11 @@ function chgCell(s){
   if(V===2) return `<td class="chg2"><div class="p ${lm}" style="${lm?"":"color:"+col}">${lu?"漲停 ":ld?"跌停 ":""}${p}</div><div class="a" style="color:${col}">${a}</div></td>`;
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
-function stockTable(list,withGroup,showVal,dmiCols,gline,vcols){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc ty-h">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc c-dup">成交值</th>':""}<th class="cc c-dup">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+function stockTable(list,withGroup,showVal,dmiCols,gline,vcols,scols){
+  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc ty-h">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${scols?'<th class="cc">5日漲幅</th><th class="cc">週量比<small style="display:block;font-weight:400">5日÷前20日</small></th><th class="cc">日量比<small style="display:block;font-weight:400">今日÷前5日</small></th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc c-dup">成交值</th>':""}<th class="cc c-dup">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}${vcols?valCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc c-dup">${turnover(s)}</td>`:""}<td class="cc c-dup">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}${scols?strCells(s):""}${vcols?valCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc c-dup">${turnover(s)}</td>`:""}<td class="cc c-dup">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`
       +`<tr class="row tgr" data-c="${s.code}"><td colspan="20" class="tg2"><span class="tgl">標記</span>${tags(subTags(s))}</td></tr>`;   /* 手機版第 3 種：標記放在這一列下面整排（window.MCV=3） */
   }
   return h + `</tbody></table></div>`;
@@ -758,6 +773,8 @@ const FILTERS = [
   {k:"dmipre", name:"DMI翻多前已轉強", f:s=>has(s,/DMI翻多前已轉強/)},
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
+  {k:"wk", m:1, name:"本週強勢股", f:s=>s.tags.includes("本週強勢")},   /* 11/18：近 5 日漲 ≥10% 且贏大盤 5 點、量增 1.5 倍（Opus 顧問定案）；站上 20 日線改成頁內可勾選 */
+  {k:"td", m:1, name:"今日強勢股", f:s=>has(s,/^今日強勢/)},
   {k:"nwup", m:1, name:"近7天消息偏多", f:s=>has(s,/近期消息偏多/)},
   {k:"mops", m:1, name:"今天有重訊", f:s=>has(s,/今天有重訊/)},   /* 11/16：上一交易日收盤後到現在有重訊 */
   {k:"revhi", m:1, name:"月營收創新高", f:s=>has(s,/月營收創新高/)},   /* 11/16 使用者：最新月營收比前 11 個月都高 */
@@ -790,6 +807,7 @@ function screener(key,mix){
   const GF=FILTERS.filter(x=>!!x.m===!!mix), cur = GF.find(x=>x.k===bk) || GF[0];
   const all = Object.values(D.stocks);
   let list = all.filter(cur.f);
+  if(STRK.test(cur.k)&&window.A20F) list=list.filter(s=>s.a20);   /* 11/18 使用者：站上 20 日線改成可勾選 */
   const subs=SUBF[cur.k], sb=subs&&subs.find(x=>x[0]===sk);
   /* 小分類：電腦版放在所有按鈕下面（subf-o）；手機版接在被選的按鈕正下方（subf-i，11/16 使用者） */
   const subH=c=>subs?`<div class="subf ${c}"><button class="btn ${sb?"":"on"}" data-k="${cur.k}">全部<small>${list.length}</small></button>`+subs.map(([k,n,f])=>`<button class="btn ${sb&&sb[0]===k?"on":""}" data-k="${cur.k}.${k}">${n}<small>${list.filter(s=>s.geo.some(f)).length}</small></button>`).join("")+`</div>`:"";
@@ -802,6 +820,7 @@ function screener(key,mix){
     h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th class="sn1">股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${turnover(s)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else if(DMI_NOTE[cur.k]) h += sortBar([["dmid","DMI差值"],["adx","ADX"]])+stockTable(list,false,true,true);
+  else if(STRK.test(cur.k)) h += sortBar([["w5","5日漲幅"],["vr","週量比"],["vd","日量比"]])+stockTable(list,false,true,false,false,false,true);
   else if(VALK.test(cur.k)) h += sortBar([["pe","本益比低到高"],["dy","殖利率高到低"],["pb","股價淨值比低到高"]])+stockTable(list,false,true,false,false,true);
   else h += sortBar()+stockTable(list,false,true);
   if(DMI_NOTE[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${DMI_NOTE[cur.k]}</p>${DMI_HELP}<div class="sortbar">`);
@@ -810,6 +829,8 @@ function screener(key,mix){
     yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。",
     m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。財報公布後（Q3 約 11/14 前）更新。點股票後切到「消息」看近 3 季營收與三率。"};
   RVN.pelo=RVN.pemid=RVN.pehi=RVN.pblo=RVN.dyhi=RVN.pels=`<b>條件：</b>${{pelo:"本益比 15 倍以下（虧損沒有本益比，不列入）",pemid:"本益比 15～25 倍",pehi:"本益比 25 倍以上（超過 100 倍多半是獲利剛好很低，會標「獲利低基期」）",pblo:"股價淨值比 1 以下（股價低於每股淨值）",dyhi:"現金殖利率 5% 以上",pels:"近四季合計虧損（本益比不存在）"}[cur.k]}。<br>資料為證交所、櫃買中心公布的收盤後數字（${D.valDate||"—"} 收盤），盤中不會跳動；本益比用最近四季財報，殖利率用最近一次股利。便宜不代表會漲，只是多一個參考；請搭配型態與消息一起看。`;
+  RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。漲停照列。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=scrollY;baseRaw=null;route();scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；今日成交張數 ≥ 前 5 日平均的 1.5 倍；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。盤中用「已開盤時間比例」推估全日量，09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=scrollY;baseRaw=null;route();scrollTo(0,y)"> 只看站上 20 日線</label>`;
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
@@ -1912,7 +1933,7 @@ function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,40
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
-{const v=window.MCV||3;document.documentElement.classList.add("xl"+(window.XLV||1));document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));document.documentElement.classList.add("mbc"+(window.MBC||4))}
+{const v=window.MCV||3;document.documentElement.classList.add("xl"+(window.XLV||1),"fl"+(window.FLV||2));document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));document.documentElement.classList.add("mbc"+(window.MBC||4))}
 if(window.NVA!==false) document.documentElement.classList.add("nvA");
 if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
 let stuckNow=false;
