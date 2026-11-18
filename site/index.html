@@ -297,7 +297,12 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* 11/16 使用者：股票／漲跌／族群標題與內容置中、欄寬貼合內容；標記欄加寬（電腦手機都用） */
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:900px){html.mc1 .stt .c-dup,html.mc2 .stt .c-dup{display:none}}   /* 11/18 使用者：手機版名稱下已有成交值、股價欄已有收盤，右邊不用再放（window.MCV：1 只拿掉重複欄、2 再讓標記自動換行不用左右滑） */
-.stt tr.tgr{display:none}
+.stt tr.tgr{display:none}.stt .tgl{display:none}
+/* 11/18 使用者：手機版「標記」要有標題；名稱＋成交值、股價＋漲跌幅各用框框起來（window.MBX：1 細框線、2 淡底色框） */
+@media(max-width:900px){html.mc3 .stt .tgl{display:inline-block;font-size:11px;color:#a5b4fc;border-right:1px solid rgba(165,180,252,.4);padding:0 7px 0 0;margin:0 7px 2px 2px;vertical-align:middle}
+html.mc3.bx1 .stt,html.mc3.bx2 .stt{border-collapse:separate;border-spacing:6px 0}
+html.mc3.bx1 .stt tr.row:not(.tgr) td.sn1,html.mc3.bx1 .stt tr.row:not(.tgr) td.chg2{box-shadow:inset 0 0 0 1px rgba(165,180,252,.45);border-radius:10px}
+html.mc3.bx2 .stt tr.row:not(.tgr) td.sn1,html.mc3.bx2 .stt tr.row:not(.tgr) td.chg2{background:rgba(120,110,200,.16);box-shadow:inset 0 0 0 1px rgba(165,180,252,.2);border-radius:10px}}
 @media(max-width:900px){html.mc3 .stt .c-dup,html.mc3 .stt td.tg,html.mc3 .stt th.tg{display:none}html.mc3 .stt th.ty-h,html.mc3 .stt td.ty{padding-right:78px}html.mc3 .stt tr.tgr{display:table-row}html.mc3 .stt tr.tgr td{padding:0 6px 8px;border-top:0;text-align:left;white-space:normal}html.mc3 .stt tr.tgr .tag{white-space:nowrap;display:inline-block;margin:2px 4px 2px 0}html.mc3 .stt tr.row:not(.tgr) td{border-bottom:0}}
 @media(max-width:900px){html.mc2 .stt td.tg,html.mc2 .stt th.tg{min-width:0;width:100%}html.mc2 .stt td.tg .tag{white-space:normal;display:inline-block}}
 @media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
@@ -633,7 +638,7 @@ function stockTable(list,withGroup,showVal,dmiCols,gline,vcols){
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
     h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}${vcols?valCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc c-dup">${turnover(s)}</td>`:""}<td class="cc c-dup">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`
-      +`<tr class="row tgr" data-c="${s.code}"><td colspan="20" class="tg2">${tags(subTags(s))}</td></tr>`;   /* 手機版第 3 種：標記放在這一列下面整排（window.MCV=3） */
+      +`<tr class="row tgr" data-c="${s.code}"><td colspan="20" class="tg2"><span class="tgl">標記</span>${tags(subTags(s))}</td></tr>`;   /* 手機版第 3 種：標記放在這一列下面整排（window.MCV=3） */
   }
   return h + `</tbody></table></div>`;
 }
@@ -1901,7 +1906,7 @@ function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,40
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
-{const v=window.MCV||3;document.documentElement.classList.add("mc"+v)}
+{const v=window.MCV||3;document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2))}
 if(window.NVA!==false) document.documentElement.classList.add("nvA");
 if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
 let stuckNow=false;
