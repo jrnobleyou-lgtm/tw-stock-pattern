@@ -83,6 +83,34 @@ def src_cnyes():
     return out
 
 
+def factset_rows(known_links, now, max_pages=6, max_new=40):
+    """11/18 使用者：主動抓鉅亨「Factset 最新調查」速報（只存標題裡的目標價；不抓內文、不用 AI）。
+    鉅亨搜尋 API 的標題會被截斷，所以只用它找出含「(代號-TW)」的速報 ID，再讀文章頁的完整標題；已存過的連結不重抓。"""
+    import urllib.parse, targets as TG
+    ids, seen = [], set()
+    jobs = [(urllib.parse.quote(k), pg) for k in ("Factset 最新調查 TW", "Factset 目標價調升", "Factset 目標價調降", "Factset EPS預估上修", "Factset EPS預估下修") for pg in range(1, max_pages + 1)]
+    for q, pg in jobs:
+        try:
+            d = json.loads(get(f"https://api.cnyes.com/media/api/v1/search?q={q}&limit=20&page={pg}"))["items"]["data"]
+        except Exception:
+            continue
+        for x in d:
+            tt = re.sub(r"<[^>]+>", "", x.get("title") or "")
+            m = re.search(r"\((\d{4,6})-TW\)", tt)
+            link = f"https://news.cnyes.com/news/id/{x.get('newsId')}"
+            if m and "Factset" in tt and link not in known_links and link not in seen and int(x.get("publishAt") or 0) > now - 60 * 86400:
+                seen.add(link); ids.append((link, int(x["publishAt"])))
+        time.sleep(0.4)
+    rows = []
+    for link, t0 in ids[:max_new]:
+        m = re.search(r'og:title" content="([^"]+)"', get(link))
+        r = TG.fs_from_title(html.unescape(m.group(1))) if m else None
+        if r:
+            rows.append({**r, "d": 0, "t": t0, "title": html.unescape(m.group(1))[:120], "link": link})
+        time.sleep(0.3)
+    return rows
+
+
 def src_moneydj():
     return [dict(a, src="MoneyDJ") for a in rss("https://www.moneydj.com/KMDJ/RssCenter.aspx?svc=NR&fno=1&arg=MB010000") if "5850web" not in a["link"]]
 
@@ -599,6 +627,10 @@ def main(out):
         if raw_ is None:
             for x in items:
                 rows_ += TG.from_article(x, names, codes, with_text=False)
+        try:
+            rows_ += factset_rows({r["link"] for r in trs}, now)          # 主動抓 FactSet 速報（失敗不影響其他）
+        except Exception as e:
+            print("FactSet 主動抓取失敗（略過）：", repr(e)[:100], file=sys.stderr)
         n0 = len(trs)
         trs = TG.merge(trs, rows_, now)
         if raw_ is not None and len(trs) == n0 and not rows_:
