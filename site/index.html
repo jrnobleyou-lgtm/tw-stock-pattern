@@ -210,6 +210,7 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .tt3 .ttb{width:40px;height:40px;border-radius:10px;background:rgba(9,5,26,.6);color:#c4b5fd;border:1px solid rgba(196,181,253,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-size:18px}
 @media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
 /* 11/18 本週強勢／今日強勢標籤：火焰感，分別上色（window.FLV 1 暖橘漸層／2 暗底發光邊／3 由下往上的火苗漸層；預設 2 之前由使用者選） */
+.nfzb{display:none;gap:4px;margin-left:6px}.nfzb .btn:disabled{opacity:.35;cursor:default}@media(max-width:900px){.mhead .nfzb{order:4;flex:0 0 100%;justify-content:flex-end;margin:0}.mhead .nfzb .btn{padding:3px 12px;font-size:13px}}
 .a20l{display:inline-block;margin-left:14px;padding:3px 10px;border:1px solid var(--line-t);border-radius:8px;cursor:pointer;white-space:nowrap}
 html .tag.fl{font-weight:700!important;position:relative}
 html .tag.fl::before{content:"🔥";margin-right:3px}
@@ -899,10 +900,13 @@ function mountModal(s, headHTML, opts){
   closeModal();
   document.body.style.overflow="hidden";
   const el=document.createElement("div"); el.className="modal";
-  const nt=opts&&opts.news?`<span class="mtabs"><button class="btn on" data-mt="k">K線圖</button><button class="btn" data-mt="n">消息</button></span>`:"";
+  const nt=opts&&opts.news?`<span class="mtabs"><button class="btn on" data-mt="k">K線圖</button><button class="btn" data-mt="n">消息</button></span><span class="nfzb" style="display:none"><button class="btn" data-nz="-1" title="消息字體縮小">A－</button><button class="btn" data-nz="1" title="消息字體放大（最多三次）">A＋</button></span>`:"";
   el.innerHTML=`<div class="mpanel"><div class="mhead">${headHTML}${nt}<button class="btn" id="mclose">✕ 關閉（ESC）</button></div><div id="chart"></div><div id="newsp"></div></div>`;
+  {const ZS=innerWidth<=900?[1,1.08,1.16,1.25]:[1,1.15,1.3,1.45];const gz=()=>{try{return Math.min(3,Math.max(0,+localStorage.getItem("nz")||0))}catch(e){return 0}};   /* 11/18 使用者：K 線視窗「消息」頁字體可放大，最多三次 */
+    const az=()=>{const z=gz(),np=el.querySelector("#newsp");if(np)np.style.zoom=ZS[z];el.querySelectorAll("[data-nz]").forEach(b=>b.disabled=(+b.dataset.nz>0&&z>=3)||(+b.dataset.nz<0&&z<=0))};
+    el.querySelectorAll("[data-nz]").forEach(b=>b.onclick=()=>{try{localStorage.setItem("nz",Math.min(3,Math.max(0,gz()+ +b.dataset.nz)))}catch(e){}az()});az();}
   if(nt) el.querySelectorAll("[data-mt]").forEach(b=>b.onclick=()=>{const n=b.dataset.mt==="n";el.querySelectorAll("[data-mt]").forEach(x=>x.classList.toggle("on",x===b));
-    el.querySelector("#chart").style.display=n?"none":"";const np=el.querySelector("#newsp");np.style.display=n?"block":"none";if(n&&!np.dataset.ok){np.dataset.ok=1;loadNews(s,np)}});
+    el.querySelector("#chart").style.display=n?"none":"";const np=el.querySelector("#newsp");const nzb=el.querySelector(".nfzb");if(nzb)nzb.style.display=n?"inline-flex":"none";np.style.display=n?"block":"none";if(n&&!np.dataset.ok){np.dataset.ok=1;loadNews(s,np)}});
   el.addEventListener("click",e=>{ if(e.target===el) goBack(); });                       // 點視窗外：關閉返回
   el.querySelector(".mpanel").addEventListener("click",e=>{ if(!e.target.closest("#cv") && !e.target.closest("button") && !e.target.closest("input,textarea,select,label")) chart && chart.clear(); });   // 圖以外的空白處（含右側欄、下方資訊欄）點一下就關閉 K 棒資訊
   el.querySelector("#mclose").onclick=goBack;
