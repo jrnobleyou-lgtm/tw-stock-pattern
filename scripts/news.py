@@ -124,10 +124,13 @@ def src_cna():
 
 
 def src_uanalyze():
+    """11/18 優分析改版：文章連結變成相對路徑 /articles/<數字>（原本只認完整網址，連續多輪抓到 0 篇）；標題取連結內最長的那段文字（去掉「國際新聞」等分類字）。"""
     seen, out = set(), []
-    for u, t in re.findall(r'href="(https://uanalyze\.com\.tw/articles/\d+)"[^>]*>(.*?)</a>', get("https://uanalyze.com.tw/"), re.S):
-        t = re.sub(r"<[^>]+>|\s+", " ", t).strip()
-        if t and u not in seen:
+    for u, inner in re.findall(r'href="((?:https://uanalyze\.com\.tw)?/articles/\d+)"[^>]*>(.*?)</a>', get("https://uanalyze.com.tw/"), re.S):
+        parts = [x.strip() for x in re.split(r"<[^>]+>", inner) if x.strip()]
+        t = max(parts, key=len) if parts else ""
+        u = u if u.startswith("http") else "https://uanalyze.com.tw" + u
+        if len(t) >= 8 and u not in seen:
             seen.add(u)
             out.append({"src": "優分析", "title": html.unescape(t), "link": u, "t": 0})
     return out
