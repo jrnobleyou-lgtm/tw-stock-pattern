@@ -91,7 +91,7 @@ tr.row:hover{background:rgba(255,255,255,.08)}
 .bar i{display:block;height:100%}
 .c-strong{color:var(--s-strong)}.c-wstrong{color:var(--s-wstrong)}.c-good{color:var(--s-good)}.c-range{color:var(--s-range)}.c-weak{color:var(--s-weak)}
 .b-strong{background:var(--s-strong)}.b-wstrong{background:var(--s-wstrong)}.b-good{background:var(--s-good)}.b-range{background:var(--s-range)}.b-weak{background:var(--s-weak)}.b-new{background:#4b5563;color:#e5e7eb}
-.tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line);color:var(--mute);margin:1px 0 1px 4px}
+.tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid rgba(229,231,235,.5);color:var(--mute);margin:1px 0 1px 4px}
 .tag.hot{border-color:var(--s-strong);color:var(--s-strong);font-weight:700}
 .tag.bad{border-color:#fb7185;color:#fb7185}
 .tag.pat{border-color:#7dd3fc;color:#7dd3fc}
@@ -227,6 +227,7 @@ html.fl2 .tag.flw{background:rgba(245,158,11,.14)!important;color:#fdba74!import
 html.fl2 .tag.fld{background:rgba(239,68,68,.18)!important;color:#fecaca!important;border-color:#ef4444!important;box-shadow:0 0 9px rgba(239,68,68,.75)}
 html.fl3 .tag.flw{background:linear-gradient(0deg,#b45309 0%,#f59e0b 55%,#fde68a 100%)!important;color:#2a1200!important;border-color:#fbbf24!important}
 html.fl3 .tag.fld{background:linear-gradient(0deg,#7f1d1d 0%,#ef4444 45%,#fb923c 80%,#fde047 100%)!important;color:#fff!important;border-color:#fb923c!important;text-shadow:0 1px 2px #000a}
+.aisum{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:4px 10px;font-size:12px;color:#e5e7eb;background:rgba(124,58,237,.16);border:1px solid rgba(196,181,253,.45);border-radius:8px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小字改白（window.MTV 1 原色／2 柔白／3 純白，待使用者選） */
 .glk{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}[data-swg]{cursor:pointer}.swgo{color:#a5b4fc;font-weight:400}@media(hover:hover){[data-swg]:hover{background:rgba(124,58,237,.15)}}
 /* 手機表格左右滑動提示（window.SLV：1 表格上方文字箭頭／2 標記欄標題箭頭＋右緣漸層／3 浮動箭頭鈕） */
@@ -328,7 +329,7 @@ html.mc3.bx1 .stt tr.row:not(.tgr) td.sn1,html.mc3.bx1 .stt tr.row:not(.tgr) td.
 html.mc3.bx2 .stt tr.row:not(.tgr) td.sn1,html.mc3.bx2 .stt tr.row:not(.tgr) td.chg2{background:var(--mbg,rgba(120,110,200,.16));box-shadow:inset 0 0 0 1px var(--mbd,rgba(165,180,252,.2));border-radius:10px}
 html.mbc1{--mbg:rgba(30,58,120,.5);--mbd:rgba(147,197,253,.4)}html.mbc2{--mbg:rgba(0,0,0,.5);--mbd:rgba(255,255,255,.28)}html.mbc4{--mbg:rgba(0,0,0,.3);--mbd:rgba(255,255,255,.3)}html.mbc5{--mbg:rgba(0,0,0,.18);--mbd:rgba(255,255,255,.38)}html.mbc5.mc3.bx2 .stt tr.row:not(.tgr) td.sn1,html.mbc5.mc3.bx2 .stt tr.row:not(.tgr) td.chg2{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}html.mbc3{--mbg:rgba(130,95,20,.38);--mbd:rgba(250,204,21,.4)}
 html.mc3 .stt td.sn1 .sn,html.mc3 .stt td.sn1 .tvm{font-weight:700}html.mc3 .cv2 .chg2 .p{font-size:16.5px}html.mc3 .stt td.chg2{font-size:15px}html.mc3 .chg2 .a{font-size:14px}html.mc3 .chg2.cp .p{font-size:16.5px}html.mc3 .chg2.cp .a2{font-size:14px}}
-@media(max-width:900px){html.mc3 .stt .c-dup,html.mc3 .stt td.tg,html.mc3 .stt th.tg{display:none}html.mc3 .stt th.ty-h,html.mc3 .stt td.ty{padding-right:56px;padding-left:0}html.mc3 .stt tr.tgr{display:table-row}html.mc3 .stt tr.tgr td{padding:0 6px 8px;border-top:0;text-align:left;white-space:normal}html.mc3 .stt tr.tgr .tag{white-space:nowrap;display:inline-block;margin:2px 4px 2px 0;font-weight:700;font-size:12px}html.mc3 .stt tr.tgr .tag:not(.hot):not(.bad):not(.pat){color:#cdd3e6;border-color:rgba(205,211,230,.5)}html.mc3 .stt tr.row:not(.tgr) td{border-bottom:0}}
+@media(max-width:900px){html.mc3 .stt .c-dup,html.mc3 .stt td.tg,html.mc3 .stt th.tg{display:none}html.mc3 .stt th.ty-h,html.mc3 .stt td.ty{padding-right:56px;padding-left:0}html.mc3 .stt tr.tgr{display:table-row}html.mc3 .stt tr.tgr td{padding:0 6px 8px;border-top:0;text-align:left;white-space:normal}html.mc3 .stt tr.tgr .tag{white-space:nowrap;display:inline-block;margin:2px 4px 2px 0;font-weight:700;font-size:12px}html.mc3 .stt tr.tgr .tag:not(.hot):not(.bad):not(.pat){color:#e5e7eb;border-color:rgba(229,231,235,.55)}html.mc3 .stt tr.row:not(.tgr) td{border-bottom:0}}
 @media(max-width:900px){html.mc2 .stt td.tg,html.mc2 .stt th.tg{min-width:0;width:100%}html.mc2 .stt td.tg .tag{white-space:normal;display:inline-block}}
 @media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
 </style>
@@ -879,7 +880,7 @@ async function loadNews(s,np){
   const news=(n&&n.items||[]).filter(x=>!x.mo&&/^https:\/\//.test(x.link||"")).map(x=>({...tw(x.t,x.day),title:x.title,link:x.link,src:x.src,dir:x.d,why:x.w}));
   const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
   const dm=x=>!DIR||x.dir==null?"":x.dir>0?'<b class="up">▲</b> ':x.dir<0?'<b class="dn">▼</b> ':'<b class="mute">↔️</b> ';   /* 持平符號：使用者 11/17 指定 ↔️ */
-  const row=x=>`<div class="it"><div class="dt">${x.d.slice(5).replace("-","/")} ${x.t||""}</div><div>${dm(x)}${x.mo?`<span class="mk mo">重訊</span>`:""}${x.mo&&x.nw?`<span class="mk td">今天</span>`:""}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}${x.src?`<span class="mute" style="font-size:12px">　${esc(x.src)}</span>`:""}${DIR&&x.why?`<div class="mute" style="font-size:12px;margin-top:2px">AI新聞摘要：${esc(x.why)}</div>`:""}</div></div>`;
+  const row=x=>`<div class="it"><div class="dt">${x.d.slice(5).replace("-","/")} ${x.t||""}</div><div>${dm(x)}${x.mo?`<span class="mk mo">重訊</span>`:""}${x.mo&&x.nw?`<span class="mk td">今天</span>`:""}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}${x.src?`<span class="mute" style="font-size:12px">　${esc(x.src)}</span>`:""}${DIR&&x.why?`<div class="aisum">✨ AI新聞摘要：${esc(x.why)}</div>`:""}</div></div>`;
   const empty=t=>`<div class="mute" style="padding:6px 2px">${t}</div>`;
   const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"<br>重訊：取自公開資訊觀測站公告（約每 30 分更新，隔天校正）；「今天」＝上一交易日收盤後":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
   const hi=f?`${f.revHi?'<span class="hib">月營收創新高</span>':""}${f.yoyHi?'<span class="hib">年增新高</span>':""}`:"";
@@ -1951,7 +1952,7 @@ function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,40
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
-{const v=window.MCV||3;document.documentElement.classList.add("mt"+(window.MTV||1),"xl"+(window.XLV||1),"fl"+(window.FLV||2));document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));document.documentElement.classList.add("mbc"+(window.MBC||4))}
+{const v=window.MCV||3;document.documentElement.classList.add("mt"+(window.MTV||2),"xl"+(window.XLV||1),"fl"+(window.FLV||2));document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));document.documentElement.classList.add("mbc"+(window.MBC||4))}
 if(window.NVA!==false) document.documentElement.classList.add("nvA");
 if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
 let stuckNow=false;
