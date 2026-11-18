@@ -298,7 +298,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:900px){html.mc1 .stt .c-dup,html.mc2 .stt .c-dup{display:none}}   /* 11/18 使用者：手機版名稱下已有成交值、股價欄已有收盤，右邊不用再放（window.MCV：1 只拿掉重複欄、2 再讓標記自動換行不用左右滑） */
 .xlb{display:block;margin:0 0 10px;padding:9px 14px;border:1px solid rgba(167,139,250,.5);border-radius:10px;background:rgba(167,139,250,.12);color:#e9e5ff;text-decoration:none;font-size:14px;text-align:center}
-html.xl1 #xl{display:inline-block!important}   /* 11/18 使用者：網站入口放外部連結（window.XLV：1 頁首按鈕、2 首頁最上方橫條） */
+html.xl1 #xl{display:inline-block!important}#xl{border-color:rgba(167,139,250,.55)!important;background:rgba(167,139,250,.14)!important;color:#e9e5ff!important;font-weight:600}   /* 11/18 使用者：網站入口放外部連結（window.XLV：1 頁首按鈕、2 首頁最上方橫條） */
 .stt tr.tgr{display:none}.stt .tgl{display:none}
 /* 11/18 使用者：手機版「標記」要有標題；名稱＋成交值、股價＋漲跌幅各用框框起來（window.MBX：1 細框線、2 淡底色框） */
 @media(max-width:900px){html.mc3 .stt .tgl{display:inline-block;font-size:12px;font-weight:700;color:#f1f5ff;border-right:1px solid rgba(255,255,255,.55);padding:0 7px 0 0;margin:0 7px 2px 2px;vertical-align:middle}
@@ -315,7 +315,7 @@ html.mc3 .stt td.sn1 .sn,html.mc3 .stt td.sn1 .tvm{font-weight:700}html.mc3 .cv2
 <body>
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
-  <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><a class="btn" id="xl" href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;color:inherit">相關網站 ↗</a>
+  <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><a class="btn" id="xl" href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;color:inherit">🔗 相關網站 ↗</a>
   <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
