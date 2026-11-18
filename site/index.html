@@ -298,7 +298,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:900px){html.mc1 .stt .c-dup,html.mc2 .stt .c-dup{display:none}}   /* 11/18 使用者：手機版名稱下已有成交值、股價欄已有收盤，右邊不用再放（window.MCV：1 只拿掉重複欄、2 再讓標記自動換行不用左右滑） */
 .stt tr.tgr{display:none}
-@media(max-width:900px){html.mc3 .stt .c-dup,html.mc3 .stt td.tg,html.mc3 .stt th.tg{display:none}html.mc3 .stt tr.tgr{display:table-row}html.mc3 .stt tr.tgr td{padding:0 6px 8px;border-top:0;text-align:left;white-space:normal}html.mc3 .stt tr.tgr .tag{white-space:nowrap;display:inline-block;margin:2px 4px 2px 0}html.mc3 .stt tr.row:not(.tgr) td{border-bottom:0}}
+@media(max-width:900px){html.mc3 .stt .c-dup,html.mc3 .stt td.tg,html.mc3 .stt th.tg{display:none}html.mc3 .stt th.ty-h,html.mc3 .stt td.ty{padding-right:78px}html.mc3 .stt tr.tgr{display:table-row}html.mc3 .stt tr.tgr td{padding:0 6px 8px;border-top:0;text-align:left;white-space:normal}html.mc3 .stt tr.tgr .tag{white-space:nowrap;display:inline-block;margin:2px 4px 2px 0}html.mc3 .stt tr.row:not(.tgr) td{border-bottom:0}}
 @media(max-width:900px){html.mc2 .stt td.tg,html.mc2 .stt th.tg{min-width:0;width:100%}html.mc2 .stt td.tg .tag{white-space:normal;display:inline-block}}
 @media(max-width:640px){.stt td.sn1{padding-right:4px}.stt td.sn1 .sn{max-width:4.6em}.stt td.tg{min-width:300px}}
 </style>
@@ -629,7 +629,7 @@ function chgCell(s){
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
 function stockTable(list,withGroup,showVal,dmiCols,gline,vcols){
-  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc c-dup">成交值</th>':""}<th class="cc c-dup">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc ty-h">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc c-dup">成交值</th>':""}<th class="cc c-dup">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
     h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}${vcols?valCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc c-dup">${turnover(s)}</td>`:""}<td class="cc c-dup">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`
@@ -1901,7 +1901,7 @@ function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,40
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
-{const v=window.MCV||2;document.documentElement.classList.add("mc"+v)}
+{const v=window.MCV||3;document.documentElement.classList.add("mc"+v)}
 if(window.NVA!==false) document.documentElement.classList.add("nvA");
 if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
 let stuckNow=false;
@@ -1967,6 +1967,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(
     const sm=document.querySelector("#app .sum");if(sm){const r=sm.getBoundingClientRect();if(r.top<=t+2&&r.bottom>t)t=r.bottom}   /* 五種型態卡片列黏在頁首下方時，按鈕放到它下面 */
     const sh=document.getElementById("sth");if(sh&&sh.style.display!=="none")t=Math.max(t,sh.getBoundingClientRect().bottom);   /* 表格標題列置頂時，按鈕放到它下面 */
     bot.style.top=(t+10)+"px";
+    if(sh&&sh.style.display!=="none"&&innerWidth<=900&&h.classList.contains("mc3")){const r=sh.getBoundingClientRect();bot.style.top=Math.max(r.top,r.top+(r.height-bot.offsetHeight)/2)+"px"}   /* 11/18 使用者：手機版「底部」放在標題列右邊的空白處（標記欄已移到下一列，右邊有空位） */
     if((window.BKV||1)===1){back.style.top=(t+10)+"px";back.style.bottom="auto"}else{back.style.top="auto";back.style.bottom="calc(18px + env(safe-area-inset-bottom))"}
     const y=scrollY,rest=document.documentElement.scrollHeight-innerHeight-y;
     top.classList.toggle("show",y>300); bot.classList.toggle("show",rest>300&&y>150); back.classList.toggle("show",!!location.hash&&!/^#[si]-/.test(location.hash)&&y>150)};   /* 最上面時不顯示「底部」，免得蓋住五種型態卡片 */
