@@ -568,6 +568,8 @@ def main(out):
         for a, (txt, st) in zip(new, ex.map(fulltext, new)):
             a["text"], a["st"] = txt, st
     try:                                                # 11/18 法人目標價參考清單（scripts/targets.py，不用 AI）：新文章（含內文）＋第一次時用 items 的標題補回過去 30 天
+        if os.environ.get("SHOW_TARGETS") != "1":       # 11/18 使用者：目標價先不上線，不累積也不公開 targets.json
+            raise StopIteration
         import targets as TG
         trs = load("targets.json", [])
         rows_ = []
@@ -580,6 +582,8 @@ def main(out):
         trs = TG.merge(trs, rows_, now)
         json.dump(trs, open(P("targets.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
         print(f"目標價：新增 {len(rows_)} 筆候選，累計 {len(trs)} 筆")
+    except StopIteration:
+        pass
     except Exception as e:
         print("目標價整理失敗（略過）：", repr(e)[:120], file=sys.stderr)
     todo, nskip = [], 0
