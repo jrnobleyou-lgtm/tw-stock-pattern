@@ -425,12 +425,13 @@ def main():
             usfin = {c: us_fin.view(r) for c, r in json.load(open(os.path.join(ROOT, "data", "us", "fin.json"))).items()}
         except Exception as e:
             print("美股財報資料讀不到（略過）", repr(e)[:80])
-    revs, epss, mgs = {}, {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
+    revs, epss, mgs, epsy = {}, {}, {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
     if full and not us:
         try:
             import revenue, eps as EPS
             revs = revenue.summary()
             epss = EPS.summary()
+            epsy = EPS.ytd()                          # 11/18 使用者：今年累計 EPS vs 去年同期、去年全年
             import margins
             mgs = margins.summary()                   # 11/17 使用者：季營收（近三季）、三率、「三率三升」標籤
             os.makedirs(os.path.join(OUT, "f"), exist_ok=True)
@@ -608,6 +609,8 @@ def main():
             fin = dict(rv or {})                         # 消息分頁左欄：月營收近 6 個月＋單季 EPS 近 3 季
             if code in epss:
                 fin["eps"] = epss[code]
+                if code in epsy:
+                    fin["ey"] = epsy[code]
             if code in mgs:
                 fin["q"] = mgs[code]["q"]
             if trows.get(code):

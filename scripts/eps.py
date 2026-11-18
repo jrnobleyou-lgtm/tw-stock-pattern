@@ -136,6 +136,27 @@ def summary(cum=None, fm=None, n=3):
     return out
 
 
+def ytd(cum=None, fm=None):
+    """11/18 使用者：今年累計 EPS vs 去年同期、去年全年。{代號: [今年(民國), 最新到第幾季, 今年累計, 去年同期累計, 去年全年]}（缺任何一季就是 None）"""
+    cum = cum if cum is not None else _load(CUM)
+    fm = fm if fm is not None else _load(FM)
+    out = {}
+    for c in set(cum) | set(fm):
+        cc, ff = cum.get(c, {}), fm.get(c, {})
+        qs = sorted(set(cc) | set(ff))
+        sv = {q: single(q, cc, ff) for q in qs}
+        sv = {q: v for q, v in sv.items() if v is not None}
+        if not sv:
+            continue
+        last = max(sv)
+        y, n = int(last[:4]), int(last[-1])
+        def acc(yr, k):
+            vs = [sv.get(f"{yr}Q{i}") for i in range(1, k + 1)]
+            return None if any(v is None for v in vs) else round(sum(vs), 2)
+        out[c] = [y - 1911, n, acc(y, n), acc(y - 1, n), acc(y - 1, 4)]
+    return out
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "update"
     if cmd == "update":
