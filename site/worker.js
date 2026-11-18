@@ -262,6 +262,15 @@ async function usRoute(req, env, u) {
     const bars = joinBars(sliceArr(tb, sm[1]), sliceArr(tr, sm[1]));
     return bars ? new Response('{"bars":' + bars + "}", { headers: { "content-type": "application/json", "cache-control": "private, max-age=300" } }) : new Response("找不到", { status: 404 });
   }
+  const fm = p.match(/^\/admin\/f\/([A-Za-z0-9.\-^]+)\.json$/);          // 美股季財報（SEC）：32 包裡切出該檔（不解析整包）
+  if (fm) {
+    let h = 0; for (const ch of fm[1]) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
+    const txt = await env.US.get("site/fn/" + (h % 32) + ".json"), key = JSON.stringify(fm[1]) + ":{", i = txt ? txt.indexOf(key) : -1;
+    if (i < 0) return new Response("找不到", { status: 404 });
+    let j = i + key.length - 1, depth = 0; const st = j;
+    for (; j < txt.length; j++) { const c = txt.charCodeAt(j); if (c === 123) depth++; else if (c === 125 && --depth === 0) break; }
+    return new Response(txt.slice(st, j + 1), { headers: { "content-type": "application/json", "cache-control": "private, max-age=300" } });
+  }
   let key = "site/" + (p.slice(7) || "index.html");
   if (key.endsWith("/")) key += "index.html";
   const v = await env.US.get(key, "arrayBuffer");

@@ -418,6 +418,13 @@ def main():
     if full and not us and os.environ.get("SHOW_TARGETS") == "1":     # 11/18 使用者：目標價先不上線（預設關閉，設環境變數才開）
         for r_ in (cached("targets", target_rows(), []) or []):
             trows.setdefault(r_["c"], []).append(r_)
+    usfin = {}
+    if us:                                                  # 11/18 美股季財報（SEC，scripts/us_fin.py）：K 線視窗「消息」分頁、「三率三升」標籤
+        try:
+            import us_fin
+            usfin = {c: us_fin.view(r) for c, r in json.load(open(os.path.join(ROOT, "data", "us", "fin.json"))).items()}
+        except Exception as e:
+            print("美股財報資料讀不到（略過）", repr(e)[:80])
     revs, epss, mgs = {}, {}, {}                           # 11/16 使用者：月營收創新高／年增新高、消息分頁的月營收（scripts/revenue.py）
     if full and not us:
         try:
@@ -536,6 +543,8 @@ def main():
                 tags.append("年增新高")
         if mgs.get(code, {}).get("m3"):
             tags.append("三率三升")
+        if us and usfin.get(code, {}).get("m3"):
+            tags.append("三率三升")
         st = {
             "code": code, "name": g["名稱"], "industry": g.get("產業別") or g.get("官方產業別"), "group": gl_of(g)[0], "groups": gl_of(g),
             "conf": g.get("把握度", "U"),
@@ -547,6 +556,8 @@ def main():
             "chg": r2((bars[T]["c"] / bars[T - 1]["c"] - 1) * 100) if T else 0,
             "vol": round(raw[T]["v"] / 1000),
         }
+        if us and code in usfin:
+            st["fn"] = 1                                 # 有季財報資料：前端打開「消息」分頁
         am_ = asof_m.get(mk.get(code))
         if am_ and raw[T]["d"] < am_:                    # 11/17 Fable 審查：停牌股（資料日比市場最新日舊）標資料日期，不把舊漲跌當今天的
             st["stale"] = raw[T]["d"][5:]
