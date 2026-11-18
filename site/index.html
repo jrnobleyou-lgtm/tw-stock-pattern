@@ -630,7 +630,7 @@ function sortList(list){
   if(SORTK==="grp") return list.sort((a,b)=>SORTD*gkey(a).localeCompare(gkey(b),"zh-Hant")||tv(b)-tv(a));   /* 族群：依名稱排，同族群內成交值大到小 */
   list.sort(f); if(SORTD<0) list.reverse(); return list;
 }
-function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;SORTD=1;const y=window.scrollY;baseRaw=null;route();window.scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select><button class="btn sortdir" title="切換排列方向" onclick="SORTD=-SORTD;const y=window.scrollY;baseRaw=null;route();window.scrollTo(0,y)">⇅ ${SORTK==="grp"?(SORTD>0?"由前到後":"由後到前"):(SORTD>0?"由大到小":"由小到大")}</button></div>`}
+function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;SORTD=1;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select><button class="btn sortdir" title="切換排列方向" onclick="SORTD=-SORTD;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)">⇅ ${SORTK==="grp"?(SORTD>0?"由前到後":"由後到前"):(SORTD>0?"由大到小":"由小到大")}</button></div>`}
 /* 11/18 使用者：本益比／股價淨值比／殖利率（官方收盤後資料，固定收盤值；PE 虧損顯示「虧損」，超過 100 倍標「獲利低基期」） */
 function peTxt(s){return s.pe!=null?s.pe.toFixed(1)+(s.pe>100?'<small class="mute"> 獲利低基期</small>':""):s.pl?"虧損":"—"}
 function strCells(s){return `<td class="cc" style="color:${chgColor(s.w5)}">${s.w5!=null?(s.w5>0?"+":"")+s.w5.toFixed(1)+"%":"—"}</td><td class="cc">${s.vr!=null?s.vr.toFixed(1)+"倍":"—"}</td><td class="cc">${s.vd!=null?s.vd.toFixed(1)+"倍":"—"}</td>`}
@@ -839,8 +839,8 @@ function screener(key,mix){
     yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。",
     m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。財報公布後（Q3 約 11/14 前）更新。點股票後切到「消息」看近 3 季營收與三率。"};
   RVN.pelo=RVN.pemid=RVN.pehi=RVN.pblo=RVN.dyhi=RVN.pels=`<b>條件：</b>${{pelo:"本益比 15 倍以下（虧損沒有本益比，不列入）",pemid:"本益比 15～25 倍",pehi:"本益比 25 倍以上（超過 100 倍多半是獲利剛好很低，會標「獲利低基期」）",pblo:"股價淨值比 1 以下（股價低於每股淨值）",dyhi:"現金殖利率 5% 以上",pels:"近四季合計虧損（本益比不存在）"}[cur.k]}。<br>資料為證交所、櫃買中心公布的收盤後數字（${D.valDate||"—"} 收盤），盤中不會跳動；本益比用最近四季財報，殖利率用最近一次股利。便宜不代表會漲，只是多一個參考；請搭配型態與消息一起看。`;
-  RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。漲停照列。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
-  RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；不設量能條件（等量出來就太晚了），「日量比」欄只供參考；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。盤中 09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。漲停照列。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；不設量能條件（等量出來就太晚了），「日量比」欄只供參考；近 5 日平均成交值 ≥5 千萬；新股與停牌不列。盤中 09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
   $("#app").innerHTML = h; bindRows();
