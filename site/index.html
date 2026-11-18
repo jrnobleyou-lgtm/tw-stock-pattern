@@ -215,6 +215,7 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .filters .btn.flbw{background:rgba(245,158,11,.14);color:#fdba74;border-color:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,.55)}.filters .btn.flbw.on{background:rgba(245,158,11,.55);color:#fff;box-shadow:0 0 10px rgba(245,158,11,.9)}
 .filters .btn.flbd{background:rgba(239,68,68,.18);color:#fecaca;border-color:#ef4444;box-shadow:0 0 9px rgba(239,68,68,.75)}.filters .btn.flbd.on{background:rgba(239,68,68,.6);color:#fff;box-shadow:0 0 12px rgba(239,68,68,1)}
 .filters .btn.flb small,.filters .btn.flb.on small{color:inherit;opacity:.8}
+.sortbar .sortdir{margin-left:8px;padding:5px 12px}
 .a20l{display:inline-block;margin-left:14px;padding:3px 10px;border:1px solid var(--line-t);border-radius:8px;cursor:pointer;white-space:nowrap}
 html .tag.fl{font-weight:700!important;position:relative}
 html .tag.fl::before{content:"🔥";margin-right:3px}
@@ -615,9 +616,10 @@ const gtxt=s=>(s.groups||[s.group]).join("、");
 const glk=s=>(s.groups||[s.group]).map(g=>`<span class="glk" data-swg="${String(g).replace(/"/g,"&quot;")}" title="看 ${String(g).replace(/"/g,"")} 族群的股票">${g}</span>`).join("、");
 function subTags(x){const t=x.tags||[]; return x.sub&&!t.includes(x.sub)?[x.sub].concat(t):t}
 function turnover(s){const v=s.close*s.vol*1000;return D.market==="US"?fmtUSD(v):(v/1e8>=1?(v/1e8).toFixed(1)+" 億":(v/1e4).toFixed(0)+" 萬")}
-let SORTK="tv";            // 列表排序方式（預設成交值）
+let SORTK="tv", SORTD=1;            // 列表排序方式（預設成交值）
 const VALK=/^(pelo|pemid|pehi|dyhi|pblo|pels)$/, STRK=/^(wk|td)$/;
-const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["state","目前型態（強到弱）"]];
+const SORTS=[["tv","成交值"],["close","收盤價"],["chg","漲跌幅"],["state","目前型態（強到弱）"],["grp","族群"]];   /* 11/18 使用者：加「依族群」排序，旁邊雙箭頭鈕切換由大到小／由小到大（SORTD） */
+const gkey=s=>String((s.groups||[s.group])[0]||"");
 function sortList(list){
   const tv=s=>s.close*s.vol;
   const f={tv:(a,b)=>tv(b)-tv(a),close:(a,b)=>b.close-a.close||tv(b)-tv(a),chg:(a,b)=>b.chg-a.chg||tv(b)-tv(a),
@@ -625,9 +627,10 @@ function sortList(list){
     state:(a,b)=>((STATES.indexOf(a.state)+1)||99)-((STATES.indexOf(b.state)+1)||99)||tv(b)-tv(a),   /* 新股排最後 */
     dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a),
     w5:(a,b)=>(b.w5??-999)-(a.w5??-999)||tv(b)-tv(a),vr:(a,b)=>(b.vr??-1)-(a.vr??-1)||tv(b)-tv(a),vd:(a,b)=>(b.vd??-1)-(a.vd??-1)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
-  return list.sort(f);
+  if(SORTK==="grp") return list.sort((a,b)=>SORTD*gkey(a).localeCompare(gkey(b),"zh-Hant")||tv(b)-tv(a));   /* 族群：依名稱排，同族群內成交值大到小 */
+  list.sort(f); if(SORTD<0) list.reverse(); return list;
 }
-function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select></div>`}
+function sortBar(extra){return `<div class="sortbar">排序：<select onchange="SORTK=this.value;SORTD=1;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">${SORTS.concat(extra||[]).map(([k,t])=>`<option value="${k}"${k===SORTK?" selected":""}>${t}</option>`).join("")}</select><button class="btn sortdir" title="切換排列方向" onclick="SORTD=-SORTD;const y=scrollY;baseRaw=null;route();scrollTo(0,y)">⇅ ${SORTK==="grp"?(SORTD>0?"由前到後":"由後到前"):(SORTD>0?"由大到小":"由小到大")}</button></div>`}
 /* 11/18 使用者：本益比／股價淨值比／殖利率（官方收盤後資料，固定收盤值；PE 虧損顯示「虧損」，超過 100 倍標「獲利低基期」） */
 function peTxt(s){return s.pe!=null?s.pe.toFixed(1)+(s.pe>100?'<small class="mute"> 獲利低基期</small>':""):s.pl?"虧損":"—"}
 function strCells(s){return `<td class="cc" style="color:${chgColor(s.w5)}">${s.w5!=null?(s.w5>0?"+":"")+s.w5.toFixed(1)+"%":"—"}</td><td class="cc">${s.vr!=null?s.vr.toFixed(1)+"倍":"—"}</td><td class="cc">${s.vd!=null?s.vd.toFixed(1)+"倍":"—"}</td>`}
@@ -661,6 +664,7 @@ function chgCell(s){
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
 function stockTable(list,withGroup,showVal,dmiCols,gline,vcols,scols){
+  if(SORTK==="grp") withGroup=true;   /* 依族群排序時顯示族群欄，才看得出分組 */
   let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc ty-h">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${scols?'<th class="cc">5日漲幅</th><th class="cc">週量比<small style="display:block;font-weight:400">5日÷前20日</small></th><th class="cc">日量比<small style="display:block;font-weight:400">今日÷前5日</small></th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc c-dup">成交值</th>':""}<th class="cc c-dup">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
