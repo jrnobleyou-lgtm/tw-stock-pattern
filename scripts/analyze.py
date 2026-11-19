@@ -734,10 +734,6 @@ def main():
             if "突破第1根" in st["tags"]:
                 g["first"].append(st["code"])
     glist = sorted(gl.values(), key=lambda g: (g["n"] < 5, -(g["counts"]["轉強"] + g["counts"]["型態好"]) / max(g["n"], 1), -g["n"]))
-    # 11/19 使用者：首頁族群表「低軌衛星」固定第一個，原本排前五名的（其餘族群）移到最後面
-    PIN = "低軌衛星"
-    head_, top5_, rest_ = [g for g in glist if g["name"] == PIN], glist[:5], glist[5:]
-    glist = head_ + [g for g in rest_ if g["name"] != PIN] + [g for g in top5_ if g["name"] != PIN]
 
     total = {s: sum(1 for st in stocks.values() if st["state"] == s) for s in STATES}      # 雙族群不重複計算
     index = {}
