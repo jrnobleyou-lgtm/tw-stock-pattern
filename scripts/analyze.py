@@ -336,8 +336,9 @@ def at_limit_up(s):
     pc, c = s.get("pc"), s.get("close")
     if not pc or not c or s.get("new"):
         return False
-    tick = 0.01 if pc < 10 else 0.05 if pc < 50 else 0.1 if pc < 100 else 0.5 if pc < 500 else 1 if pc < 1000 else 5
-    lim = int(pc * 1.1 / tick + 1e-9) * tick
+    raw = pc * 1.1                                       # 11/19 Opus 審查：升降單位要用「漲停價所在的價位」決定（昨收 93 → 漲停 102.0，不是 102.3）
+    tick = 0.01 if raw < 10 else 0.05 if raw < 50 else 0.1 if raw < 100 else 0.5 if raw < 500 else 1 if raw < 1000 else 5
+    lim = int(raw / tick + 1e-9) * tick
     return c >= lim - 1e-6
 
 
@@ -351,7 +352,8 @@ def strong_flags(stocks, live, us=False):
     import datetime
     tw = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
     frac, partial = 1.0, False
-    if live and tw.weekday() < 5 and tw.hour * 60 + tw.minute < 13 * 60 + 35:
+    if live and str(live.get("date", "")) == tw.strftime("%Y-%m-%d") and tw.weekday() < 5 and tw.hour * 60 + tw.minute < 13 * 60 + 35:
+        # 11/19 Opus 審查：凌晨 06:00 官方資料還沒出來時，盤中暫時價其實是前一天的，日期不等於台灣今天就不算盤中（否則今日強勢整批消失）
         try:
             hh, mm = [int(x) for x in str(live.get("hms", "13:30")).split(":")[:2]]
             m = max(hh * 60 + mm - 9 * 60, 1)
@@ -696,7 +698,7 @@ def main():
         # 11/17 Fable 審查：盤中（15:00 前，這兩項資料要收盤後才公布）不重抓，沿用上次發布的；抓到新的才更新
         import datetime
         tw = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
-        hold = bool(live) and tw.weekday() < 5 and tw.hour < 15
+        hold = bool(live) and str(live.get("date", "")) == tw.strftime("%Y-%m-%d") and tw.weekday() < 5 and tw.hour < 15
         inst = (cached("inst", None, None) if hold else None) or (lambda v: cached("inst", v, None) if v else None)(fetch_inst())
         if inst:
             out["inst"] = inst

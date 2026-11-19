@@ -53,6 +53,19 @@ if j:
             if len(c) == 4 and c.isdigit() and None not in (o, h, l, cl):
                 new_rows.append([d, c, "TWSE", o, h, l, cl, int(num(r["TradeVolume"]) or 0)])
         print("上市新資料日", d, sum(1 for r in new_rows if r[2] == "TWSE"), "檔")
+        try:                                             # 11/19：上市股除權息日當天就寫入還原係數（不必等週日 Yahoo 核對）
+            import exadj
+            exj = get("https://openapi.twse.com.tw/v1/exchangeReport/TWT48U_ALL") or []
+            exset = {x["Code"] for x in exj if x.get("Date") and roc(x["Date"]) == d}
+            ap0 = os.path.join(ROOT, "data", "adjust.csv")
+            have0 = {(x["code"], x["exdate"]) for x in csv.DictReader(open(ap0, encoding="utf-8"))} if os.path.exists(ap0) else set()
+            adj = exadj.twse_adjust(j, last_close, d, exset, have0)
+            if adj:
+                with open(ap0, "a", newline="", encoding="utf-8") as f:
+                    csv.writer(f).writerows(adj)
+            print("上市除權息還原", len(adj), "檔（除權息日", d, "）")
+        except Exception as e:
+            print("上市除權息還原略過", repr(e)[:80])
     else:
         print("上市沒有更新的資料（OpenAPI 日期", d, "）")
 # ── 上櫃（櫃買 OpenAPI）

@@ -449,7 +449,7 @@ export default {
     if (u.pathname === "/api/draw-list") {
       // 預設：台股（公開，分析程式用）；?all=1：管理者的「我的畫線」，台股＋美股（美股要登入）
       const all = u.searchParams.get("all") === "1" && env.US && (await usAuthed(req, env));
-      const ck = new Request(u.origin + "/__cache/draw-list" + u.search), cache = caches.default;     // 11/17 Fable：公開、每次都列 KV 清單，加 90 秒快取避免被連打耗光額度
+      const ck = new Request(u.origin + "/__cache/draw-list?span=" + (u.searchParams.get("span") === "1" ? 1 : 0)), cache = caches.default;   // 11/19 Opus 審查：快取鍵只看 span，外人加亂數參數繞不過快取     // 11/17 Fable：公開、每次都列 KV 清單，加 90 秒快取避免被連打耗光額度
       if (!all) { const hit = await cache.match(ck); if (hit) return hit; }
       const body = !env.US ? {} : all ? { TW: await drawList(env, "TW"), US: await drawList(env, "US") } : await drawList(env, "TW", u.searchParams.get("span") === "1");   // ?span=1：附每條線的起訖日期（分析程式比對系統形態用）
       const resp = new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": all ? "no-store" : "public, max-age=90" } });

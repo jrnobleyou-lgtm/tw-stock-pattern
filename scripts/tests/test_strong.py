@@ -32,3 +32,21 @@ class TestStrong(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLimitAndLive(unittest.TestCase):
+    def test_limit_price_tick(self):            # 昨收 93 → 漲停價 102.0（>100 用 0.5 檔位）；48 → 52.8→52.8? 48*1.1=52.8 落在 50~100，0.1 檔 → 52.8
+        def lu(pc, c): return analyze.at_limit_up({"pc": pc, "close": c})
+        self.assertTrue(lu(93, 102.0)); self.assertFalse(lu(93, 101.5))
+        self.assertTrue(lu(48, 52.8)); self.assertFalse(lu(48, 52.7))
+        self.assertTrue(lu(9.2, 10.1)); self.assertFalse(lu(9.2, 10.05))
+
+    def test_stale_live_not_partial(self):      # 暫時價日期不是台灣今天 → 不算盤中，今日強勢照標
+        import datetime
+        tw = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
+        old = (tw - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        st = {"A%d" % i: mk(0.0, 1e8 * (1 + i / 10)) for i in range(60)}
+        st["UP"] = mk(0.0, 1e8, chg=8.0)
+        for s in st.values(): s.setdefault("chg", 0)
+        analyze.strong_flags(st, {"date": old, "hms": "13:30"})
+        self.assertIn("今日強勢", st["UP"]["tags"])
