@@ -21,3 +21,6 @@
 - 不足 13 個月不標月營收創新高、不足 36 個月不標年增新高。補資料指令：`revenue.py backfill`、`eps.py backfill`、`margins.py backfill`（可續跑；環境變數 `REV_DIR`／`EPS_FM`／`MARGIN_FM` 指到 scratchpad）。
 - **FinMind**：金鑰存本環境 network secret（api.finmindtrade.com）；免費版只能逐檔查、約 8 秒一次、402 要等整點；**使用者平日白天自己在用，回補要台灣 18:00 後**。GitHub Actions 用要 Secrets `FINMIND_TOKEN_1／_2`（第一把優先）。
 - PE／PB／殖利率 `scripts/valuation.py`：上市 `BWIBBU_d`、上櫃 `tpex_mainboard_peratio_analysis`（日期要和上市同天）；每檔 `pe/pb/dy/pq/pl`、`data.js` 的 `valDate`；盤中不跳，固定收盤值。
+- 各家讀的分類（11/19 補漏）：MoneyDJ＝頭條 MB010000＋台股 MB06＋產業情報 MB07＋科技脈動 MB070100（每個 RSS 只有最新 20 篇）；工商＝stock＋tech＋industry；科技新報＝finance＋全部；Yahoo＝tw-market＋research；經濟日報＝股市／產業／要聞（兩岸、基金、房地產不補）。**起因**：使用者看到萬泰科 6190 的 MoneyDJ 新聞，消息頁沒有（只讀了頭條分類）。
+- 手動補文章：`data/news_extra.txt` 每行一個網址，每輪都會加入候選（已判斷過的自動略過）。查漏新聞的方法：抓該站其他分類 RSS，算 `md5(連結)[:16]` 是否在 news-data 的 `seen.json`。
+- 11/19 23:10 排程複查：萬泰科那篇是否出現、各家篇數是否變多（`meta.json` 的 `src`）。
