@@ -83,14 +83,23 @@ def src_ctee():
 
 
 def src_cnyes():
-    out = []
+    out, err = [], None
     for cat in ("tw_stock", "tw_quo"):
-        d = json.loads(get(f"https://api.cnyes.com/media/api/v1/newslist/category/{cat}?limit=30"))["items"]["data"]
-        for x in d:
+        d = None
+        for _ in range(3):                                # 11/20：偶爾回傳格式不對（被擋或忙碌）→ 每個分類各試 3 次，一個分類失敗不影響另一個
+            try:
+                d = json.loads(get(f"https://api.cnyes.com/media/api/v1/newslist/category/{cat}?limit=30"))["items"]["data"]
+                break
+            except Exception as e:
+                err = e
+                time.sleep(2)
+        for x in d or []:
             if str(x.get("payment")) != "0":          # 鉅亨付費文章
                 continue
             txt = re.sub(r"<[^>]+>", "", html.unescape(x.get("content") or ""))
             out.append({"src": "鉅亨網", "title": x["title"], "link": f"https://news.cnyes.com/news/id/{x['newsId']}", "t": int(x.get("publishAt") or 0), "text": txt})
+    if not out and err:
+        raise err
     return out
 
 
@@ -409,6 +418,7 @@ class Gone(Exception):                    # Google 回報這個型號不存在�
 
 DEFAULT_MODELS = ("gemini-3.5-flash-lite", "gemini-3.5-flash")      # 抓不到型號清單時的預設；版本號低於這兩個的不用（避免清單出錯時退回舊一代）
 MODEL_RE = re.compile(r"^models/gemini-(\d+(?:\.\d+)?)-flash(-lite)?$")   # 只收「正式版」：排除 preview／exp／-001／latest／tts／image／live／pro／embedding／gemma
+BLOCKED_MODELS = {"gemini-3.8-flash", "gemini-3.5-flash"}           # 11/20 暫停使用的型號（要恢復就從這裡拿掉）
 GONE, MINFO = [], {}
 API = {}                                                            # 本輪各型號的工作狀況：呼叫次數、成功、忙碌 503、額度 429、格式錯、不存在、耗時秒數（記到 daily.json 的 api，長期追蹤）
 
@@ -471,8 +481,9 @@ def providers():
         MINFO.update({"listed": bool(ms), "odd": odd})
         if os.environ.get("NEWS_FORCE_MODELS"):                       # 測試用：強制指定型號（逗號分隔）
             picked = os.environ["NEWS_FORCE_MODELS"].split(",")
+        picked = [m for m in picked if m not in BLOCKED_MODELS]     # 11/20 使用者：3.8 太慢、3.5-flash 連兩天全忙碌 → 先不用，只留 flash-lite
         if not picked:
-            picked = list(DEFAULT_MODELS)
+            picked = [m for m in DEFAULT_MODELS if m not in BLOCKED_MODELS]
             MINFO["fallback"] = True
         out += [("Gemini", GEMINI, gk, m) for m in picked]
     return out
@@ -840,7 +851,10 @@ def main(out):
                 if ss:
                     day_stat["withStock"] += 1
                     for s_ in ss:
-                        day_stat["up" if s_["d"] > 0 else "down" if s_["d"] < 0 else "flat"] += 1
+                        kk_ = "up" if s_["d"] > 0 else "down" if s_["d"] < 0 else "flat"
+                        day_stat[kk_] += 1
+                        db_ = day_stat.setdefault("dirby", {}).setdefault(who, {"up": 0, "flat": 0, "down": 0})   # 11/20 使用者：各型號的上修／持平／下修，才比得出型號差異
+                        db_[kk_] += 1
                     items.append({"k": a["k"], "src": a["src"], "t": a["t"] or now, "day": a.get("day", 0) if a["t"] else 1,
                                   "title": a["title"][:120], "link": a["link"], "ai": ss})
             except Exception as e:                      # 單筆格式怪：跳過這筆，下輪再判
