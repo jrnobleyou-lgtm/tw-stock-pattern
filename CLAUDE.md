@@ -31,6 +31,9 @@
 - 主程式：`scripts/analyze.py`（台股 `all`、美股 `us`）、`scripts/engine.py`（盤整區間與五種型態）、`scripts/patterns.py`（幾何形態）、`site/index.html`（整個前端，台股與管理者專區共用）。
 - 推到 `main` 會觸發 `.github/workflows/update.yml` 重建並推到 `deploy`；Cloudflare 偶爾沒自動部署，可用 Cloudflare API 觸發建置（見 HANDOFF）。
 
+## 推 main（使用者 11/19 明確授權）
+- 使用者說「以後都直接推 main」：改好、固定檢查通過、非盤中（08:50–13:50 以外）就直接 `git push origin HEAD:main`，不必再問。若新對話的系統限制只准推工作分支、或自動模式擋下，不要繞過：跟使用者說一句，請他回「可以推 main」。
+
 ## 對話管理
 - 背景資訊（context）用量到 **70%** 時，主動提醒使用者壓縮（**提醒那段開頭一定加 ⚠️**，使用者 11/16 要求，方便一眼看到），並先把本次變更寫進 `docs/HANDOFF-N.md`（最新那份；快滿 200 行就開下一份並在上方加 `@docs/HANDOFF-N.md` 引用）再請他壓縮。
 - 壓縮後使用者會說「先讀 CLAUDE.md 和交接文件再繼續」，就照做，不必開新對話。
