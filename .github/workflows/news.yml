@@ -32,6 +32,7 @@ jobs:
       - name: 存回 news-data 分支（只留一個版本，分支不會越長越大）
         run: |
           cd nd
+          rm -f targets.json   # 11/19：目標價只放 KV（登入後才看得到），舊檔不可留在公開分支
           rm -rf .git
           git init -q -b news-data
           git config user.name "github-actions[bot]"
