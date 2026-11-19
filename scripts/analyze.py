@@ -344,6 +344,7 @@ def at_limit_up(s):
 def strong_flags(stocks, live, us=False):
     """11/18 使用者＋Opus 顧問：本週強勢／今日強勢標籤（只加標籤與欄位 w5／vr／vd／a20，不改五種型態）。
     本週強勢＝近 5 日（含今日）累計漲幅 ≥10% 且比全市場中位數多 ≥5 點、近 5 日均量 ≥ 前 20 日均量 1.5 倍、近 5 日均成交值 ≥5 千萬。
+    11/19 使用者選 B：成交值前 100 名的大型股另用「近 5 日漲 ≥5% 且贏大盤 3 點」（不設量能），標「本週強勢（大型）」，點本週強勢股鈕一起列出。
     今日強勢＝今日漲幅 ≥5% 且比全市場中位數多 ≥3 點、近 5 日均成交值 ≥5 千萬（11/18 使用者：今日強勢不設量能條件，等量出來就太晚）。
     「站上 20 日線」不是條件（使用者 11/18），改成篩選頁可勾選（欄位 a20）。
     盤中：今日量先按已開盤時間比例推估全日量；09:30 前不標今日強勢；盤中標過的，漲幅還在 3% 以上就保留（避免標籤來回跳）。"""
@@ -363,6 +364,7 @@ def strong_flags(stocks, live, us=False):
         xs = sorted(xs); n = len(xs)
         return 0 if not n else (xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2)
     m5 = med([s["_s"]["w5"] for s in liq]); m1 = med([s["chg"] for s in liq])
+    big = {c for c, _ in sorted(((c, s["_s"]["tv5"]) for c, s in stocks.items() if s.get("_s")), key=lambda z: -z[1])[:100]}   # 11/19 使用者：大型股（近 5 日均成交值前 100 名）另用較低門檻，不然永遠看不到大型股
     prev = set()
     if partial:
         try:
@@ -385,6 +387,8 @@ def strong_flags(stocks, live, us=False):
         lu = (not us) and at_limit_up(s)                  # 11/18 使用者：一字鎖死／漲停的股票沒有量是正常的，量能條件放行
         if x["w5"] >= 10 and x["w5"] - m5 >= 5 and ((s["vr"] and s["vr"] >= 1.5) or lu):
             s["tags"].append("本週強勢")
+        elif code in big and x["w5"] >= 5 and x["w5"] - m5 >= 3:
+            s["tags"].append("本週強勢（大型）")
         up = s["chg"] >= 5 and s["chg"] - m1 >= 3
         keep = partial and code in prev and s["chg"] >= 3 and s["chg"] - m1 >= 1
         if (up or keep) and not (partial and tw.hour * 60 + tw.minute < 9 * 60 + 30):

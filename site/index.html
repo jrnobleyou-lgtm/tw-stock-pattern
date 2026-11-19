@@ -258,7 +258,7 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 .nw .up{color:#f87171}.nw .dn{color:#4ade80}.nw .src{font-size:11px;color:var(--mute);margin-top:6px}
 .nw .epsw{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}.nw .epsx{display:flex}.nw .epsx>div{border:1px solid #4c3a8a;background:rgba(124,58,237,.10);border-radius:8px;padding:5px 10px;min-width:0}.nw .epsx p{margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:10px}.nw .epsx b{font-size:15px}.nw .epsx span{font-size:11px;color:var(--mute)}.nw .epsx em,.nw .epsy em{display:block;white-space:nowrap;font-style:normal;font-size:11px;color:#fbbf24;font-weight:700;margin-top:2px}.nw .epsn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.nw .epsy b{color:#e5e7eb}.nw .epsy em{display:inline;margin-left:8px}
 .nw .eps{display:flex;gap:8px;flex-wrap:wrap}.nw .eps div{border:1px solid #333;border-radius:8px;padding:6px 14px;text-align:center;min-width:80px}.nw .eps b{display:block;font-size:18px}.nw .eps span{font-size:11px;color:var(--mute)}
-.nw .qt small{font-size:10px;margin-left:3px}.nw .qt td,.nw .qt th{padding:5px 8px;white-space:nowrap}.nw .qt th{font-size:12px;color:var(--mute);font-weight:500}
+.nw .qt small{font-size:10px;margin-left:3px}.nw .qt td,.nw .qt th{padding:5px 8px;white-space:nowrap}.nw .qt th{font-size:12px;color:var(--mute);font-weight:500}@media(max-width:600px){.nw .qt{font-size:11px}.nw .qt td,.nw .qt th{padding:5px 3px}.nw .qt small{display:block;margin-left:0}}   /* 11/19 手機整張表放得下（原本營益率、淨利率被切掉） */
 .nw .hib{display:inline-block;background:#7c2d12;color:#fed7aa;border-radius:999px;padding:1px 9px;font-size:12px;margin-right:6px}
 .nw2>div{min-width:0}.nw2{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:22px}
 .nw .bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding-top:16px}.nw .bars div{flex:1;background:#6d28d9;border-radius:4px 4px 0 0;position:relative;min-width:22px}
@@ -361,7 +361,7 @@ $("#asof").textContent = D.live ? liveTxt() : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TP
 /* ───────── 共用 ───────── */
 function badge(s,sub){return `<span class="badge b-${CLS[s]}">${s}</span>` + (sub?`<span class="tag ${sub==="破底走弱"?"bad":""}">${sub}</span>`:"")}
 function tagCls(x){
-  if(x==="本週強勢") return "fl flw";
+  if(/^本週強勢/.test(x)) return "fl flw";
   if(/^今日強勢/.test(x)) return "fl fld";   /* 11/18 使用者：本週／今日強勢要分開底色、火焰感（window.FLV 切版本） */
   if(/突破第1根|準備突破|強勢止跌反彈|蓄勢待發/.test(x)) return "hot";
   if(/破底走弱|跌破/.test(x)) return "bad";
@@ -789,7 +789,7 @@ const FILTERS = [
   {k:"dmipre", name:"DMI翻多前已轉強", f:s=>has(s,/DMI翻多前已轉強/)},
   {k:"dmiup", name:"DMI剛翻多", f:s=>has(s,/DMI剛翻多/)},
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
-  {k:"wk", m:1, name:"本週強勢股", f:s=>s.tags.includes("本週強勢")},   /* 11/18：近 5 日漲 ≥10% 且贏大盤 5 點、量增 1.5 倍（Opus 顧問定案）；站上 20 日線改成頁內可勾選 */
+  {k:"wk", m:1, name:"本週強勢股", f:s=>has(s,/^本週強勢/)},   /* 11/18：近 5 日漲 ≥10% 且贏大盤 5 點、量增 1.5 倍（Opus 顧問定案）；站上 20 日線改成頁內可勾選 */
   {k:"td", m:1, name:"今日強勢股", f:s=>has(s,/^今日強勢/)},
   {k:"nwup", m:1, name:"近7天消息偏多", f:s=>has(s,/近期消息偏多/)},
   {k:"mops", m:1, name:"今天有重訊", f:s=>has(s,/今天有重訊/)},   /* 11/16：上一交易日收盤後到現在有重訊 */
@@ -846,7 +846,7 @@ function screener(key,mix){
     yoyhi:"<b>條件：</b>這檔最新公布的月營收創歷史新高（比資料裡之前每個月都高，資料最多回溯到 2015 年），而且比去年同月高（年增 > 0）；要有 36 個月以上資料。",
     m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。"+(D.market==="US"?"財報公布後約 1 天內更新（季別為日曆季）。":"財報公布後（Q3 約 11/14 前）更新。")+"點股票後切到「消息」看近 3 季營收與三率。"};
   RVN.pelo=RVN.pemid=RVN.pehi=RVN.pblo=RVN.dyhi=RVN.pels=`<b>條件：</b>${{pelo:"本益比 15 倍以下（虧損沒有本益比，不列入）",pemid:"本益比 15～25 倍",pehi:"本益比 25 倍以上（超過 100 倍多半是獲利剛好很低，會標「獲利低基期」）",pblo:"股價淨值比 1 以下（股價低於每股淨值）",dyhi:"現金殖利率 5% 以上",pels:"近四季合計虧損（本益比不存在）"}[cur.k]}。<br>資料為證交所、櫃買中心公布的收盤後數字（${D.valDate||"—"} 收盤），盤中不會跳動；本益比用最近四季財報，殖利率用最近一次股利。便宜不代表會漲，只是多一個參考；請搭配型態與消息一起看。`;
-  RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥${D.market==="US"?"500 萬美元":"5 千萬"}；新股與停牌不列。${D.market==="US"?"":"漲停照列。"}<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥${D.market==="US"?"500 萬美元":"5 千萬"}；新股與停牌不列。${D.market==="US"?"":"漲停照列。"}<br><b>大型股（近 5 日均成交值前 100 名）</b>另用較低門檻：近 5 日漲 ≥5%、比全市場中位數多漲 3 點以上，不看量能，標「本週強勢（大型）」。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
   RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；不設量能條件（等量出來就太晚了），「日量比」欄只供參考；近 5 日平均成交值 ≥${D.market==="US"?"500 萬美元":"5 千萬"}；新股與停牌不列。${D.market==="US"?"美股只用收盤資料，每天台灣早上更新一次。":"盤中 09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。"}<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;
