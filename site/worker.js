@@ -213,7 +213,7 @@ async function usRoute(req, env, u) {
     let nwRow = "讀不到";
     try {
       const nm = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/meta.json", { cf: { cacheTtl: 300 } })).json();
-      const NM = { udn: "經濟日報", ctee: "工商時報", cnyes: "鉅亨網", moneydj: "MoneyDJ", cna: "中央社", uanalyze: "優分析", technews: "科技新報", yahoo: "Yahoo股市" };
+      const NM = { udn: "經濟日報", ctee: "工商時報", cnyes: "鉅亨網", moneydj: "MoneyDJ", cna: "中央社", uanalyze: "優分析", technews: "科技新報", yahoo: "Yahoo股市", search: "鉅亨逐檔搜尋" };
       const z = nm.zero || {};
       nwRow = `${new Date(nm.t * 1000).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　共 ${nm.n} 篇<br>` + Object.entries(nm.src || {}).map(([k, v]) => {
         const bad = (z[k] || 0) >= 3 || typeof v !== "number";
@@ -222,6 +222,12 @@ async function usRoute(req, env, u) {
       }).join("　");
       const stale = nm.ai_ok_t && (Date.now() / 1000 - nm.ai_ok_t) > 3 * 3600, hr = +new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 13);
       nwRow += `<br>AI 型號：${(nm.models || []).join("、") || "—"}　最後一次判斷成功：${nm.ai_ok_t ? new Date(nm.ai_ok_t * 1000).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }) : "—"}` + (stale && hr >= 6 && hr < 23 ? `<span style="color:#f87171;font-weight:bold">（超過 3 小時沒判斷成功）</span>` : "");
+      try {   // 11/19：逐檔搜尋查得到文章、但站上近 7 天沒有該檔新聞 → 列出（可能被 AI 略過，或漏抓）
+        const sc = nm.sc || {}, its = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/items.json", { cf: { cacheTtl: 300 } })).json();
+        const have = new Set(); for (const x of its) if (x.t > Date.now() / 1000 - 7 * 86400) for (const a of x.ai || []) if (a.d !== undefined) have.add(a.c);
+        const miss = Object.entries(sc).filter(([c, v]) => v.n > 0 && !have.has(c)).sort((a, b) => b[1].n - a[1].n);
+        nwRow += `<br>逐檔搜尋已查 ${Object.keys(sc).length} 檔；其中 <b>${miss.length}</b> 檔搜尋到近 7 天文章、但站上沒有（多半是盤面或只被順便點名，依規則不收）` + (miss.length ? "：" + miss.slice(0, 12).map(([c, v]) => `${c}（${v.n} 則，如「${String((v.ttl || [])[0] || "").replace(/[<>&]/g, "")}」）`).join("、") : "");
+      } catch (e) {}
       try {
         const dj0 = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/daily.json", { cf: { cacheTtl: 300 } })).json();
         const al = Object.keys(dj0).sort().slice(-3).map(k => dj0[k].alert).filter(Boolean).pop();
