@@ -1034,7 +1034,7 @@ async function loadNews(s,np){
   const dm=x=>!DIR||x.dir==null?"":x.dir>0?'<b class="up">▲</b> ':x.dir<0?'<b class="dn">▼</b> ':'<b class="mute">↔️</b> ';   /* 持平符號：使用者 11/17 指定 ↔️ */
   const row=x=>`<div class="it"><div class="dt">${x.d.slice(5).replace("-","/")} ${x.t||""}</div><div>${dm(x)}${x.mo?`<span class="mk mo">重訊</span>`:""}${x.mo&&x.nw?`<span class="mk td">今天</span>`:""}${x.link?`<a href="${esc(x.link)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)}${x.src?`<span class="mute" style="font-size:12px">　${esc(x.src)}</span>`:""}${DIR&&x.why?`<div class="aisum">✨ AI新聞摘要：${esc(x.why)}</div>`:""}</div></div>`;
   const empty=t=>`<div class="mute" style="padding:6px 2px">${t}</div>`;
-  const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"<br>重訊：取自公開資訊觀測站公告（約每 30 分更新，隔天校正）；「今天」＝上一交易日收盤後":""}${DIR?"<br>▲利多 ▼利空 －中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
+  const src=`<div class="src">新聞來源：經濟日報、工商時報、鉅亨網、MoneyDJ、中央社、優分析、科技新報、Yahoo股市（只收免費文章，點標題開原文）${mops.length?"<br>重訊：取自公開資訊觀測站公告（約每 30 分更新，隔天校正）；「今天」＝上一交易日收盤後":""}${DIR?"<br>▲利多 ▼利空 ↔️中性：AI 讀全文自動整理，僅供參考，非投資建議":""}</div>`;
   const hi=f?`${f.revHi?'<span class="hib">月營收創新高</span>':""}${f.yoyHi?'<span class="hib">年增新高</span>':""}`:"";
   const rev=f&&f.rev||[], eps=f&&f.eps||[], qq=f&&f.q||[];
   const mx=Math.max(1,...rev.map(r=>r[1]));
@@ -1048,7 +1048,7 @@ async function loadNews(s,np){
   /* 11/19 使用者：近 30 天新聞整體好壞（只算「事件」「法人」；同一天同方向只算一次；利多比利空多 2 則以上＝偏多，反之偏空，差不到 2 則＝看法持平；有分量不到 3 則不判斷） */
   const biasHTML=(()=>{if(!DIR||!(n&&n.items))return{b:"",s:""};const V=new Set();(n.items||[]).forEach(x=>{if(x.mo||!(x.t>0)||(x.k!=="事件"&&x.k!=="法人")||(x.d!==1&&x.d!==-1&&x.d!==0))return;V.add(new Date((x.t+28800)*1000).toISOString().slice(0,10)+"|"+x.d)});
     let up=0,dn=0,md=0;V.forEach(v=>{const d=+v.split("|")[1];d>0?up++:d<0?dn++:md++});const tot=up+dn+md;if(!tot)return{b:"",s:""};
-    const st=`<div class="src nbs">▲${up} ▼${dn} －${md}　（有分量的新聞 ${tot} 則；只算事件與法人報告，同一天同方向只算一次）</div>`;
+    const st=`<div class="src nbs">▲${up} ▼${dn} ↔️${md}　（有分量的新聞 ${tot} 則；只算事件與法人報告，同一天同方向只算一次）</div>`;
     if(tot<3)return{b:'<span class="nbias fl nv'+(window.NBV||1)+'">近 30 天：有分量的新聞太少，暫不判斷</span>',s:st};
     if(up-dn>=2)return{b:'<span class="nbias up nv'+(window.NBV||1)+'">近 30 天：偏多</span>',s:st};
     if(dn-up>=2)return{b:'<span class="nbias dn nv'+(window.NBV||1)+'">近 30 天：偏空</span>',s:st};
