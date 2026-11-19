@@ -69,7 +69,17 @@ def src_udn():
 
 
 def src_ctee():
-    return [dict(a, src="工商時報") for a in rss("https://www.ctee.com.tw/rss_web/livenews/stock")]
+    """11/19 使用者：原本只讀「股市」；公司新聞也在「科技」（日月光、偉詮電…）和「產業」分類，各補上（同一篇去重）。"""
+    out, seen = [], set()
+    for c in ("stock", "tech", "industry"):
+        try:
+            for a in rss(f"https://www.ctee.com.tw/rss_web/livenews/{c}"):
+                if a["link"] not in seen:
+                    seen.add(a["link"])
+                    out.append(dict(a, src="工商時報"))
+        except Exception as e:
+            print("工商分類失敗", c, repr(e)[:80], file=sys.stderr)
+    return out
 
 
 def src_cnyes():
@@ -198,11 +208,31 @@ def src_uanalyze():
 
 
 def src_technews():
-    return [dict(a, src="科技新報") for a in rss("https://finance.technews.tw/feed/")]
+    """11/19 使用者：原本只讀「財經」；科技新報「全部」文章也有很多公司新聞（群聯、美光…），一起讀（去重）。"""
+    out, seen = [], set()
+    for u in ("https://finance.technews.tw/feed/", "https://technews.tw/feed/"):
+        try:
+            for a in rss(u):
+                if a["link"] not in seen:
+                    seen.add(a["link"])
+                    out.append(dict(a, src="科技新報"))
+        except Exception as e:
+            print("科技新報失敗", u, repr(e)[:80], file=sys.stderr)
+    return out
 
 
 def src_yahoo():
-    return [dict(a, src="Yahoo股市") for a in rss("https://tw.stock.yahoo.com/rss?category=tw-market")]
+    """11/19 使用者：「研究報告」分類（個股分析、主題報告）很重要，加讀（去重）。"""
+    out, seen = [], set()
+    for c in ("tw-market", "research"):
+        try:
+            for a in rss(f"https://tw.stock.yahoo.com/rss?category={c}"):
+                if a["link"] not in seen:
+                    seen.add(a["link"])
+                    out.append(dict(a, src="Yahoo股市"))
+        except Exception as e:
+            print("Yahoo 分類失敗", c, repr(e)[:80], file=sys.stderr)
+    return out
 
 
 SOURCES = (src_udn, src_ctee, src_cnyes, src_moneydj, src_cna, src_uanalyze, src_technews, src_yahoo)
