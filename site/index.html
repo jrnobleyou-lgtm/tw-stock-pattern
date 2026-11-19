@@ -208,7 +208,7 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .ttb.show{opacity:1;pointer-events:auto}
 #ttTop{bottom:calc(18px + env(safe-area-inset-bottom))}
 .tt1 .ttb{width:46px;height:46px;border-radius:50%;background:#7c3aed;color:#fff;border:0;box-shadow:0 4px 14px rgba(0,0,0,.45);font-size:20px}
-.tt2 .ttb{padding:9px 14px;border-radius:999px;background:rgba(20,12,48,.88);color:#e9e4ff;border:1px solid #8b5cf6;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.tt2 .ttb{padding:9px 11px;border-radius:999px;background:rgba(20,12,48,.88);color:#e9e4ff;border:1px solid #8b5cf6;box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .tt3 .ttb{width:40px;height:40px;border-radius:10px;background:rgba(9,5,26,.6);color:#c4b5fd;border:1px solid rgba(196,181,253,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-size:18px}
 @media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
 /* 11/18 本週強勢／今日強勢標籤：火焰感，分別上色（window.FLV 1 暖橘漸層／2 暗底發光邊／3 由下往上的火苗漸層；預設 2 之前由使用者選） */
@@ -2122,8 +2122,12 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(
 /* 回到頂端／到底部按鈕（11/15 使用者）：樣式 window.TTV（使用者選 2 膠囊文字；1 圓形實心／3 半透明方形保留可切） */
 (function(){
   const v=window.TTV||2, h=document.documentElement; h.classList.add("tt"+v);
-  const lab=v===2?["▲ 頂端","▼ 底部"]:["▲","▼"];
-  const mk=(id,t,title,fn)=>{const b=document.createElement("button");b.id=id;b.className="ttb";b.textContent=t;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;document.body.appendChild(b);return b};
+  /* 11/19 使用者：頂端／底部改成「雙三角形」符號（window.TDV 1 兩個實心三角疊起來／2 雙層箭頭線條／3 三角形加橫線；預設待使用者選） */
+  const TDV=window.TDV||1, dn=(up)=>{const f=up?"":" transform=\"rotate(180 12 12)\"";
+    const g=TDV===1?'<path d="M12 3 20 11H4Z"/><path d="M12 12.5 20 20.5H4Z"/>':TDV===2?'<path d="M5 11l7-7 7 7M5 19l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>':'<path d="M4 4h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M12 8 20 16H4Z"/>';
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><g'+f+'>'+g+'</g></svg>'};
+  const lab=[dn(true),dn(false)];
+  const mk=(id,t,title,fn)=>{const b=document.createElement("button");b.id=id;b.className="ttb";if(t.charAt(0)==="<")b.innerHTML=t;else b.textContent=t;b.title=title;b.setAttribute("aria-label",title);b.onclick=fn;document.body.appendChild(b);return b};
   const top=mk("ttTop",lab[0],"回到頂端",()=>scrollTo({top:0,behavior:"smooth"}));
   document.documentElement.classList.add("kd"+(window.KDV||"B"),"swl"+(window.SWL??1));
   const back=mk("ttBack","← 返回上一頁","返回上一頁",()=>goPrev());   /* 11/16 使用者：返回上一頁要跟著置頂（BKV 1 左上、2 左下） */
