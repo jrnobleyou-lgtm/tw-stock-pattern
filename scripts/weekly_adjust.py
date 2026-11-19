@@ -8,7 +8,7 @@ ap = os.path.join(ROOT, "data", "adjust.csv")
 old = {}
 for r in csv.DictReader(open(ap, encoding="utf-8")):
     old.setdefault(r["code"], []).append((r["exdate"], r["k"]))
-new, ok, fail = {}, 0, 0
+new, start, ok, fail = {}, {}, 0, 0
 for g in rows:
     code, sym = g["代號"], g["代號"] + (".TW" if g["市場"] == "TWSE" else ".TWO")
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=2y&interval=1d&includeAdjustedClose=true"
@@ -33,9 +33,13 @@ for g in rows:
         continue
     f = [(datetime.datetime.fromtimestamp(t, TW).date().isoformat(), a / c) for t, a, c in zip(ts, adj, q["close"]) if a and c]
     ev = [(f[i][0], f"{f[i-1][1] / f[i][1]:.6f}") for i in range(1, len(f)) if abs(f[i-1][1] / f[i][1] - 1) > 4e-4]
-    new[code] = ev; ok += 1
+    new[code] = ev; start[code] = f[0][0]; ok += 1
+# 11/19 Opus 審查：Yahoo 只查近 2 年，核對過的股票以前會整批換成 Yahoo 的結果，更早的除權息事件就被丟掉；改成只替換 Yahoo 看得到的區間，更早的保留
 merged = {c: e for c, e in old.items() if c not in new}
-merged.update({c: e for c, e in new.items() if e})
+for c, e in new.items():
+    keep = [x for x in old.get(c, []) if x[0] <= start[c]]
+    if keep or e:
+        merged[c] = keep + e
 with open(ap, "w", newline="", encoding="utf-8") as fo:
     w = csv.writer(fo); w.writerow(["code", "exdate", "k"])
     for c in sorted(merged):

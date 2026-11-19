@@ -286,10 +286,11 @@ async function githubOidcOk(tok) {
     const [h, p, sig] = tok.split("."); const head = JSON.parse(new TextDecoder().decode(b64u(h))), c = JSON.parse(new TextDecoder().decode(b64u(p)));
     if (c.iss !== "https://token.actions.githubusercontent.com" || c.aud !== "tw-stock-us" || c.exp * 1000 < Date.now()) return false;
     if (c.repository !== "jrnobleyou-lgtm/tw-stock-pattern" || c.ref !== "refs/heads/main") return false;
+    const full = c.workflow === "us" || /\/us\.yml@/.test(String(c.workflow_ref || ""));     // 11/19 Opus 審查：只有美股更新（us.yml）能讀寫全部；其他工作（新聞）只能碰關注清單與目標價
     if (!jwks || Date.now() - jwksAt > 3600e3) { jwks = (await (await fetch("https://token.actions.githubusercontent.com/.well-known/jwks")).json()).keys; jwksAt = Date.now(); }
     const jwk = jwks.find(k => k.kid === head.kid); if (!jwk) return false;
     const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
-    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64u(sig), enc.encode(h + "." + p));
+    return (await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64u(sig), enc.encode(h + "." + p))) ? (full ? "full" : "limited") : false;
   } catch (e) { return false; }
 }
 // 11/18 使用者：法人目標價只有登入後看得到。資料在 KV state/targets_tw.json（news.py 整理），這裡驗證現價（0.3～3 倍）、近 60 天、同家只留最新、≥3 家才給最高／中位數／最低
@@ -314,8 +315,14 @@ async function targetsRoute(req, env, u) {
 
 async function usIngest(req, env, u) {          // 每日更新程式用：上傳／下載 KV。GitHub Actions 用 OIDC，手動用 X-Ingest-Key
   const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const ok = (env.US_INGEST_KEY && req.headers.get("x-ingest-key") === env.US_INGEST_KEY) || (bearer && await githubOidcOk(bearer));
-  if (!env.US || !ok) return new Response("forbidden", { status: 403 });
+  const byKey = env.US_INGEST_KEY && req.headers.get("x-ingest-key") === env.US_INGEST_KEY;
+  const oidc = byKey ? "full" : (bearer ? await githubOidcOk(bearer) : false);
+  if (!env.US || !oidc) return new Response("forbidden", { status: 403 });
+  if (oidc === "limited") {                          // 新聞排程：只准讀關注清單、讀寫目標價
+    const lk = u.searchParams.get("key") || "";
+    const okk = req.method === "GET" ? (lk === "state/watchlist_tw" || lk === "state/targets_tw.json") : (req.method === "PUT" && lk === "state/targets_tw.json");
+    if (!okk) return new Response("forbidden", { status: 403 });
+  }
   if (req.method === "GET") {
     if (u.searchParams.get("key") === "draw-list/US")          // 分析程式讀美股畫線（只讀取、不寫入 KV）
       return new Response(JSON.stringify(await drawList(env, "US", true)), { headers: { "content-type": "application/json" } });
@@ -396,6 +403,13 @@ async function deployWatchdog(env) {
   const gh = await fetch(`https://api.github.com/repos/${REPO}/commits/deploy`, {
     headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-cron" } }).then(r => r.json());
   const head = Date.parse(gh?.commit?.committer?.date || "");
+  // 11/19 使用者不看信：盤中（週一～五 09:20–13:40）deploy 超過 15 分鐘沒更新 → 記 KV intraday/stale（只在第一次寫入、恢復時刪除），登入後的網頁底部會跳紅色提醒
+  if (env.US && head) {
+    const tw = new Date(Date.now() + 8 * 3600e3), hm = tw.getUTCHours() * 60 + tw.getUTCMinutes(), wd = tw.getUTCDay();
+    const prevS = await env.US.get("intraday/stale");
+    if (wd >= 1 && wd <= 5 && hm >= 560 && hm <= 820 && Date.now() - head > 15 * 60000) { if (!prevS) await env.US.put("intraday/stale", JSON.stringify({ since: new Date().toISOString(), last: new Date(head).toISOString() })); }
+    else if (prevS) await env.US.delete("intraday/stale");
+  }
   // 權限自我檢查：各步驟結果有變才寫 KV（deploy/check），省寫入額度
   const chk = async (txt) => { if (env.US && (await env.US.get("deploy/check")) !== txt) await env.US.put("deploy/check", txt); };
   const acc = (await cf("/accounts")).result?.[0]?.id; if (!acc) return chk("讀不到帳戶（缺 Account Settings 讀取權限？）");
@@ -458,6 +472,17 @@ export default {
     }
     if (u.pathname === "/api/draw") return drawRoute(req, env, u);
     if (u.pathname === "/api/targets") return targetsRoute(req, env, u);
+    if (u.pathname === "/api/alerts") {                      // 11/19：只給登入的管理者（網頁底部紅色提醒）；不快取
+      if (!env.US || !(await usAuthed(req, env))) return new Response("[]", { status: 401, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+      const out = [], tm = (iso) => new Date(iso).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour12: false, hour: "2-digit", minute: "2-digit" });
+      const st = await env.US.get("intraday/stale", "json");
+      if (st) out.push(`盤中更新停了（最後一次發布台灣 ${tm(st.last)}，從 ${tm(st.since)} 起發現）。休市日可忽略；平常日請告訴 Claude 檢查。`);
+      const nf = await env.US.get("cron/newsfail", "json");
+      if (nf) out.push(`新聞排程觸發失敗（GitHub 回 ${nf.status}），可能是 GitHub 金鑰到期。`);
+      const dc = await env.US.get("deploy/check");
+      if (dc && dc !== "正常") out.push(`部署看門狗：${dc}`);
+      return new Response(JSON.stringify(out), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+    }
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
     if (u.pathname.startsWith("/admin/")) {
       const r = await usRoute(req, env, u);
