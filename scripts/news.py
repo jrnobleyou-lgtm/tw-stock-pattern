@@ -161,7 +161,19 @@ def search_arts(pri, names, codes, meta, now, backfill=False, per_run=10):
 
 
 def src_moneydj():
-    return [dict(a, src="MoneyDJ") for a in rss("https://www.moneydj.com/KMDJ/RssCenter.aspx?svc=NR&fno=1&arg=MB010000") if "5850web" not in a["link"]]
+    """11/19 使用者發現漏新聞（萬泰科 6190）：原本只讀「頭條新聞」MB010000（國際與大盤大事，20 篇），公司新聞在「台股」MB06、「產業情報」MB07、「科技脈動」MB070100。
+    各分類每個只回最新 20 篇，涵蓋約 2.5～6 小時，新聞每 30 分鐘跑一次，足夠。"""
+    out, seen = [], set()
+    for c in ("MB010000", "MB06", "MB07", "MB070100"):
+        try:
+            for a in rss(f"https://www.moneydj.com/KMDJ/RssCenter.aspx?svc=NR&fno=1&arg={c}"):
+                if "5850web" in a["link"] or a["link"] in seen:
+                    continue
+                seen.add(a["link"])
+                out.append(dict(a, src="MoneyDJ"))
+        except Exception as e:                       # 單一分類失敗不影響其他
+            print("MoneyDJ 分類失敗", c, repr(e)[:80], file=sys.stderr)
+    return out
 
 
 def src_cna():
@@ -643,6 +655,12 @@ def main(out):
     with cf.ThreadPoolExecutor(8) as ex:
         for res in ex.map(safe, SOURCES):
             arts += res
+    try:                                                # 11/19 手動補文章：data/news_extra.txt 每行一個網址（漏掉的文章補進來；已判斷過的會自動略過）
+        for u in open("data/news_extra.txt", encoding="utf-8").read().split():
+            if u.startswith("https://"):
+                arts.append({"src": "MoneyDJ" if "moneydj.com" in u else "手動補入", "title": "", "link": u, "t": 0})
+    except FileNotFoundError:
+        pass
     pri = priority_codes()
     try:                                                # 11/19 逐檔搜尋補抓（失敗不影響其他）
         sa = search_arts(pri, names, codes, meta, now, BACKFILL)
