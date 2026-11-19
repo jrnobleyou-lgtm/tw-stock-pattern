@@ -118,3 +118,11 @@
 - ✅ **Opus 全站審查（11/19，只讀）**並修正：①`news-data` 公開分支上殘留 `targets.json`（目標價外洩）→ `news.yml` 發布前 `rm -f targets.json`，已確認 404 ②上市股除權息日當天寫還原係數：`scripts/exadj.py`（收盤－漲跌價差＝昨日參考價，差 >0.04% 即除權息；漲跌價差 0 的要預告表 TWT48U_ALL 有列才採用），`daily_update.py` 上市段呼叫；實測抓到 11/18 的 2344、5434，已手動補進 `adjust.csv`；固定檢查 `test_exadj.py` ③盤中判斷（今日強勢、三大法人沿用）要求暫時價日期＝台灣今天，凌晨 06:00 不再誤判成盤中 ④漲停價升降單位改看「漲停價所在價位」（昨收 93 → 102.0）⑤`intraday_loop.sh` 分析連續 3 輪失敗，結束時讓工作失敗（GitHub 寄信）⑥`/api/draw-list` 快取鍵只看 `span`。
 - Opus 審查**尚未做**的：新聞排程 GitHub 身分權限過大（news.yml 也能寫 `site/`、`state/`）；`weekly_adjust.py` 每週會丟掉 2 年前的除權息事件；幾支程式用 UTC 當「今天」（月初早上少算月份，影響小）；`/api/mis`、`/api/quote` 完全公開（出事再加限制）；Cloudflare 每月建置分鐘數待到 Cloudflare 查；固定檢查 `test_pipeline` 是否只讀固定資料（待確認）；測試缺口：ui_check 沒開 K 線視窗、沒跑美股模式、Worker 無測試；index.html 美股／台股分支散在各處（建議集中成設定表，不建議現在拆檔）。
 - 注意：新程式只處理「往後」的新資料；11/17 以前漏掉的上市除權息事件要等週日（11/22）Yahoo 核對補上。
+
+## 2026-11-19 下午（Opus 審查第二批，已上線＝✅）
+- ✅ **使用者不看信** → 通知改成「登入後網頁底部紅色提醒」：Worker `/api/alerts`（要登入，401 給訪客）回傳異常清單，前端 `alertPoll()`（cookie `adm=1` 才抓，每 5 分，可按 ✕ 關）。來源：KV `intraday/stale`（看門狗在週一～五台灣 09:20–13:40 發現 deploy 超過 15 分鐘沒更新就記第一次時間，恢復就刪）、`cron/newsfail`、`deploy/check` 不是「正常」。`intraday_loop.sh` 的「連續 3 輪分析失敗讓工作失敗」保留（只是備援，不靠信）。休市日會誤報一次，提醒文字已寫「休市日可忽略」。
+- ✅ **新聞排程 OIDC 權限收窄**（`worker.js githubOidcOk` 回 `"full"`／`"limited"`）：只有 `us.yml`（claim `workflow==="us"` 或 `workflow_ref` 含 `/us.yml@`）能讀寫全部 `site/`、`state/`；其他（新聞）只能讀 `state/watchlist_tw`、`state/targets_tw.json`、寫 `state/targets_tw.json`。已實測：新聞排程仍讀到優先名單 202 檔、目標價存 KV 成功；美股更新（手動，11/19 15:51）下載與上傳步驟都成功。X-Ingest-Key 仍是全權限。
+- ✅ `weekly_adjust.py`：只替換 Yahoo 看得到的區間（近 2 年），更早的除權息事件保留。
+- ✅ **修了一個真 bug**：沒有 `site/f/<代號>.json` 的股票（例如新股）打開「消息」分頁會 `Cannot read properties of null (reading 'mAth')`（`revBars` 裡 `f.mAth` → `f&&f.mAth`）。`scripts/ui_check.js` 現在也會開個股 K 線視窗（新股、停牌、有形態、一般、強勢標籤各幾檔）並切「消息」分頁，192 個畫面 0 錯誤。
+- 已確認沒問題：`test_pipeline` 只讀固定案例，不吃當天資料。
+- **還沒做**：ui_check 跑美股模式（要用 `market:"US"` 的模擬資料）、Worker 單元測試、各程式用 UTC 當「今天」（月初早上少算月份，影響小）、`/api/mis`／`/api/quote` 公開（出事再說）、Cloudflare 每月建置分鐘數（要到 Cloudflare 後台看）、index.html 美股／台股分支集中成設定表（不建議現在拆）。
