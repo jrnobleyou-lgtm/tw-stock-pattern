@@ -294,11 +294,13 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 .nbias.nv2,.nbias.nv2.up,.nbias.nv2.dn{color:#fff!important;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.35);background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:0 4px 14px -4px var(--c2),inset 0 1px 0 rgba(255,255,255,.45)}
 .nbias.nv3{color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 38%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}.nbias.nv3.up::before{content:"▲"}.nbias.nv3.dn::before{content:"▼"}.nbias.nv3.fl::before{content:"－"}
 .nbias.up{--c:#ff5c7a;--c1:#ff7a8a;--c2:#e8456b}.nbias.dn{--c:#2dd4a0;--c1:#34d3b0;--c2:#15a87a}.nbias.fl{--c:#9aa5c0;--c1:#8f9bb8;--c2:#6b7693}
-.nw .npg{position:sticky;bottom:6px;display:flex;justify-content:flex-end;align-items:center;gap:6px;margin:10px 0 2px;z-index:3;font-size:13px;color:#e5e7eb}
-.nw .npg button{font:inherit;color:#fff;cursor:pointer;border:1px solid rgba(255,255,255,.22);background:rgba(60,60,70,.55);-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);border-radius:999px;padding:5px 14px;box-shadow:0 2px 10px rgba(0,0,0,.5)}
-.nw .npg button:disabled{opacity:.35;cursor:default}.nw .npg span{color:var(--mute);padding:0 4px;text-shadow:0 1px 4px #000}
-.nw .npg2 button{min-width:34px;padding:5px 8px}.nw .npg2 button.on{background:rgba(124,58,237,.75);border-color:rgba(196,181,253,.7)}
-.nw .npg3 button{width:36px;height:36px;padding:0;border-radius:50%;font-size:14px}.nw .npg3 span{background:rgba(60,60,70,.55);border-radius:999px;padding:5px 10px;color:#e5e7eb;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.nw .npg{position:sticky;bottom:0;z-index:3;margin:12px -4px -10px;padding:10px 6px 10px;display:flex;justify-content:flex-end;background:linear-gradient(180deg,rgba(0,0,0,.0),#000 22%);border-top:1px solid transparent;border-image:linear-gradient(90deg,transparent,rgba(125,211,252,.55),rgba(167,139,250,.55),transparent) 1}
+.nw .npb{position:relative;display:flex;align-items:center;gap:8px}
+.nw .npb button{font:inherit;font-size:14px;color:#f0f9ff;cursor:pointer;height:38px;border-radius:999px;border:1px solid rgba(165,243,252,.45);background:linear-gradient(180deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.07) 46%,rgba(56,189,248,.14) 100%),rgba(30,41,59,.55);-webkit-backdrop-filter:blur(16px) saturate(1.6);backdrop-filter:blur(16px) saturate(1.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -8px 14px rgba(56,189,248,.12),0 0 14px rgba(56,189,248,.28),0 4px 14px rgba(0,0,0,.55);text-shadow:0 0 8px rgba(125,211,252,.7)}
+.nw .npb .npa{width:38px;padding:0;border-radius:50%}.nw .npb .npc{padding:0 16px;min-width:84px}
+.nw .npb button:disabled{opacity:.3;box-shadow:none;cursor:default}.nw .npb button:not(:disabled):active{transform:scale(.96)}
+.nw .npp{position:absolute;right:0;bottom:48px;width:min(260px,86vw);display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:10px;border-radius:14px;border:1px solid rgba(165,243,252,.4);background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.05)),rgba(15,23,42,.72);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 18px rgba(56,189,248,.3),0 8px 24px rgba(0,0,0,.6);max-height:220px;overflow:auto}
+.nw .npp button{height:34px;border-radius:9px;font-size:13px;color:#e0f2fe;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);cursor:pointer}.nw .npp button.on{background:rgba(56,189,248,.4);border-color:rgba(165,243,252,.8);color:#fff}
 .nw h4{margin:14px 0 6px;font-size:14px;color:#c4b5fd;font-weight:600}.nw h4 small{color:var(--mute);font-weight:400;margin-left:6px}
 .nw .it{display:flex;gap:10px;padding:6px 2px;border-bottom:1px solid #222}.nw .it .dt{flex:none;width:86px;color:var(--mute);font-size:12px;padding-top:2px}
 .nw .it a{color:#e5e7eb;text-decoration:none}.nw .it a:hover{text-decoration:underline;color:#fff}
@@ -1050,7 +1052,7 @@ async function loadNews(s,np){
     if(up-dn>=2)return{b:'<span class="nbias up nv'+(window.NBV||1)+'">近 30 天：偏多</span>',s:st};
     if(dn-up>=2)return{b:'<span class="nbias dn nv'+(window.NBV||1)+'">近 30 天：偏空</span>',s:st};
     return{b:'<span class="nbias fl nv'+(window.NBV||1)+'">近 30 天：看法持平，無明顯偏多空</span>',s:st}})();
-  const right=`<h4>${mops.length?"重訊＋新聞":"新聞"}<small>近 30 天，依時間排列</small>${biasHTML.b}</h4>${biasHTML.s}${src.replace('class="src"','class="src" style="margin:0 0 6px"')}<div class="nplist">${all.length?all.slice(0,8).map(row).join(""):empty(n&&!n.error?"近 30 天沒有相關新聞":"新聞暫時讀不到，請稍後再試")}</div>${all.length>8?'<div class="npg npg'+(window.NPG||1)+'"></div>':""}`;   /* 11/16 使用者：來源與注意事項放最上面 */
+  const right=`<h4>${mops.length?"重訊＋新聞":"新聞"}<small>近 30 天，依時間排列</small>${biasHTML.b}</h4>${biasHTML.s}${src.replace('class="src"','class="src" style="margin:0 0 6px"')}<div class="nplist">${all.length?all.slice(0,8).map(row).join(""):empty(n&&!n.error?"近 30 天沒有相關新聞":"新聞暫時讀不到，請稍後再試")}</div>${all.length>8?'<div class="npg"></div>':""}`;   /* 11/16 使用者：來源與注意事項放最上面 */
   const tp=D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)?await fetch("/api/targets?c="+s.code+"&close="+s.close,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null):null;   /* 11/18 使用者：目標價只有登入後看得到（Worker 驗證登入）；原註解： 使用者：近 60 天法人目標價參考清單（整理自公開新聞，非投資建議；≥3 家才算最高／最低／中位數，不算平均） */
   const tpD=t=>{const d=new Date((t+28800)*1000).toISOString();return d.slice(5,10).replace("-","/")};
   const tpHTML=tp?`<h4>近 60 天法人目標價<small>${tp.n}家券商${tp.fs?"＋FactSet":""}</small></h4>${tp.hi?`<div class="src" style="margin:0 0 4px">最高 <b>${tp.hi}</b>　中位數 <b>${tp.med}</b>　最低 <b>${tp.lo}</b>（${tp.n} 家，不是平均）</div>`:""}<div style="overflow-x:auto"><table class="qt"><tr><th>日期</th><th>來源</th><th>目標價</th><th>變動</th></tr>${tp.list.map(r=>`<tr><td>${tpD(r.t)}</td><td>${/^https:\/\//.test(r.link||"")?`<a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.who)}</a>`:esc(r.who)}</td><td><b>${r.p}</b></td><td>${r.d>0?'<b class="up">↑上調</b>':r.d<0?'<b class="dn">↓下調</b>':'<span class="mute">—</span>'}</td></tr>`).join("")}</table></div><div class="src">整理自公開新聞，非投資建議；沒列出的券商表示近 60 天新聞沒提到。FactSet 為多位分析師預估的中位數。</div>`:"";
@@ -1061,12 +1063,13 @@ async function loadNews(s,np){
   npPager(np,all,row);
 }
 /* 11/19 使用者：消息頁一次最多 8 則，超過分頁；換頁鈕在右下角（原型 window.NPG 1 上下頁／2 頁碼／3 圓形小鈕，待使用者選） */
-function npPager(np,all,row){const g=np.querySelector(".npg"),L=np.querySelector(".nplist");if(!g||!L)return;const PS=8,N=Math.ceil(all.length/PS),v=window.NPG||1;let pg=0;
+function npPager(np,all,row){const g=np.querySelector(".npg"),L=np.querySelector(".nplist");if(!g||!L)return;const PS=8,N=Math.ceil(all.length/PS);let pg=0;
   const go=i=>{pg=Math.max(0,Math.min(N-1,i));L.innerHTML=all.slice(pg*PS,pg*PS+PS).map(row).join("");draw();np.scrollTop=0};
-  const draw=()=>{let h="";if(v===2){const ps=[];for(let i=0;i<N;i++)if(i===0||i===N-1||Math.abs(i-pg)<=1)ps.push(i);let last=-1;h+='<button data-p="'+(pg-1)+'"'+(pg?"":" disabled")+'>‹</button>';ps.forEach(i=>{if(last>=0&&i-last>1)h+="<span>…</span>";h+='<button data-p="'+i+'"'+(i===pg?' class="on"':"")+">"+(i+1)+"</button>";last=i});h+='<button data-p="'+(pg+1)+'"'+(pg<N-1?"":" disabled")+'>›</button>'}
-    else if(v===3)h='<button data-p="'+(pg-1)+'"'+(pg?"":" disabled")+'>◀</button><span>'+(pg+1)+" / "+N+'</span><button data-p="'+(pg+1)+'"'+(pg<N-1?"":" disabled")+'>▶</button>';
-    else h='<button data-p="'+(pg-1)+'"'+(pg?"":" disabled")+'>‹ 上一頁</button><span>第 '+(pg+1)+" / "+N+' 頁（共 '+all.length+' 則）</span><button data-p="'+(pg+1)+'"'+(pg<N-1?"":" disabled")+'>下一頁 ›</button>';
-    g.innerHTML=h;g.querySelectorAll("button").forEach(b=>b.onclick=()=>go(+b.dataset.p))};
+  const pick=()=>{const o=g.querySelector(".npp");if(o){o.remove();return}const d=document.createElement("div");d.className="npp";d.innerHTML=Array.from({length:N},(_,i)=>'<button data-p="'+i+'"'+(i===pg?' class="on"':"")+">"+(i+1)+"</button>").join("");g.appendChild(d);
+    d.querySelectorAll("button").forEach(b=>b.onclick=e=>{e.stopPropagation();go(+b.dataset.p)});
+    const out=e=>{if(!d.contains(e.target)&&!e.target.closest(".npc")){d.remove();document.removeEventListener("click",out,true)}};setTimeout(()=>document.addEventListener("click",out,true),0)};
+  const draw=()=>{g.innerHTML='<div class="npb"><button class="npa" data-p="'+(pg-1)+'"'+(pg?"":" disabled")+' aria-label="上一頁">◀</button><button class="npc" title="點一下選頁">'+(pg+1)+" / "+N+' ▾</button><button class="npa" data-p="'+(pg+1)+'"'+(pg<N-1?"":" disabled")+' aria-label="下一頁">▶</button></div>';
+    g.querySelectorAll(".npa").forEach(b=>b.onclick=()=>go(+b.dataset.p));g.querySelector(".npc").onclick=e=>{e.stopPropagation();pick()}};
   draw()}
 function notesHTML(s){
   let h="";
