@@ -272,6 +272,12 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 #nvl.v3 .tvv,#nvl.v3 small,#nvl.v3 em,#nvl .nvcol .tvv,#nvl .nvcol small,#nvl .nvcol em,#nvl .nvsb{text-align:center;justify-self:stretch;padding-left:0;padding-right:0}
 #nvl .nvsb{position:relative}#nvl .nvsb i{position:absolute;right:-2px;top:50%;transform:translateY(-50%);margin:0;font-size:11px;line-height:1}
 #nvl.v3 .nvcol .nvsb.on,#nvl.v3 .nvcol .nvsb:hover{background:rgba(255,255,255,.12)}
+/* 11/19 使用者：選股面板背景改灰色毛玻璃（window.NVG 1 淺灰較透／2 深灰；預設待使用者選） */
+#nvl.v3{background:linear-gradient(180deg,rgba(150,154,166,.42),rgba(96,100,112,.46));-webkit-backdrop-filter:blur(22px) saturate(1.1);backdrop-filter:blur(22px) saturate(1.1);box-shadow:0 14px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.35),inset 0 0 0 1px rgba(255,255,255,.14)}
+#nvl.v3.g2{background:linear-gradient(180deg,rgba(90,94,106,.55),rgba(52,55,66,.6))}
+#nvl.v3 .nvcol{background:rgba(255,255,255,.08);border-bottom-color:rgba(255,255,255,.22)}#nvl.v3 .nvh{border-bottom-color:rgba(255,255,255,.22)}
+#nvl.v3 .nvh input{background:rgba(0,0,0,.28);border-color:rgba(255,255,255,.4)}
+#nvl.v3 button.nvi{border-bottom-color:rgba(255,255,255,.12)}#nvl.v3 .no,#nvl.v3 small,#nvl .nvcol,#nvl .nvsb,#nvl.v3 .nvh span{color:#e5e7eb}#nvl.v3 .tvv{color:#f3f4f6}
 #nvbd{position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.5)}
 .nvl.v3{left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:78vh}.nvl.v3 .nvh{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid rgba(255,255,255,.14)}.nvl.v3 .nvh input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid #8b5cf6;background:rgba(0,0,0,.35);color:#fff;font-size:15px}.nvl.v3 .nvh span{color:#c4b5fd;font-size:12px;white-space:nowrap}
 .nvl.v3 button.nvi{display:flex;align-items:center;gap:8px;width:100%;padding:10px;border-radius:9px;border-bottom:1px solid rgba(255,255,255,.06)}.nvl.v3 .no{width:24px;color:#a5b4fc;font-size:12px;text-align:right}.nvl.v3 .tvv{text-align:right;color:#e9d5ff;font-size:13px;white-space:nowrap}@media(max-width:600px){.nvl.v3 .tvv{font-size:12px}#nvl.v3 button.nvi,#nvl .nvcol{grid-template-columns:22px minmax(0,1fr) 52px 38px 52px;column-gap:4px}.nvl.v3 button.nvi{padding:10px 6px}.nvl .nvcol{padding:7px 24px 7px 10px}}
@@ -1049,7 +1055,7 @@ function navList(pill,cx){
   const v=window.NVP||3,L=cx.L,cur=cx.i,rows=L.map((c,i)=>{const s=D.stocks[c]||{};const ch=s.chg;return {c,i,n:s.name||c,ch,tv:(s.close!=null&&s.vol!=null)?turnover(s):"",tvn:(s.close!=null&&s.vol!=null)?s.close*s.vol*1000:-1e18,cls:ch>0?"up":ch<0?"dn":""}});
   const pc=r=>r.ch==null?"":`<em class="${r.cls}">${r.ch>0?"+":""}${r.ch.toFixed(2)}%</em>`;
   const item=r=>v===2?`<button class="nvi${r.i===cur?" on":""}" data-i="${r.i}"><b>${r.n}</b><small>${r.c}</small>${pc(r)}</button>`:`<button class="nvi${r.i===cur?" on":""}" data-i="${r.i}"><span class="no">${r.i+1}</span><b>${r.n}</b>${v===3?`<span class="tvv">${r.tv}</span>`:""}<small>${r.c}</small>${pc(r)}</button>`;
-  const box=document.createElement("div");box.id="nvl";box.className="nvl v"+v;
+  const box=document.createElement("div");box.id="nvl";box.className="nvl v"+v+(window.NVG===2?" g2":"");
   box.innerHTML=(v===3?`<div class="nvh"><input type="search" placeholder="搜尋名稱或代號" autocomplete="off"><span>${cur+1} / ${L.length}</span><button class="nvx" title="關閉" aria-label="關閉">✕</button></div>`:`<div class="nvh2">清單 ${L.length} 檔<span>點一檔直接切過去</span></div>`)+(v===3?`<div class="nvcol"><span class="no">#</span><b>名稱</b><button class="tvv nvsb" data-k="tvn">成交值<i>⇅</i></button><small>代號</small><button class="nvsb nvsc" data-k="ch">漲跌幅<i>⇅</i></button></div>`:"")+`<div class="nvw"><div class="nvs">${rows.map(item).join("")}</div>${v===3?'<div class="nvt"><i></i></div>':""}</div>`;
   let bd=null;if(v===3){bd=document.createElement("div");bd.id="nvbd";document.body.appendChild(bd)}
   document.body.appendChild(box);
