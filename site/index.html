@@ -139,6 +139,11 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .cr .stats{font-size:12px;line-height:1.55;padding:6px 8px}
 .cr .notes p{margin:4px 0}
 .legendv{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:12px;margin:6px 0}
+.sqh{position:fixed;z-index:60;box-sizing:border-box;padding:6px;border-radius:14px;border:1px solid rgba(165,243,252,.35);background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.04)),rgba(30,41,59,.5);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 8px 28px rgba(0,0,0,.55);color:#e5e7eb;font-size:14px}
+.sqh.v2{border-color:rgba(253,224,138,.5);background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.04)),rgba(44,33,10,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 0 16px rgba(251,191,36,.25),0 8px 28px rgba(0,0,0,.55)}
+.sqhh{display:flex;justify-content:space-between;align-items:center;padding:4px 8px 6px;font-size:12px;color:#9ca3af}.sqhh button{font:inherit;font-size:12px;color:inherit;background:none;border:0;cursor:pointer;text-decoration:underline}
+.sqhi{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;cursor:pointer}.sqhi:hover,.sqhi:active{background:rgba(255,255,255,.12)}.sqhi span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sqhx{flex:none;font:inherit;font-size:12px;color:#9ca3af;background:none;border:0;cursor:pointer;padding:2px 6px;border-radius:6px}.sqhx:hover{color:#fff;background:rgba(255,255,255,.15)}
 .sf{display:flex;gap:6px}.sf input{width:230px;max-width:60vw;background:#0004;color:var(--fg);border:1px solid var(--line-t);border-radius:8px;padding:5px 10px;font:inherit;font-size:13px}
 .hr{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #idx{display:flex;gap:6px}
@@ -2197,6 +2202,25 @@ renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
+/* 11/20 使用者：自訂搜尋加「最近搜尋」下拉（毛玻璃、最近 5 筆，存在這台裝置；台股與美股分開存）。原型 window.SHV 1 藍灰玻璃／2 琥珀亮邊，待使用者選 */
+{const K=()=>"sqh_"+(typeof D!=="undefined"&&D&&D.market==="US"?"U":"T"),inp=$("#sq"),form=$("#sf");let box=null;
+ const rd=()=>{try{const a=JSON.parse(localStorage.getItem(K())||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string").slice(0,5):[]}catch(e){return[]}};
+ const wr=a=>{try{localStorage.setItem(K(),JSON.stringify(a.slice(0,5)))}catch(e){}};
+ const close=()=>{if(box){box.remove();box=null}};
+ const open=()=>{close();const k=inp.value.trim().toLowerCase(),a=rd().filter(x=>!k||x.toLowerCase().includes(k));if(!a.length)return;
+   box=document.createElement("div");box.id="sqh";box.className="sqh v"+(window.SHV||1);
+   const h=document.createElement("div");h.className="sqhh";h.innerHTML='<span>最近搜尋</span><button type="button" class="sqhc">清除全部</button>';box.appendChild(h);
+   a.forEach(q=>{const r=document.createElement("div");r.className="sqhi";r.dataset.q=q;const t=document.createElement("span");t.textContent=q;const x=document.createElement("button");x.type="button";x.className="sqhx";x.textContent="✕";x.title="刪除這筆";r.appendChild(t);r.appendChild(x);box.appendChild(r)});
+   const r=inp.getBoundingClientRect();box.style.left=r.left+"px";box.style.top=(r.bottom+6)+"px";box.style.width=Math.max(r.width,220)+"px";document.body.appendChild(box);
+   box.addEventListener("pointerdown",e=>e.preventDefault());
+   box.addEventListener("click",e=>{const c=e.target.closest(".sqhc"),x=e.target.closest(".sqhx"),it=e.target.closest(".sqhi");
+     if(c){wr([]);close();return}
+     if(x){const q=it.dataset.q;wr(rd().filter(v=>v!==q));open();return}
+     if(it){inp.value=it.dataset.q;close();form.requestSubmit()}})};
+ form.addEventListener("submit",()=>{const q=inp.value.trim();if(q)wr([q].concat(rd().filter(v=>v!==q)));close()});
+ inp.addEventListener("focus",open);inp.addEventListener("click",()=>{if(!box)open()});inp.addEventListener("input",open);
+ inp.addEventListener("blur",()=>setTimeout(close,120));inp.addEventListener("keydown",e=>{if(e.key==="Escape")close()});
+ addEventListener("resize",close);addEventListener("scroll",close,{passive:true})}
 /* 強弱族群：點族群名稱進族群頁（11/15 使用者）；手機表格左右滑動提示 */
 document.addEventListener("click",e=>{const t=e.target.closest("[data-swg]");if(!t)return;const i=D.groups.findIndex(x=>x.name===t.dataset.swg);if(i>=0)location.hash="g-"+i});
 (function(){
