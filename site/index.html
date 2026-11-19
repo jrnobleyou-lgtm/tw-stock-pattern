@@ -287,7 +287,13 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 @media(max-width:900px){.mhead .nvb{order:2;flex:0 0 100%;justify-content:center;gap:8px}.nvb .btn{padding:3px 12px;font-size:12px}.nvb.v2 .btn{padding:3px 9px}.nvb small{order:2}.nvb .btn:last-child{order:3}}
 .mtabs{display:flex;gap:4px}.mtabs .btn.on{background:#4c1d95;border-color:#a78bfa;color:#fff}
 #newsp{flex:1;min-height:0;overflow:auto;display:none;padding:2px 4px 10px;color:#e5e7eb;font-size:14px}
-.nw h4:has(.nbias){display:flex;flex-wrap:wrap;align-items:center;gap:6px 0}.nw h4 .nbias{margin-left:10px;display:inline-block;max-width:100%;padding:4px 14px;border-radius:999px;font-size:13px;font-weight:700;line-height:1.3;color:#fff;border:1px solid rgba(255,255,255,.28);-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 8px rgba(0,0,0,.3)}.nw h4 .nbias.up{background:linear-gradient(180deg,rgba(248,113,113,.5),rgba(220,38,38,.38))}.nw h4 .nbias.dn{background:linear-gradient(180deg,rgba(74,222,128,.45),rgba(22,163,74,.36))}.nw h4 .nbias.fl{background:linear-gradient(180deg,rgba(203,213,225,.38),rgba(100,116,139,.3));font-weight:600}.nw .nbs{margin:0 0 6px}
+.nw h4:has(.nbias){display:flex;flex-wrap:wrap;align-items:center;gap:6px 0}.nw .nbs{margin:0 0 6px}
+.nw h4 .nbias{margin-left:10px;display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:4px 14px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3)}
+/* 11/19 使用者：顏色太舊 → 三種新配色（window.NBV 1 霓光玻璃／2 柔彩漸層／3 淡底彩字；待使用者選） */
+.nbias.nv1{color:#fff;background:rgba(20,22,40,.55);border:1px solid var(--c);box-shadow:0 0 14px -2px var(--c),inset 0 1px 0 rgba(255,255,255,.18)}.nbias.nv1::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.nbias.nv2,.nbias.nv2.up,.nbias.nv2.dn{color:#fff!important;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.35);background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:0 4px 14px -4px var(--c2),inset 0 1px 0 rgba(255,255,255,.45)}
+.nbias.nv3{color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent);border:1px solid color-mix(in srgb,var(--c) 38%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}.nbias.nv3.up::before{content:"▲"}.nbias.nv3.dn::before{content:"▼"}.nbias.nv3.fl::before{content:"－"}
+.nbias.up{--c:#ff5c7a;--c1:#ff7a8a;--c2:#e8456b}.nbias.dn{--c:#2dd4a0;--c1:#34d3b0;--c2:#15a87a}.nbias.fl{--c:#9aa5c0;--c1:#8f9bb8;--c2:#6b7693}
 .nw h4{margin:14px 0 6px;font-size:14px;color:#c4b5fd;font-weight:600}.nw h4 small{color:var(--mute);font-weight:400;margin-left:6px}
 .nw .it{display:flex;gap:10px;padding:6px 2px;border-bottom:1px solid #222}.nw .it .dt{flex:none;width:86px;color:var(--mute);font-size:12px;padding-top:2px}
 .nw .it a{color:#e5e7eb;text-decoration:none}.nw .it a:hover{text-decoration:underline;color:#fff}
@@ -1035,10 +1041,10 @@ async function loadNews(s,np){
   const biasHTML=(()=>{if(!DIR||!(n&&n.items))return{b:"",s:""};const V=new Set();(n.items||[]).forEach(x=>{if(x.mo||!(x.t>0)||(x.k!=="事件"&&x.k!=="法人")||(x.d!==1&&x.d!==-1&&x.d!==0))return;V.add(new Date((x.t+28800)*1000).toISOString().slice(0,10)+"|"+x.d)});
     let up=0,dn=0,md=0;V.forEach(v=>{const d=+v.split("|")[1];d>0?up++:d<0?dn++:md++});const tot=up+dn+md;if(!tot)return{b:"",s:""};
     const st=`<div class="src nbs">▲${up} ▼${dn} －${md}　（有分量的新聞 ${tot} 則；只算事件與法人報告，同一天同方向只算一次）</div>`;
-    if(tot<3)return{b:'<span class="nbias fl">近 30 天：有分量的新聞太少，暫不判斷</span>',s:st};
-    if(up-dn>=2)return{b:'<span class="nbias up">近 30 天：偏多</span>',s:st};
-    if(dn-up>=2)return{b:'<span class="nbias dn">近 30 天：偏空</span>',s:st};
-    return{b:'<span class="nbias fl">近 30 天：看法持平，無明顯偏多空</span>',s:st}})();
+    if(tot<3)return{b:'<span class="nbias fl nv'+(window.NBV||1)+'">近 30 天：有分量的新聞太少，暫不判斷</span>',s:st};
+    if(up-dn>=2)return{b:'<span class="nbias up nv'+(window.NBV||1)+'">近 30 天：偏多</span>',s:st};
+    if(dn-up>=2)return{b:'<span class="nbias dn nv'+(window.NBV||1)+'">近 30 天：偏空</span>',s:st};
+    return{b:'<span class="nbias fl nv'+(window.NBV||1)+'">近 30 天：看法持平，無明顯偏多空</span>',s:st}})();
   const right=`<h4>${mops.length?"重訊＋新聞":"新聞"}<small>近 30 天，依時間排列</small>${biasHTML.b}</h4>${biasHTML.s}${src.replace('class="src"','class="src" style="margin:0 0 6px"')}${all.length?all.map(row).join(""):empty(n&&!n.error?"近 30 天沒有相關新聞":"新聞暫時讀不到，請稍後再試")}`;   /* 11/16 使用者：來源與注意事項放最上面 */
   const tp=D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)?await fetch("/api/targets?c="+s.code+"&close="+s.close,{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null):null;   /* 11/18 使用者：目標價只有登入後看得到（Worker 驗證登入）；原註解： 使用者：近 60 天法人目標價參考清單（整理自公開新聞，非投資建議；≥3 家才算最高／最低／中位數，不算平均） */
   const tpD=t=>{const d=new Date((t+28800)*1000).toISOString();return d.slice(5,10).replace("-","/")};
