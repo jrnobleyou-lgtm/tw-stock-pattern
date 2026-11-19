@@ -258,6 +258,7 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 .nw .up{color:#f87171}.nw .dn{color:#4ade80}.nw .src{font-size:11px;color:var(--mute);margin-top:6px}
 .nw .epsw{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}.nw .epsx{display:flex}.nw .epsx>div{border:1px solid #4c3a8a;background:rgba(124,58,237,.10);border-radius:8px;padding:5px 10px;min-width:0}.nw .epsx p{margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:10px}.nw .epsx b{font-size:15px}.nw .epsx span{font-size:11px;color:var(--mute)}.nw .epsx em,.nw .epsy em{display:block;white-space:nowrap;font-style:normal;font-size:11px;color:#fbbf24;font-weight:700;margin-top:2px}.nw .epsn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.nw .epsy b{color:#e5e7eb}.nw .epsy em{display:inline;margin-left:8px}
 .nw .eps{display:flex;gap:8px;flex-wrap:wrap}.nw .eps div{border:1px solid #333;border-radius:8px;padding:6px 14px;text-align:center;min-width:80px}.nw .eps b{display:block;font-size:18px}.nw .eps span{font-size:11px;color:var(--mute)}
+.wtsum{margin:8px 0;padding:8px 12px;border:1px solid var(--line-t);border-radius:10px;background:rgba(0,0,0,.35);font-size:14px;line-height:1.6}.wtsum .wtn{display:flex;gap:6px;margin-bottom:6px}.wtsum .wtn .btn{padding:3px 12px}
 #alertbar{position:sticky;top:60px;z-index:29;margin:6px 8px 0;background:#b91c1c;color:#fff;border:1px solid #fecaca;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;display:flex;gap:10px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.5)}   /* 11/19 使用者：放頁首正下方（底部沒人看），跟著捲動不消失 */#alertbar span{flex:1}#alertbar button{background:transparent;border:1px solid #fecaca;color:#fff;border-radius:8px;padding:2px 10px;font-size:14px}
 .nw .qt small{font-size:10px;margin-left:3px}.nw .qt td,.nw .qt th{padding:5px 8px;white-space:nowrap}.nw .qt th{font-size:12px;color:var(--mute);font-weight:500}@media(max-width:600px){.nw .qt{font-size:11px}.nw .qt td,.nw .qt th{padding:5px 3px}.nw .qt small{display:block;margin-left:0}}   /* 11/19 手機整張表放得下（原本營益率、淨利率被切掉） */
 .nw .hib{display:inline-block;background:#7c2d12;color:#fed7aa;border-radius:999px;padding:1px 9px;font-size:12px;margin-right:6px}
@@ -646,7 +647,8 @@ function sortList(list){
     pe:(a,b)=>(a.pe||1e9)-(b.pe||1e9)||tv(b)-tv(a),dy:(a,b)=>(b.dy||0)-(a.dy||0)||tv(b)-tv(a),pb:(a,b)=>(a.pb||1e9)-(b.pb||1e9)||tv(b)-tv(a),
     state:(a,b)=>((STATES.indexOf(a.state)+1)||99)-((STATES.indexOf(b.state)+1)||99)||tv(b)-tv(a),   /* 新股排最後 */
     dmid:(a,b)=>(b.dmi?b.dmi[0]:-999)-(a.dmi?a.dmi[0]:-999)||tv(b)-tv(a),adx:(a,b)=>(b.dmi?b.dmi[1]:-1)-(a.dmi?a.dmi[1]:-1)||tv(b)-tv(a),score:(a,b)=>(b.rebound?b.rebound.score:0)-(a.rebound?a.rebound.score:0)||tv(b)-tv(a),
-    w5:(a,b)=>(b.w5??-999)-(a.w5??-999)||tv(b)-tv(a),vr:(a,b)=>(b.vr??-1)-(a.vr??-1)||tv(b)-tv(a),vd:(a,b)=>(b.vd??-1)-(a.vd??-1)||tv(b)-tv(a)}[SORTK]||((a,b)=>tv(b)-tv(a));
+    w5:(a,b)=>(b.w5??-999)-(a.w5??-999)||tv(b)-tv(a),vr:(a,b)=>(b.vr??-1)-(a.vr??-1)||tv(b)-tv(a),vd:(a,b)=>(b.vd??-1)-(a.vd??-1)||tv(b)-tv(a),
+    wt:(a,b)=>(b.wt||0)-(a.wt||0),wc:(a,b)=>Math.abs(b.wc||0)-Math.abs(a.wc||0),wcp:(a,b)=>(b.wc||0)-(a.wc||0),wcn:(a,b)=>(a.wc||0)-(b.wc||0)}[SORTK]||((a,b)=>tv(b)-tv(a));
   if(SORTK==="grp") return list.sort((a,b)=>SORTD*gkey(a).localeCompare(gkey(b),"zh-Hant")||tv(b)-tv(a));   /* 族群：依名稱排，同族群內成交值大到小 */
   list.sort(f); if(SORTD<0) list.reverse(); return list;
 }
@@ -683,12 +685,16 @@ function chgCell(s){
   if(V===2) return `<td class="chg2"><div class="p ${lm}" style="${lm?"":"color:"+col}">${lu?"漲停 ":ld?"跌停 ":""}${p}</div><div class="a" style="color:${col}">${a}</div></td>`;
   return `<td class="chg2"><span class="${lm}" style="${lm?"":"color:"+col}">${p}</span><br><span class="a ${lm}" style="${lm?"":"color:"+col}">${a}</span></td>`;
 }
-function stockTable(list,withGroup,showVal,dmiCols,gline,vcols,scols){
+/* 11/19 權值股：名次、累計占比（前 N 大合計）；wtRank 在畫面開頭依比重算一次 */
+let WTN=50;
+function wtInfo(){const a=Object.values(D.stocks).filter(s=>s.wt!=null).sort((x,y)=>y.wt-x.wt);let c=0;const m={};a.forEach((s,i)=>{c+=s.wt;m[s.code]={r:i+1,cum:c}});return m}
+function wtCells(s){const i=(window.__wti||{})[s.code]||{};const w=s.wc;return `<td class="cc">${s.wt.toFixed(3)}%</td><td class="cc mute">${i.cum!=null?i.cum.toFixed(1)+"%":"—"}</td><td class="cc" style="color:${chgColor(w)};font-weight:700">${w>0?"+":""}${w==null?"—":w.toFixed(1)}</td>`}
+function stockTable(list,withGroup,showVal,dmiCols,gline,vcols,scols,wcols){
   if(SORTK==="grp") withGroup=true;   /* 依族群排序時顯示族群欄，才看得出分組 */
-  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc ty-h">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${scols?'<th class="cc">5日漲幅</th><th class="cc">週量比<small style="display:block;font-weight:400">5日÷前20日</small></th><th class="cc">日量比<small style="display:block;font-weight:400">今日÷前5日</small></th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc c-dup">成交值</th>':""}<th class="cc c-dup">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
+  let h = `<div class="tw"><table class="stt"><thead><tr><th class="sn1">股票</th><th class="chg2">股價<br>漲跌幅</th>${withGroup?'<th class="gp">族群</th>':""}<th class="cc ty-h">型態</th>${dmiCols?'<th class="cc">DMI差值</th><th class="cc">ADX</th>':""}${scols?'<th class="cc">5日漲幅</th><th class="cc">週量比<small style="display:block;font-weight:400">5日÷前20日</small></th><th class="cc">日量比<small style="display:block;font-weight:400">今日÷前5日</small></th>':""}${vcols?'<th class="cc">本益比</th><th class="cc">股價淨值比</th><th class="cc">殖利率</th>':""}${wcols?'<th class="cc">占加權<br>比重</th><th class="cc">累計<br>占比</th><th class="cc">貢獻<br>約幾點</th>':""}<th class="tg">標記</th>${showVal?'<th class="cc c-dup">成交值</th>':""}<th class="cc c-dup">收盤</th><th class="cc c-chg">漲跌%</th></tr></thead><tbody>`;
   h=h.replace('<div class="tw">',`<div class="tw cv${window.CHV||2}">`);
   for(const s of list){
-    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}${scols?strCells(s):""}${vcols?valCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc c-dup">${turnover(s)}</td>`:""}<td class="cc c-dup">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`
+    h += `<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span>${gline?`<span class="gl2">${(s.groups||[s.group]).join("<br>")}</span>`:""}${showVal?`<span class="tvm">成交值 ${turnover(s)}</span>`:""}</td>${chgCell(s)}${withGroup?`<td class="gp">${gtxt(s)}</td>`:""}<td class="cc ty"><span class="badge b-${CLS[s.state]}">${s.state}</span></td>${dmiCols?dmiCells(s):""}${scols?strCells(s):""}${vcols?valCells(s):""}${wcols?wtCells(s):""}<td class="tg">${tags(subTags(s))}</td>${showVal?`<td class="cc c-dup">${turnover(s)}</td>`:""}<td class="cc c-dup">${s.close}</td><td class="cc c-chg" style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`
       +`<tr class="row tgr" data-c="${s.code}"><td colspan="20" class="tg2"><span class="tgl">標記</span>${tags(subTags(s))}</td></tr>`;   /* 手機版第 3 種：標記放在這一列下面整排（window.MCV=3） */
   }
   return h + `</tbody></table></div>`;
@@ -805,6 +811,7 @@ const FILTERS = [
   {k:"dmib", name:"DMI多頭趨勢", f:s=>has(s,/DMI多頭趨勢/)},
   {k:"wk", m:1, name:"本週強勢股", f:s=>has(s,/^本週強勢/)},   /* 11/18：近 5 日漲 ≥10% 且贏大盤 5 點、量增 1.5 倍（Opus 顧問定案）；站上 20 日線改成頁內可勾選 */
   {k:"td", m:1, name:"今日強勢股", f:s=>has(s,/^今日強勢/)},
+  {k:"wt", m:1, name:"權值股（上市）", f:s=>s.wt!=null},   /* 11/19 使用者：依占加權指數比重排列，前 100 大（約占大盤 89%）；比重＝前一日收盤市值占上市總市值 */
   {k:"nwup", m:1, name:"近7天消息偏多", f:s=>has(s,/近期消息偏多/)},
   {k:"mops", m:1, name:"今天有重訊", f:s=>has(s,/今天有重訊/)},   /* 11/16：上一交易日收盤後到現在有重訊 */
   {k:"revhi", m:1, name:"月營收創新高", f:s=>has(s,/月營收創新高/)},   /* 11/16 使用者：最新月營收比前 11 個月都高 */
@@ -839,6 +846,11 @@ function screener(key,mix){
   const all = Object.values(D.stocks);
   let list = all.filter(cur.f);
   if(STRK.test(cur.k)&&window.A20F) list=list.filter(s=>s.a20);   /* 11/18 使用者：站上 20 日線改成可勾選 */
+  if(cur.k==="wt"){
+    window.__wti=wtInfo(); list=list.filter(s=>window.__wti[s.code].r<=WTN);
+    if(window.__lastScr!=="wt") SORTK="wt";          /* 剛進這頁預設依比重排，之後使用者自己選的排序不動 */
+  }
+  window.__lastScr=cur.k;
   const subs=SUBF[cur.k], sb=subs&&subs.find(x=>x[0]===sk);
   /* 小分類：電腦版放在所有按鈕下面（subf-o）；手機版接在被選的按鈕正下方（subf-i，11/16 使用者） */
   const subH=c=>subs?`<div class="subf ${c}"><button class="btn ${sb?"":"on"}" data-k="${cur.k}">全部<small>${list.length}</small></button>`+subs.map(([k,n,f])=>`<button class="btn ${sb&&sb[0]===k?"on":""}" data-k="${cur.k}.${k}">${n}<small>${list.filter(s=>s.geo.some(f)).length}</small></button>`).join("")+`</div>`:"";
@@ -851,6 +863,13 @@ function screener(key,mix){
     h += sortBar([["score","分數"]]) + `<div class="tw"><table class="ctr"><thead><tr><th class="sn1">股票</th><th style="text-align:left">族群</th><th>分數</th><th>前跌%</th><th>反彈%</th><th>量比</th><th style="text-align:left">K線</th><th>成交值</th><th>收盤</th><th>漲跌%</th></tr></thead><tbody>` +
       list.map(s=>`<tr class="row" data-c="${s.code}"><td class="sn1"><b>${s.code}</b> <span class="sn">${s.name}</span></td><td style="text-align:left">${gtxt(s)}</td><td>${"★".repeat(s.rebound.score)}</td><td>${s.rebound.drop}</td><td style="color:var(--up)">+${s.rebound.bounce}</td><td>${s.rebound.vol_ratio??"-"}</td><td style="text-align:left">${s.rebound.pattern.map(p=>`<span class="tag pat">${p}</span>`).join("")}</td><td>${turnover(s)}</td><td>${s.close}</td><td style="color:${chgColor(s.chg)}">${s.chg>0?"+":""}${s.chg}</td></tr>`).join("") + `</tbody></table></div>`;
   } else if(DMI_NOTE[cur.k]) h += sortBar([["dmid","DMI差值"],["adx","ADX"]])+stockTable(list,false,true,true);
+  else if(cur.k==="wt"){
+    const M=D.wtm||{}, top=list.reduce((a,s)=>a+(s.wc||0),0), cumP=list.reduce((a,s)=>a+s.wt,0), all=M.all, big=Math.abs(all||0)>=50, t2=D.stocks["2330"]&&D.stocks["2330"].wc;
+    const sgn=v=>(v>0?"+":"")+v.toFixed(0), col=v=>`style="color:${chgColor(v)};font-weight:700"`;
+    h += `<div class="wtsum"><div class="wtn">${[20,50,100].map(n=>`<button class="btn ${n===WTN?"on":""}" onclick="WTN=${n};const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)">前 ${n} 大</button>`).join("")}</div>`+
+      `<div>前 ${WTN} 大合計占加權指數 <b>${cumP.toFixed(1)}%</b>｜今天合計貢獻 <b ${col(top)}>${sgn(top)} 點</b>${all!=null?`（大盤約 <span ${col(all)}>${sgn(all)}</span> 點${big?`，這些占 ${Math.round(top/all*100)}%`:""}）`:""}${t2!=null?`｜台積電一檔 <b ${col(t2)}>${sgn(t2)} 點</b>`:""}</div></div>`;
+    h += sortBar([["wt","占比大到小"],["wc","貢獻點數（絕對值）"],["wcp","拉最多（漲）"],["wcn","殺最多（跌）"]])+stockTable(list,false,true,false,false,false,false,true);
+  }
   else if(STRK.test(cur.k)) h += sortBar([["w5","5日漲幅"],["vr","週量比"],["vd","日量比"]])+stockTable(list,false,true,false,false,false,true);
   else if(VALK.test(cur.k)) h += sortBar([["pe","本益比低到高"],["dy","殖利率高到低"],["pb","股價淨值比低到高"]])+stockTable(list,false,true,false,false,true);
   else h += sortBar()+stockTable(list,false,true);
@@ -861,6 +880,7 @@ function screener(key,mix){
     m3up:"<b>條件：</b>最新一季的毛利率、營業利益率、稅後淨利率，三個都比上一季高（單季財報；金融業沒有毛利率，不列入）。"+(D.market==="US"?"財報公布後約 1 天內更新（季別為日曆季）。":"財報公布後（Q3 約 11/14 前）更新。")+"點股票後切到「消息」看近 3 季營收與三率。"};
   RVN.pelo=RVN.pemid=RVN.pehi=RVN.pblo=RVN.dyhi=RVN.pels=`<b>條件：</b>${{pelo:"本益比 15 倍以下（虧損沒有本益比，不列入）",pemid:"本益比 15～25 倍",pehi:"本益比 25 倍以上（超過 100 倍多半是獲利剛好很低，會標「獲利低基期」）",pblo:"股價淨值比 1 以下（股價低於每股淨值）",dyhi:"現金殖利率 5% 以上",pels:"近四季合計虧損（本益比不存在）"}[cur.k]}。<br>資料為證交所、櫃買中心公布的收盤後數字（${D.valDate||"—"} 收盤），盤中不會跳動；本益比用最近四季財報，殖利率用最近一次股利。便宜不代表會漲，只是多一個參考；請搭配型態與消息一起看。`;
   RVN.wk=`<b>條件：</b>近 5 個交易日（含今日）累計漲幅 ≥10%，而且比全市場中位數多漲 5 個百分點以上；近 5 日平均成交張數 ≥ 前 20 日平均的 1.5 倍；近 5 日平均成交值 ≥${D.market==="US"?"500 萬美元":"5 千萬"}；新股與停牌不列。${D.market==="US"?"":"漲停照列。"}<br><b>大型股（近 5 日均成交值前 100 名）</b>另用較低門檻：近 5 日漲 ≥5%、比全市場中位數多漲 3 點以上，不看量能，標「本週強勢（大型）」。<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
+  RVN.wt=`<b>說明：</b>僅上市股，對應「加權指數」。比重＝前一個交易日收盤的市值（沒還原的收盤價 × 已發行普通股數）占上市總市值的百分比；盤中比重不變，只有「貢獻約幾點」跟著即時漲跌動。貢獻點數＝比重 × 今天漲跌幅 × 昨天指數收盤，是估算值，和證交所公布的會有些微差（實測全部上市股加總和實際指數漲跌平均只差 1 點左右）。台積電一檔就占約 43%，所以大盤漲跌常常就是看它。不含上櫃、ETF、存託憑證、特別股。美股不做。`;
   RVN.td=`<b>條件：</b>今日漲幅 ≥5%，而且比全市場今日中位數多漲 3 個百分點以上；不設量能條件（等量出來就太晚了），「日量比」欄只供參考；近 5 日平均成交值 ≥${D.market==="US"?"500 萬美元":"5 千萬"}；新股與停牌不列。${D.market==="US"?"美股只用收盤資料，每天台灣早上更新一次。":"盤中 09:30 前不標，標過的漲幅還在 3% 以上就保留，收盤後以正式資料為準。"}<label class="a20l"><input type="checkbox" ${window.A20F?"checked":""} onchange="window.A20F=this.checked;const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)"> 只看站上 20 日線</label>`;
   if(RVN[cur.k]) h = h.replace('<div class="sortbar">', `<p class="note">${RVN[cur.k]}</p><div class="sortbar">`);
   if(!list.length) h += `<p class="note">今天沒有符合的股票。</p>`;

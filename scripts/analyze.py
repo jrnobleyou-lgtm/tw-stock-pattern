@@ -400,6 +400,58 @@ def strong_flags(stocks, live, us=False):
         cached("tdprev", tdnow, None)
 
 
+def fetch_shares():
+    """上市公司已發行普通股數（證交所開放資料 t187ap03_L）。排除 91 開頭的 TDR；抓不到回傳 None。"""
+    import urllib.request
+    for k in range(3):
+        try:
+            j = json.loads(urllib.request.urlopen(urllib.request.Request("https://openapi.twse.com.tw/v1/opendata/t187ap03_L", headers={"User-Agent": "Mozilla/5.0"}), timeout=40).read().decode("utf-8"))
+            out = {}
+            for r in j:
+                c = str(r.get("公司代號", "")).strip()
+                try:
+                    n = float(r.get("已發行普通股數或TDR原股發行股數", 0))
+                except (ValueError, TypeError):
+                    continue
+                if len(c) == 4 and c.isdigit() and not c.startswith("91") and n > 0:
+                    out[c] = n
+            if len(out) > 500:
+                return out
+        except Exception:
+            time.sleep(2)
+    return None
+
+
+def index_weights(stocks, shares, idx_prev, top=100):
+    """11/19 使用者：權值股（上市，對應加權指數）。比重＝前一日未還原收盤×已發行股數÷同一份清單的市值合計；
+    貢獻點數＝比重×今日漲跌幅（未還原，和指數一致）×前一日指數。漲跌幅超過 10.5%（分割、減資等，指數會調整除數）改用還原後的漲跌幅。
+    只把前 top 名寫進個股（wt 比重%、wc 貢獻點數），回傳摘要（全部上市股的貢獻合計＝大盤約變動點數）。"""
+    rows = []
+    for code, s in stocks.items():
+        w = s.pop("_w", None)
+        if not w or not shares or not idx_prev or code not in shares or s.get("new"):
+            continue
+        pc, c = w
+        if pc <= 0 or c <= 0:
+            continue
+        chg = 0.0 if s.get("stale") else (c / pc - 1)
+        if abs(chg) > 0.105:
+            chg = (s.get("chg") or 0) / 100
+        rows.append((pc * shares[code], chg, code))
+    tot = sum(r[0] for r in rows)
+    if not rows or tot <= 0:
+        return None
+    rows.sort(reverse=True)
+    allc = 0.0
+    for i, (cap, chg, code) in enumerate(rows):
+        con = cap / tot * chg * idx_prev
+        allc += con
+        if i < top:
+            stocks[code]["wt"] = round(cap / tot * 100, 3)
+            stocks[code]["wc"] = round(con, 1)
+    return {"n": len(rows), "cap": round(tot / 1e12, 2), "all": round(allc, 1), "idx": idx_prev}
+
+
 def main():
     # 用法：analyze.py        → 你的 207 檔（舊資料）
     #       analyze.py all    → 全市場（prices_all.csv + groups_tw_all.csv），個股 K 線拆成 site/s/<代號>.json
@@ -566,6 +618,8 @@ def main():
         }
         if us and code in usfin:
             st["fn"] = 1                                 # 有季財報資料：前端打開「消息」分頁
+        if full and not us and T >= 1 and mk.get(code) == "TWSE":
+            st["_w"] = (raw[T - 1]["c"], raw[T]["c"])        # 11/19 權值股：加權指數不還原除息，所以用「沒還原」的前一日與今日收盤
         am_ = asof_m.get(mk.get(code))
         if am_ and raw[T]["d"] < am_:                    # 11/17 Fable 審查：停牌股（資料日比市場最新日舊）標資料日期，不把舊漲跌當今天的
             st["stale"] = raw[T]["d"][5:]
@@ -693,7 +747,25 @@ def main():
         live = json.load(open(mp))
     if full:
         strong_flags(stocks, live, us)
-    out = {"valDate": (val or {}).get("date"), "live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
+    wtm = None
+    if full and not us:
+        try:
+            sh_ = fetch_shares()
+            sh_ = cached("shares", sh_, None) if sh_ else cached("shares", None, None)
+            tw_ = (index.get("TWII") or {}).get("bars") or []
+            ip_ = next((b[4] for b in reversed(tw_) if b[0] < asof), None)
+            wtm = index_weights(stocks, sh_, ip_)
+            ia_ = next((b[4] for b in tw_ if b[0] == asof), None)
+            if wtm and not live and ia_ is not None and ip_ and abs(wtm["all"] - (ia_ - ip_)) > 5:     # 11/19 Opus：官方資料日，全部上市股的貢獻加總要貼近實際指數漲跌（實測差 1 點內）；差太多代表股數或價格有問題，寧可不顯示
+                print(f"  權值股比重驗證失敗：加總 {wtm['all']} 點、實際 {round(ia_ - ip_, 1)} 點，不顯示")
+                for s_ in stocks.values():
+                    s_.pop("wt", None); s_.pop("wc", None)
+                wtm = None
+        except Exception as e:
+            print("權值股比重略過", repr(e)[:80])
+            for s_ in stocks.values():
+                s_.pop("_w", None)
+    out = {"wtm": wtm, "valDate": (val or {}).get("date"), "live": live, "asof": asof, "asofM": asof_m, "dates": all_dates, "total": total, "groups": glist, "stocks": stocks, "missing": missing, "index": index}
     if mode == "all":
         # 11/17 Fable 審查：盤中（15:00 前，這兩項資料要收盤後才公布）不重抓，沿用上次發布的；抓到新的才更新
         import datetime

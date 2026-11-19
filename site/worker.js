@@ -476,11 +476,11 @@ export default {
       if (!env.US || !(await usAuthed(req, env))) return new Response("[]", { status: 401, headers: { "content-type": "application/json", "cache-control": "no-store" } });
       const out = [], tm = (iso) => new Date(iso).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour12: false, hour: "2-digit", minute: "2-digit" });
       const st = await env.US.get("intraday/stale", "json");
-      if (st) out.push(`盤中更新停了（最後一次發布台灣 ${tm(st.last)}，從 ${tm(st.since)} 起發現）。休市日可忽略；平常日請告訴 Claude 檢查。`);
+      if (st) out.push(`盤中資料已經超過 15 分鐘沒更新了（最後一次更新是台灣 ${tm(st.last)}）。如果今天股市休市，可以不用理它；如果今天有開盤，請跟 Claude 說「盤中更新停了」。`);
       const nf = await env.US.get("cron/newsfail", "json");
-      if (nf) out.push(`新聞排程觸發失敗（GitHub 回 ${nf.status}），可能是 GitHub 金鑰到期。`);
+      if (nf) out.push(`新聞自動更新壞掉了（可能是 GitHub 的通行金鑰過期），請跟 Claude 說「新聞排程壞了」。`);
       const dc = await env.US.get("deploy/check");
-      if (dc && dc !== "正常") out.push(`部署看門狗：${dc}`);
+      if (dc && dc !== "正常") out.push(`網站自動上線的檢查有問題（${dc}），請跟 Claude 說。`);
       return new Response(JSON.stringify(out), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
     }
     if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
