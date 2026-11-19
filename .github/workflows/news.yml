@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: '20 * * * *'    # 備援：Cloudflare 排程失敗（金鑰到期等）時每小時至少跑一次（11/17 Fable 審查）
   workflow_dispatch:
+    inputs:
+      backfill:
+        description: '補抓模式：把優先名單每檔都用鉅亨搜尋查 2 頁（每輪最多判 200 篇，可重複執行直到補完）'
+        required: false
+        default: 'no'
 permissions:
   contents: write
   id-token: write                 # 用 GitHub 身分從 Cloudflare 讀關注清單（不放公開的 GitHub）
@@ -22,13 +27,37 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -q trafilatura==2.3.1
-      - name: 取出 news-data 分支的最新資料（沒有就從空的開始）
+      - name: 取出 news-data 分支的最新資料（11/19：取不到不可當成空的，否則整份會被蓋掉）
         run: |
-          git clone -q --depth 1 --branch news-data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" nd || mkdir -p nd
+          URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          if git ls-remote --exit-code --heads "$URL" news-data >/dev/null 2>&1; then
+            ok=0
+            for i in 1 2 3 4; do
+              rm -rf nd
+              if git clone -q --depth 1 --branch news-data "$URL" nd; then ok=1; break; fi
+              sleep $((i * 15))
+            done
+            if [ "$ok" != 1 ]; then echo "news-data 分支存在但取不到，這輪不推送（避免蓋掉舊資料）"; exit 1; fi
+          else
+            echo "news-data 分支真的不存在，從空的開始"; mkdir -p nd
+          fi
+          python3 -c "import json,os;p='nd/items.json';print(len(json.load(open(p))) if os.path.exists(p) else 0)" > prev_n.txt
+          echo "取出前的文章數：$(cat prev_n.txt)"
       - name: 抓新聞並判斷
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          NEWS_BACKFILL: ${{ github.event.inputs.backfill }}
         run: python3 scripts/news.py nd
+      - name: 文章數突然少一半以上就不推送（11/19 保險）
+        run: |
+          python3 - <<'PY'
+          import json,sys
+          prev=int(open('prev_n.txt').read().strip() or 0)
+          now=len(json.load(open('nd/items.json')))
+          print('文章數', prev, '->', now)
+          if prev>=100 and now<prev*0.5:
+              print('文章數減少超過一半，停止推送'); sys.exit(1)
+          PY
       - name: 存回 news-data 分支（只留一個版本，分支不會越長越大）
         run: |
           cd nd

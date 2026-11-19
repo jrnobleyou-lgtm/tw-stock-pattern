@@ -17,7 +17,8 @@ from datetime import datetime, timedelta, timezone
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
 KEEP_DAYS, NSHARD = 30, 64
-BATCH_N, BATCH_CHARS, TEXT_MAX, RUN_MAX = 10, 30000, 6000, 80      # 每批最多 10 篇或 3 萬字；每篇最多 6000 字；每輪最多判 80 篇
+BACKFILL = os.environ.get("NEWS_BACKFILL") == "yes"
+BATCH_N, BATCH_CHARS, TEXT_MAX, RUN_MAX = 10, 30000, 6000, (200 if BACKFILL else 80)      # 每批最多 10 篇或 3 萬字；每篇最多 6000 字；每輪最多判 80 篇
 GAP, WAIT_429 = 7, 50                                               # 批與批之間等 7 秒；被限流先等 50 秒再試
 GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 TW = timezone(timedelta(hours=8))
@@ -109,6 +110,54 @@ def factset_rows(known_links, now, max_pages=3, max_new=40):
             rows.append({**r, "d": 0, "t": t0, "title": html.unescape(m.group(1))[:120], "link": link})
         time.sleep(0.3)
     return rows
+
+SEARCH_SKIP = re.compile(r"盤中速報|股價(?:殺至|拉至)(?:跌停|漲停)|Factset|FactSet")      # 盤面速報不收；FactSet 速報另由 factset_rows 處理
+
+
+def search_arts(pri, names, codes, meta, now, backfill=False, per_run=10):
+    """11/19 逐檔補抓：列表式抓取會把冷門股的報導擠掉，所以對優先名單每檔用鉅亨搜尋查一次（輪流，每輪 per_run 檔；補抓模式＝全部、2 頁）。
+    回傳文章（和 src_cnyes 同格式，內文之後再抓）；meta['sc'] 記每檔最近一次搜尋到幾則「非盤面」文章，供設定頁對照有沒有漏。"""
+    import urllib.parse
+    lst = sorted(c for c in pri if c in codes)
+    if not lst:
+        return []
+    start = int(meta.get("rot", 0)) % len(lst)
+    pick = lst if backfill else [lst[(start + i) % len(lst)] for i in range(min(per_run, len(lst)))]
+    if not backfill:
+        meta["rot"] = (start + per_run) % len(lst)
+    sc = meta.setdefault("sc", {})
+    out, seen_l = [], set()
+    for c in pick:
+        nm = codes[c]
+        n7, ttl = 0, []
+        for pg in range(1, (2 if backfill else 1) + 1):
+            try:
+                d = json.loads(get(f"https://api.cnyes.com/media/api/v1/search?q={urllib.parse.quote(nm)}&limit=20&page={pg}"))["items"]
+                d = d.get("data") or [] if isinstance(d, dict) else []      # 沒有結果時 items 會是空陣列
+            except Exception as e:
+                print(f"搜尋 {c}{nm} 失敗（略過這檔）：{repr(e)[:80]}", file=sys.stderr)
+                if "403" in repr(e) or "429" in repr(e):
+                    return out                          # 被擋就停到下一輪，不重試
+                break
+            for x in d:
+                tt = re.sub(r"<[^>]+>", "", html.unescape(x.get("title") or ""))
+                body = tt + " " + str(x.get("content") or "") + " " + str(x.get("keyword") or "")
+                t = int(x.get("publishAt") or 0)
+                if str(x.get("payment")) != "0" or not t or t < now - KEEP_DAYS * 86400 or SEARCH_SKIP.search(tt):
+                    continue
+                if not (re.search(r"[（(]" + c + r"[）)\-]", body) or (nm in body and (len(nm) >= 3 or nm not in AMBIG))):
+                    continue
+                if t > now - 7 * 86400:
+                    n7 += 1
+                    if len(ttl) < 2:
+                        ttl.append(tt[:30])
+                link = f"https://news.cnyes.com/news/id/{x.get('newsId')}"
+                if link not in seen_l:
+                    seen_l.add(link)
+                    out.append({"src": "鉅亨網", "title": tt, "link": link, "t": t, "text": ""})
+            time.sleep(0.5)
+        sc[c] = {"t": now, "n": n7, "ttl": ttl}
+    return out
 
 
 def src_moneydj():
@@ -594,6 +643,14 @@ def main(out):
     with cf.ThreadPoolExecutor(8) as ex:
         for res in ex.map(safe, SOURCES):
             arts += res
+    pri = priority_codes()
+    try:                                                # 11/19 逐檔搜尋補抓（失敗不影響其他）
+        sa = search_arts(pri, names, codes, meta, now, BACKFILL)
+        SRC_N["search"] = len(sa)
+        arts += sa
+    except Exception as e:
+        SRC_N["search"] = f"失敗：{e}"[:120]
+        print("逐檔搜尋失敗（略過）：", repr(e)[:100], file=sys.stderr)
     meta.update({"t": now, "src": dict(SRC_N)})
     z = meta.get("zero", {})                        # 11/16：各家連續幾輪 0 篇或失敗（設定頁 ≥3 輪標紅）
     for k_, v_ in SRC_N.items():
@@ -658,7 +715,6 @@ def main(out):
             continue
         todo.append(a)
     print(f"新文章 {len(new)} 篇：送 AI {len(todo)}（本輪最多 {RUN_MAX}）、跳過 {nskip}（付費／會員／太舊／沒提到上市櫃）")
-    pri = priority_codes()
     for a in todo:
         a["pri"] = is_priority(a, pri, codes)
     todo = sorted(todo, key=lambda a: (not a["pri"], -(a["t"] or now)))[:RUN_MAX]   # 11/17：優先名單（關注清單＋成交值前 100）先判，其次新的先；沒判到的留下一輪
