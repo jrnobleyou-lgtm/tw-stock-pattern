@@ -67,7 +67,7 @@ def tpex(d):
     return out
 
 from concurrent.futures import ThreadPoolExecutor
-today = datetime.date.today()
+today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date()
 days = [today - datetime.timedelta(n) for n in range(DAYS_BACK, -1, -1)]
 days = [d for d in days if d.weekday() < 5]
 

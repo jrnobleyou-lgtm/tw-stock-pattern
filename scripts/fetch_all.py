@@ -78,7 +78,7 @@ def retry(fn, d):
         time.sleep(float(os.environ.get("TWSE_BACKOFF","1800")))
     raise SystemExit(f"giving up on {d}")
 
-today = datetime.date.today()
+today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date()
 days = [today - datetime.timedelta(n) for n in range(0, DAYS_BACK + 1)]      # 由近到遠
 days = [d for d in days if d.weekday() < 5]
 

@@ -19,7 +19,7 @@ def get(url):
             print("  失敗", url[-40:], repr(e)[:60]); time.sleep(4 * (i + 1))
     return None
 
-today = datetime.date.today()
+today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date()
 months, m = [], today.replace(day=1)
 for _ in range(26 if FULL else 2):
     months.append(m); m = (m - datetime.timedelta(days=1)).replace(day=1)

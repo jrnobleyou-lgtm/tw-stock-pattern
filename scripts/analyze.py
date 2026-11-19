@@ -290,7 +290,7 @@ def fetch_fut_foreign():
         return out
     hdr = {"User-Agent": "Mozilla/5.0"}
     got = {}
-    today = datetime.date.today()
+    today = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).date()
     for back in range(0, 6):                     # 結束日不能晚於期交所最新資料日，從今天往前試
         end = today - datetime.timedelta(days=back)
         if end.weekday() >= 5:
