@@ -735,6 +735,16 @@ def main(out):
         if raw_ is None:
             for x in items:
                 rows_ += TG.from_article(x, names, codes, with_text=False)
+        if not meta.get("tp_bf2"):                       # 11/20 一次性補撈：規則放寬後，重讀過去 30 天標題含「目標價」的文章內文（每輪最多 40 篇，補完才標記）
+            todo_ = [x for x in items if "目標價" in (x.get("title") or "") and x.get("link", "").startswith("https://") and (x.get("t") or 0) > now - 30 * 86400 and x.get("k") not in meta.setdefault("tp_bf2_done", [])][:40]
+            with cf.ThreadPoolExecutor(8) as ex2:
+                for x, (txt_, st_) in zip(todo_, ex2.map(fulltext, todo_)):
+                    if st_ in ("ok", "paid"):
+                        rows_ += TG.from_article({**x, "text": txt_}, names, codes)
+                        meta["tp_bf2_done"].append(x.get("k"))
+            if not todo_:
+                meta["tp_bf2"] = 1
+                meta.pop("tp_bf2_done", None)
         try:
             if time.gmtime(now).tm_hour % 2 == 0 and time.gmtime(now).tm_min < 30:      # 每 2 小時只掃一次（請求量壓低）
                 rows_ += factset_rows({r["link"] for r in trs}, now)          # 主動抓 FactSet 速報（失敗不影響其他）

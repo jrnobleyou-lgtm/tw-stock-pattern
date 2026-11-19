@@ -36,6 +36,13 @@ class TestTargets(unittest.TestCase):
         self.assertEqual(len(o["list"]), 1)
         self.assertEqual(o["list"][0]["d"], 1)
 
+    def test_multi_stock_sentence(self):
+        n = {"聯發科": "2454", "台積電": "2330"}
+        c = {v: k for k, v in n.items()}
+        r = T.sentence_targets("大摩指出，聯發科目標價1,800元、台積電目標價2,000元", n, c)
+        self.assertEqual({(x["c"], x["p"]) for x in r}, {("2454", 1800.0), ("2330", 2000.0)})
+        self.assertEqual(T.sentence_targets("大摩看好台積電、聯發科目標價分別為2000元及1800元", n, c), [])   # 價格歸屬不明不收
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -45,6 +45,36 @@ def _stock_in(s, names, codes):
     return hit.pop() if len(hit) == 1 else None
 
 
+def p2n(seg):
+    m = NUM.search(seg[seg.index("目標價") + 3:])
+    return _price(m)
+
+
+def _multi(s, names, codes):
+    """一句多檔股票：每檔取「自己名稱到下一檔名稱之間」的片段，片段內要有「目標價」且後面 14 字內有價格。回傳 [(代號, 片段)]。"""
+    pos = []
+    for n, c in names.items():
+        if len(n) >= 3 or (len(n) == 2 and n in ("台積", "聯電")):
+            for m in re.finditer(re.escape(n), s):
+                pos.append((m.start(), m.end(), c))
+    pos.sort()
+    pos = [x for i, x in enumerate(pos) if not any(y[0] <= x[0] and y[1] >= x[1] and y is not x and (y[1] - y[0]) > (x[1] - x[0]) for y in pos)]
+    res = []
+    for i, (a, b, c) in enumerate(pos):
+        seg = s[a:pos[i + 1][0] if i + 1 < len(pos) else len(s)]
+        j = seg.find("目標價")
+        if j < 0 or not NUM.search(seg[j + 3:j + 17]):
+            continue
+        if not all(c != c2 for _, _, c2 in pos[:i]):
+            continue
+        if i and pos[i][0] - pos[i - 1][1] <= 2:            # 「台積電、聯發科目標價…」名稱並排，價格歸屬不明 → 不收
+            continue
+        if "分別" in seg or "各為" in seg:
+            continue
+        res.append((c, seg[:j + 17]))
+    return res
+
+
 def sentence_targets(text, names, codes):
     out = []
     for s in re.split(r"[。！？\n]", text or ""):
@@ -55,6 +85,9 @@ def sentence_targets(text, names, codes):
             continue
         c = _stock_in(s, names, codes)
         if not c:
+            for c2, p2 in _multi(s, names, codes):         # 11/20：一句提到多檔時，「股票名稱＋目標價＋價格」緊貼在一起的才算那一檔
+                d = 1 if UP.search(p2) and not DN.search(p2) else -1 if DN.search(p2) and not UP.search(p2) else 0
+                out.append({"c": c2, "p": p2n(p2), "who": NAMEOF.get(who, who), "d": d, "fs": 0, "_": p2})
             continue
         i = s.index("目標價")
         seg = re.split(r"[，；。、]", s[i + 3:i + 40])[0]
