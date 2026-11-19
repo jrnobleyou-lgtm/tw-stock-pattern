@@ -2202,13 +2202,13 @@ renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
 $("#sq").addEventListener("focus",e=>{e.target.value=""});          // 點到搜尋框就清空，可以直接輸入新的
 $("#sf").addEventListener("submit",e=>{e.preventDefault();const q=$("#sq").value.trim();$("#sq").blur();if(q){const nh="find-"+encodeURIComponent(q);if(location.hash.slice(1)===nh){baseRaw=null;route()}else location.hash=nh}});
-/* 11/20 使用者：自訂搜尋加「最近搜尋」下拉（毛玻璃、最近 5 筆，存在這台裝置；台股與美股分開存）。原型 window.SHV 1 藍灰玻璃／2 琥珀亮邊，待使用者選 */
+/* 11/20 使用者：自訂搜尋加「最近搜尋」下拉（毛玻璃、最近 5 筆，存在這台裝置；台股與美股分開存）。使用者選定：偏紫玻璃面板＋每筆淡藍框 */
 {const K=()=>"sqh_"+(typeof D!=="undefined"&&D&&D.market==="US"?"U":"T"),inp=$("#sq"),form=$("#sf");let box=null;
  const rd=()=>{try{const a=JSON.parse(localStorage.getItem(K())||"[]");return Array.isArray(a)?a.filter(x=>typeof x==="string").slice(0,5):[]}catch(e){return[]}};
  const wr=a=>{try{localStorage.setItem(K(),JSON.stringify(a.slice(0,5)))}catch(e){}};
  const close=()=>{if(box){box.remove();box=null}};
  const open=()=>{close();const k=inp.value.trim().toLowerCase(),a=rd().filter(x=>!k||x.toLowerCase().includes(k));if(!a.length)return;
-   box=document.createElement("div");box.id="sqh";box.className="sqh v"+(window.SHV||1);
+   box=document.createElement("div");box.id="sqh";box.className="sqh v1";
    const h=document.createElement("div");h.className="sqhh";h.innerHTML='<span>最近搜尋</span><button type="button" class="sqhc">清除全部</button>';box.appendChild(h);
    a.forEach(q=>{const r=document.createElement("div");r.className="sqhi";r.dataset.q=q;const t=document.createElement("span");t.textContent=q;const x=document.createElement("button");x.type="button";x.className="sqhx";x.textContent="✕";x.title="刪除這筆";r.appendChild(t);r.appendChild(x);box.appendChild(r)});
    const r=inp.getBoundingClientRect();box.style.left=r.left+"px";box.style.top=(r.bottom+6)+"px";box.style.width=Math.max(r.width,220)+"px";document.body.appendChild(box);
