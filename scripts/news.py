@@ -731,7 +731,11 @@ def main(out):
     if cur:
         batches.append(cur)
     done, used, bi = 0, {}, 0
+    t_start = time.time()
     while batches:
+        if time.time() - t_start > 16 * 60:               # 11/19：補抓一輪超過 25 分鐘會被系統砍掉、什麼都沒存；超過 16 分鐘就收工，剩下的下輪再判
+            print("時間到，剩下的下輪再判")
+            break
         batch = batches.pop(0)
         for i, a in enumerate(batch):
             a["id"] = f"A{i + 1}"
