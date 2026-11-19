@@ -217,7 +217,7 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 .filters .btn.flbw{background:rgba(245,158,11,.14);color:#fdba74;border-color:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,.55)}.filters .btn.flbw.on{background:rgba(245,158,11,.55);color:#fff;box-shadow:0 0 10px rgba(245,158,11,.9)}
 .filters .btn.flbd{background:rgba(239,68,68,.18);color:#fecaca;border-color:#ef4444;box-shadow:0 0 9px rgba(239,68,68,.75)}.filters .btn.flbd.on{background:rgba(239,68,68,.6);color:#fff;box-shadow:0 0 12px rgba(239,68,68,1)}
 .filters .btn.flb small,.filters .btn.flb.on small{color:inherit;opacity:.8}
-.sortbar .sortdir{margin-left:8px;padding:5px 12px}.gsnote{margin-left:8px;font-size:12px;color:var(--mute)}.gsb{flex-wrap:wrap}.gsb *{white-space:nowrap}@media(max-width:640px){.gsb{justify-content:flex-start;gap:6px}.gsb select{flex:1;min-width:0}.gsb .sortdir{margin-left:0}.gsb .gsnote{flex:0 0 100%;margin:0}}.gmv{display:inline-flex;gap:3px;margin-right:8px;vertical-align:middle}.gmv .btn{padding:1px 7px;font-size:11px;line-height:1.4}
+.sortbar .sortdir{margin-left:8px;padding:5px 12px}.gsnote{margin-left:8px;font-size:12px;color:var(--mute)}.gsb{flex-wrap:wrap}.gsb *{white-space:nowrap}@media(max-width:640px){.gsb{justify-content:flex-start;gap:6px}.gsb select{flex:1;min-width:0}.gsb .sortdir{margin-left:0}.gsb .gsnote{flex:0 0 100%;margin:0}}.gmv{display:inline-flex;gap:3px;margin-right:8px;vertical-align:middle}.gmv .btn{padding:1px 7px;font-size:11px;line-height:1.4}.gdr{display:inline-block;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;padding:2px 8px;border-radius:8px;border:1px solid #a78bfa;background:rgba(124,58,237,.3);color:#fff;font-size:15px;line-height:1.2}tr.gdrag{background:rgba(167,139,250,.28)!important;box-shadow:0 0 0 2px #a78bfa inset;position:relative;z-index:3}.gsok{border-color:#a78bfa;background:rgba(124,58,237,.45);color:#fff;font-weight:600}
 .a20l{display:inline-block;margin-left:14px;padding:3px 10px;border:1px solid var(--line-t);border-radius:8px;cursor:pointer;white-space:nowrap}
 html .tag.fl{font-weight:700!important;position:relative}
 html .tag.fl::before{content:"🔥";margin-right:3px}
@@ -616,8 +616,12 @@ let GSK=(()=>{try{return localStorage.getItem("gsk")||"def"}catch(e){return "def
 const GSORTS=[["def","預設（強勢型態比例）"],["name","族群名稱"],["n","檔數"],["strong","轉強檔數"],["good","轉強＋型態好 檔數"],["weakp","走弱比例"],["chg","今日族群漲跌（中位數）"],["tv","族群成交值"],["rb","止跌反彈檔數"],["first","突破第1根檔數"],["custom","自訂順序（可上移／下移）"]];
 let GSO=(()=>{try{return JSON.parse(localStorage.getItem("gso")||"null")}catch(e){return null}})();   /* 自訂族群順序（只存在這台裝置） */
 function gsSave(){try{localStorage.setItem("gso",JSON.stringify(GSO))}catch(e){}}
-function gsSet(k,d){if(k==="custom"&&!GSO){GSO=gsList().map(g=>g.name);gsSave()}   /* 第一次選自訂：從目前畫面上的順序開始 */
-  GSK=k;GSD=d;try{localStorage.setItem("gsk",k);localStorage.setItem("gsd",d)}catch(e){}const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)}
+let GSE=false, GSW=null;   /* 編輯中（按「儲存」才算數）：GSE＝正在編輯，GSW＝編輯中的暫存順序 */
+function gsRender(){const y=window.scrollY;baseRaw=null;navBack=false;route();window.scrollTo(0,y)}
+function gsSet(k,d){
+  if(k==="custom"){ if(!GSO){GSE=true;GSW=gsList().map(g=>g.name)} else {GSE=false;GSW=null} }   /* 第一次選自訂：直接進編輯，從目前畫面上的順序開始 */
+  else {GSE=false;GSW=null}
+  GSK=k;GSD=d;try{localStorage.setItem("gsk",k);localStorage.setItem("gsd",d)}catch(e){}gsRender()}
 function gsVal(g,k){
   const L=g.stocks.map(c=>D.stocks[c]).filter(Boolean);
   switch(k){
@@ -633,12 +637,29 @@ function gsVal(g,k){
   }
   return 0;
 }
-function gsMove(name,d){const L=gsList().map(g=>g.name),i=L.indexOf(name),j=i+d;if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];GSO=L;gsSave();gsSet("custom",1)}
-function gsReset(){GSO=null;try{localStorage.removeItem("gso")}catch(e){}gsSet("def",1)}
-function gsBar(){const cu=GSK==="custom";return `<div class="sortbar gsb">族群排序：<select onchange="gsSet(this.value,1)">${GSORTS.map(([k,t])=>`<option value="${k}"${k===GSK?" selected":""}>${t}</option>`).join("")}</select>${cu?`<button class="btn sortdir" title="清除自訂順序、回到預設" onclick="gsReset()">↺ 重設</button><span class="gsnote">用每列左邊的 ▲▼ 調整</span>`:`<button class="btn sortdir" title="切換排列方向" onclick="gsSet(GSK,-GSD)">⇅ ${GSK==="def"?(GSD>0?"原本順序":"反過來"):GSK==="name"?(GSD>0?"由前到後":"由後到前"):(GSD>0?"由大到小":"由小到大")}</button>`}</div>`}
+function gsMove(name,d){const L=(GSW||gsList().map(g=>g.name)).slice(),i=L.indexOf(name),j=i+d;if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];GSW=L;gsRender()}
+function gsEdit(){GSE=true;GSW=gsList().map(g=>g.name);gsRender()}
+function gsDone(){if(GSW){GSO=GSW;gsSave()}GSE=false;GSW=null;gsRender()}                 /* 儲存：之後不再顯示 ▲▼ 與拖拉把手 */
+function gsCancel(){GSE=false;GSW=null;if(!GSO){gsSet("def",1);return}gsRender()}
+function gsReset(){GSO=null;GSE=false;GSW=null;try{localStorage.removeItem("gso")}catch(e){}gsSet("def",1)}
+function gsBar(){const cu=GSK==="custom";return `<div class="sortbar gsb">族群排序：<select onchange="gsSet(this.value,1)">${GSORTS.map(([k,t])=>`<option value="${k}"${k===GSK?" selected":""}>${t}</option>`).join("")}</select>${cu?(GSE?`<button class="btn sortdir gsok" onclick="gsDone()">✓ 儲存</button><button class="btn sortdir" onclick="gsCancel()">取消</button><button class="btn sortdir" title="清除自訂順序、回到預設" onclick="gsReset()">↺ 重設</button><span class="gsnote">按 ▲▼ 或按住 ⠿ 上下拖拉；按「儲存」才會留下</span>`:`<button class="btn sortdir" onclick="gsEdit()">✎ 編輯順序</button><button class="btn sortdir" title="清除自訂順序、回到預設" onclick="gsReset()">↺ 重設</button>`):`<button class="btn sortdir" title="切換排列方向" onclick="gsSet(GSK,-GSD)">⇅ ${GSK==="def"?(GSD>0?"原本順序":"反過來"):GSK==="name"?(GSD>0?"由前到後":"由後到前"):(GSD>0?"由大到小":"由小到大")}</button>`}</div>`}
+/* 按住「⠿」上下拖拉（滑鼠、手機觸控都可；拖到畫面邊緣會自動捲動）；放開後記在暫存順序，按「儲存」才留下 */
+function gsDragInit(){
+  document.querySelectorAll(".gdr").forEach(h=>{h.onpointerdown=e=>{
+    e.preventDefault();const tr=h.closest("tr"),tb=tr.parentNode;try{h.setPointerCapture(e.pointerId)}catch(_){}
+    tr.classList.add("gdrag");let y=e.clientY,raf=0;
+    const step=()=>{
+      if(y<120)window.scrollBy(0,-16);else if(y>innerHeight-120)window.scrollBy(0,16);
+      for(const r of tb.querySelectorAll("tr.row")){if(r===tr)continue;const b=r.getBoundingClientRect();
+        if(y>b.top&&y<b.bottom){if(y<b.top+b.height/2)tb.insertBefore(tr,r);else tb.insertBefore(tr,r.nextSibling);break}}
+      raf=requestAnimationFrame(step)};
+    raf=requestAnimationFrame(step);
+    const mv=ev=>{y=ev.clientY};
+    const end=()=>{cancelAnimationFrame(raf);tr.classList.remove("gdrag");document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",end);document.removeEventListener("pointercancel",end);GSW=[...tb.querySelectorAll("tr.row")].map(r=>r.dataset.g);gsRender()};
+    document.addEventListener("pointermove",mv);document.addEventListener("pointerup",end);document.addEventListener("pointercancel",end)}})}
 function gsList(){
   const a=D.groups.slice();
-  if(GSK==="custom"&&GSO){const ix=n=>{const i=GSO.indexOf(n);return i<0?1e6:i};return a.map((g,i)=>[g,i]).sort((x,y)=>ix(x[0].name)-ix(y[0].name)||x[1]-y[1]).map(x=>x[0])}
+  if(GSK==="custom"&&(GSE&&GSW||GSO)){const O=GSE&&GSW?GSW:GSO,ix=n=>{const i=O.indexOf(n);return i<0?1e6:i};return a.map((g,i)=>[g,i]).sort((x,y)=>ix(x[0].name)-ix(y[0].name)||x[1]-y[1]).map(x=>x[0])}
   if(GSK==="def") return GSD<0?a.reverse():a;
   const d=GSK==="name"?1:-1, k=GSK;      // 名稱預設由前到後，其餘預設由大到小
   a.sort((x,y)=>{const u=gsVal(x,k),v=gsVal(y,k);return GSD*d*(typeof u==="string"?u.localeCompare(v,"zh-Hant"):u-v)||y.n-x.n});
@@ -653,7 +674,7 @@ function home(){
   for(const g of gsList()){
     const small = g.n < 5;
     const rb = g.stocks.filter(c=>D.stocks[c].rebound).length;
-    h += `<tr class="row" data-g="${g.name}"><td>${GSK==="custom"?`<span class="gmv"><button class="btn" data-gmv="-1" title="上移">▲</button><button class="btn" data-gmv="1" title="下移">▼</button></span>`:""}${g.name}${small?'<span class="tag">樣本少</span>':""}</td><td>${g.n}</td>` +
+    h += `<tr class="row" data-g="${g.name}"><td>${GSK==="custom"&&GSE?`<span class="gmv"><span class="gdr" title="按住上下拖拉">⠿</span><button class="btn" data-gmv="-1" title="上移">▲</button><button class="btn" data-gmv="1" title="下移">▼</button></span>`:""}${g.name}${small?'<span class="tag">樣本少</span>':""}</td><td>${g.n}</td>` +
       STATES.map(s=>`<td class="c-${CLS[s]}">${g.counts[s]}${small?"":`<span class="mute" style="font-size:11px"> ${pct(g.counts[s],g.n)}</span>`}${s==="走弱"&&g.counts[s]?`<div class="mute" style="font-size:11px">回檔${g.weak_pull}・<span style="color:#fb7185">破底${g.weak_break}</span></div>`:""}</td>`).join("") +
       `<td class="hide-s"><div class="bar">` + STATES.map(s=>`<i class="b-${CLS[s]}" style="width:${g.counts[s]/g.n*100}%"></i>`).join("") + `</div></td>` +
       `<td>${g.first.length? g.first.map(c=>`<span class="tag hot">${D.stocks[c].name}</span>`).join(""):'<span class="mute">-</span>'}</td>` +
@@ -662,7 +683,8 @@ function home(){
   h += `</tbody></table></div><p class="note">族群樣本少於 5 檔時，百分比參考價值低，不顯示。顏色採台股習慣：紅＝強、綠＝弱。</p>`;
   $("#app").innerHTML = h; loadMacro(); mkBtnText(); grpBtnText(); swLiveStart();
   document.querySelectorAll(".chip[data-st]").forEach(c=>c.onclick=()=>{location.hash="st-"+encodeURIComponent(c.dataset.st)});
-  document.querySelectorAll("tr.row").forEach(r=>r.onclick=()=>{location.hash="g-"+D.groups.findIndex(x=>x.name===r.dataset.g)});
+  document.querySelectorAll("tr.row").forEach(r=>r.onclick=()=>{if(GSE)return;location.hash="g-"+D.groups.findIndex(x=>x.name===r.dataset.g)});   /* 編輯順序時點一下不跳進族群頁 */
+  gsDragInit();
   document.querySelectorAll("[data-gmv]").forEach(b=>b.onclick=e=>{e.stopPropagation();gsMove(b.closest("tr").dataset.g,+b.dataset.gmv)});
 }
 
