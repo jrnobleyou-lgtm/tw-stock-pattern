@@ -292,7 +292,7 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 @media(max-width:900px){.mhead .nvb{order:2;flex:0 0 100%;justify-content:center;gap:8px}.nvb .btn{padding:3px 12px;font-size:12px}.nvb.v2 .btn{padding:3px 9px}.nvb small{order:2}.nvb .btn:last-child{order:3}}
 .mtabs{display:flex;gap:4px}.mtabs .btn.on{background:#4c1d95;border-color:#a78bfa;color:#fff}
 #newsp{flex:1;min-height:0;overflow:auto;display:none;padding:2px 4px 10px;color:#e5e7eb;font-size:14px}
-.nw h4:has(.nbias){display:flex;flex-wrap:wrap;align-items:center;gap:6px 0}.nw .nbs{margin:0 0 6px}.nw .src.nbs{color:#fde68a}
+.nw h4:has(.nbias){display:flex;flex-wrap:wrap;align-items:center;gap:6px 0}.nw .nbs{margin:0 0 6px}.nw .src.nbs{color:#fde68a}.nw .src.nbs .up{color:#f87171}.nw .src.nbs .dn{color:#4ade80}
 .nw h4 .nbias{margin-left:10px;display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:4px 14px;border-radius:999px;font-size:13px;font-weight:600;line-height:1.3;-webkit-backdrop-filter:blur(16px) saturate(1.3);backdrop-filter:blur(16px) saturate(1.3)}
 /* 11/19 使用者：顏色太舊 → 三種新配色（window.NBV 1 霓光玻璃／2 柔彩漸層／3 淡底彩字；待使用者選） */
 .nbias.nv1{color:#fff;background:rgba(20,22,40,.55);border:1px solid var(--c);box-shadow:0 0 14px -2px var(--c),inset 0 1px 0 rgba(255,255,255,.18)}.nbias.nv1::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
@@ -1053,7 +1053,7 @@ async function loadNews(s,np){
   /* 11/19 使用者：近 30 天新聞整體好壞（只算「事件」「法人」；同一天同方向只算一次；利多比利空多 2 則以上＝偏多，反之偏空，差不到 2 則＝看法持平；有分量不到 3 則不判斷） */
   const biasHTML=(()=>{if(!DIR||!(n&&n.items))return{b:"",s:""};const V=new Set();(n.items||[]).forEach(x=>{if(x.mo||!(x.t>0)||(x.k!=="事件"&&x.k!=="法人")||(x.d!==1&&x.d!==-1&&x.d!==0))return;V.add(new Date((x.t+28800)*1000).toISOString().slice(0,10)+"|"+x.d)});
     let up=0,dn=0,md=0;V.forEach(v=>{const d=+v.split("|")[1];d>0?up++:d<0?dn++:md++});const tot=up+dn+md;if(!tot)return{b:"",s:""};
-    const st=`<div class="src nbs">▲${up} ▼${dn} ↔️${md}　（有分量的新聞 ${tot} 則；只算事件與法人報告，同一天同方向只算一次）</div>`;
+    const st=`<div class="src nbs"><span class="up">▲</span>${up} <span class="dn">▼</span>${dn} ↔️${md}　（有分量的新聞 ${tot} 則；只算事件與法人報告，同一天同方向只算一次）</div>`;
     if(tot<3)return{b:'<span class="nbias fl nv'+(window.NBV||1)+'">近 30 天：有分量的新聞太少，暫不判斷</span>',s:st};
     if(up-dn>=2)return{b:'<span class="nbias up nv'+(window.NBV||1)+'">近 30 天：偏多</span>',s:st};
     if(dn-up>=2)return{b:'<span class="nbias dn nv'+(window.NBV||1)+'">近 30 天：偏空</span>',s:st};
