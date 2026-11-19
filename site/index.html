@@ -258,7 +258,7 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 .nw .up{color:#f87171}.nw .dn{color:#4ade80}.nw .src{font-size:11px;color:var(--mute);margin-top:6px}
 .nw .epsw{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}.nw .epsx{display:flex}.nw .epsx>div{border:1px solid #4c3a8a;background:rgba(124,58,237,.10);border-radius:8px;padding:5px 10px;min-width:0}.nw .epsx p{margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:10px}.nw .epsx b{font-size:15px}.nw .epsx span{font-size:11px;color:var(--mute)}.nw .epsx em,.nw .epsy em{display:block;white-space:nowrap;font-style:normal;font-size:11px;color:#fbbf24;font-weight:700;margin-top:2px}.nw .epsn{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.nw .epsy b{color:#e5e7eb}.nw .epsy em{display:inline;margin-left:8px}
 .nw .eps{display:flex;gap:8px;flex-wrap:wrap}.nw .eps div{border:1px solid #333;border-radius:8px;padding:6px 14px;text-align:center;min-width:80px}.nw .eps b{display:block;font-size:18px}.nw .eps span{font-size:11px;color:var(--mute)}
-#alertbar{position:fixed;left:8px;right:8px;bottom:8px;z-index:9999;background:#b91c1c;color:#fff;border:1px solid #fecaca;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;display:flex;gap:10px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.5)}#alertbar span{flex:1}#alertbar button{background:transparent;border:1px solid #fecaca;color:#fff;border-radius:8px;padding:2px 10px;font-size:14px}
+#alertbar{position:sticky;top:60px;z-index:29;margin:6px 8px 0;background:#b91c1c;color:#fff;border:1px solid #fecaca;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;display:flex;gap:10px;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.5)}   /* 11/19 使用者：放頁首正下方（底部沒人看），跟著捲動不消失 */#alertbar span{flex:1}#alertbar button{background:transparent;border:1px solid #fecaca;color:#fff;border-radius:8px;padding:2px 10px;font-size:14px}
 .nw .qt small{font-size:10px;margin-left:3px}.nw .qt td,.nw .qt th{padding:5px 8px;white-space:nowrap}.nw .qt th{font-size:12px;color:var(--mute);font-weight:500}@media(max-width:600px){.nw .qt{font-size:11px}.nw .qt td,.nw .qt th{padding:5px 3px}.nw .qt small{display:block;margin-left:0}}   /* 11/19 手機整張表放得下（原本營益率、淨利率被切掉） */
 .nw .hib{display:inline-block;background:#7c2d12;color:#fed7aa;border-radius:999px;padding:1px 9px;font-size:12px;margin-right:6px}
 .nw2>div{min-width:0}.nw2{display:grid;grid-template-columns:minmax(300px,420px) minmax(0,1fr);gap:22px}
@@ -548,7 +548,8 @@ async function alertPoll(){
     const a=await fetch("/api/alerts",{cache:"no-store"}).then(r=>r.ok?r.json():[]);
     let el=document.getElementById("alertbar");
     if(!a.length||window.__alertOff){ if(el) el.remove(); return; }
-    if(!el){el=document.createElement("div");el.id="alertbar";document.body.appendChild(el)}
+    if(!el){el=document.createElement("div");el.id="alertbar";const hd=document.querySelector("header");if(hd){hd.insertAdjacentElement("afterend",el)}else document.body.prepend(el)}
+    {const hd=document.querySelector("header"); if(hd) el.style.top=(hd.offsetHeight+6)+"px"}
     el.innerHTML=`<span>⚠️ ${a.map(x=>String(x).replace(/[<>&]/g,"")).join("　｜　")}</span><button type="button" onclick="window.__alertOff=1;this.parentNode.remove()">✕</button>`;
   }catch(e){}
 }
