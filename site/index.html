@@ -252,6 +252,15 @@ html.mt2{--mute:#e5e7eb}html.mt3{--mute:#fff}   /* 11/18 使用者：淡灰小�
 .ta3 .ttb.show{opacity:.45}.ta3 .ttb.show:hover,.ta3 .ttb.show:active{opacity:1}
 /* 11/19 使用者：K 線視窗／消息頁右上角「上一檔／下一檔」（依來源列表前後切換，到底回第一檔）；樣式原型 window.NVV 1／2／3 */
 .nvb{display:inline-flex;gap:6px;align-items:center}.nvb .btn{white-space:nowrap}.nvb .btn:first-child{order:1}.nvb .btn:last-child{order:2}.nvb small{order:3;color:#fff;font-size:12px;line-height:1;padding:5px 11px;border-radius:999px;min-width:0;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.06));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(255,255,255,.28)}
+.nvb small.nvp{cursor:pointer}.nvb small.nvp::after{content:" ▾";opacity:.7}
+.nvl{position:fixed;z-index:200;color:#fff;font-size:14px;border-radius:14px;background:linear-gradient(180deg,rgba(40,28,80,.92),rgba(20,12,48,.95));-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 12px 34px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.22);overflow:hidden;display:flex;flex-direction:column}
+.nvl .nvs{overflow:auto;max-height:min(56vh,420px);padding:4px}.nvl button.nvi{all:unset;box-sizing:border-box;cursor:pointer;color:#fff}
+.nvl .nvh2{padding:9px 14px;font-weight:600;border-bottom:1px solid rgba(255,255,255,.12)}.nvl .nvh2 span{font-weight:400;color:#c4b5fd;font-size:12px;margin-left:8px}
+.nvl.v1 button.nvi{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:9px}.nvl.v1 .no{width:24px;color:#a5b4fc;font-size:12px;text-align:right}.nvl.v1 b{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nvl small{color:#c4b5fd;font-size:12px}.nvl em{font-style:normal;font-size:12px;min-width:56px;text-align:right}.nvl em.up{color:#f87171}.nvl em.dn{color:#4ade80}
+.nvl button.nvi:hover{background:rgba(255,255,255,.12)}.nvl button.nvi.on{background:rgba(124,58,237,.55);box-shadow:inset 0 0 0 1px #a78bfa}
+.nvl.v2 .nvs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px}.nvl.v2 button.nvi{display:flex;flex-direction:column;gap:1px;padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.07)}.nvl.v2 b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nvl.v2 em{text-align:left;min-width:0}
+.nvl.v3{left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);max-height:78vh}.nvl.v3 .nvh{display:flex;align-items:center;gap:10px;padding:12px;border-bottom:1px solid rgba(255,255,255,.14)}.nvl.v3 .nvh input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:1px solid #8b5cf6;background:rgba(0,0,0,.35);color:#fff;font-size:15px}.nvl.v3 .nvh span{color:#c4b5fd;font-size:12px;white-space:nowrap}
+.nvl.v3 button.nvi{display:flex;align-items:center;gap:8px;width:100%;padding:10px;border-radius:9px;border-bottom:1px solid rgba(255,255,255,.06)}.nvl.v3 .no{width:24px;color:#a5b4fc;font-size:12px;text-align:right}.nvl.v3 b{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nvb.v2{gap:0;padding:2px;border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.06));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(255,255,255,.28)}.nvb.v2 .btn{border:0;background:transparent;border-radius:999px;padding:4px 12px}.nvb.v2 .btn:hover{background:rgba(255,255,255,.14)}
 .nvb.v3 .btn{border-color:#a78bfa;background:rgba(124,58,237,.28);color:#fff;font-weight:600;padding:4px 14px}.nvb.v3 .btn:hover{background:rgba(124,58,237,.5)}
 @media(max-width:900px){.mhead .nvb{order:2;flex:0 0 100%;justify-content:center;gap:8px}.nvb .btn{padding:3px 12px;font-size:12px}.nvb.v2 .btn{padding:3px 9px}.nvb small{order:2}.nvb .btn:last-child{order:3}}
@@ -1019,6 +1028,22 @@ function notesHTML(s){
 }
 /* 上一檔／下一檔：名單＝點進來那一頁畫面上的股票（族群、篩選、搜尋結果…），依畫面順序；到底回第一檔、到頭回最後一檔 */
 function navCtx(code){const L=window.__navList;if(!L||L.length<2)return null;const i=L.indexOf(code);return i<0?null:{L,i}}
+/* 11/19 使用者：「2/15」膠囊點開＝清單選股（原型 window.NVP 1 下拉清單／2 小卡格狀／3 置中面板＋搜尋，待使用者選） */
+function navList(pill,cx){
+  const old=document.getElementById("nvl");if(old){old.remove();return}
+  const v=window.NVP||1,L=cx.L,cur=cx.i,rows=L.map((c,i)=>{const s=D.stocks[c]||{};const ch=s.chg;return {c,i,n:s.name||c,ch,cls:ch>0?"up":ch<0?"dn":""}});
+  const pc=r=>r.ch==null?"":`<em class="${r.cls}">${r.ch>0?"+":""}${r.ch.toFixed(2)}%</em>`;
+  const item=r=>v===2?`<button class="nvi${r.i===cur?" on":""}" data-i="${r.i}"><b>${r.n}</b><small>${r.c}</small>${pc(r)}</button>`:`<button class="nvi${r.i===cur?" on":""}" data-i="${r.i}"><span class="no">${r.i+1}</span><b>${r.n}</b><small>${r.c}</small>${pc(r)}</button>`;
+  const box=document.createElement("div");box.id="nvl";box.className="nvl v"+v;
+  box.innerHTML=(v===3?`<div class="nvh"><input type="search" placeholder="搜尋名稱或代號" autocomplete="off"><span>${cur+1} / ${L.length}</span></div>`:`<div class="nvh2">清單 ${L.length} 檔<span>點一檔直接切過去</span></div>`)+`<div class="nvs">${rows.map(item).join("")}</div>`;
+  document.body.appendChild(box);
+  if(v!==3){const r=pill.getBoundingClientRect();const w=Math.min(v===2?360:300,innerWidth-16);box.style.width=w+"px";box.style.left=Math.max(8,Math.min(innerWidth-w-8,r.left+r.width/2-w/2))+"px";box.style.top=(r.bottom+8)+"px"}
+  const on=box.querySelector(".nvi.on");if(on)on.scrollIntoView({block:"center"});
+  const close=()=>{box.remove();document.removeEventListener("click",out,true)},out=e=>{if(!box.contains(e.target)&&e.target!==pill)close()};
+  setTimeout(()=>document.addEventListener("click",out,true),0);
+  box.querySelectorAll(".nvi").forEach(b=>b.onclick=()=>{const i=+b.dataset.i;close();if(i!==cur){const m=modalEl,t=m&&m.querySelector('[data-mt="n"].on');window.__keepTab=t?"n":null;window.__navRep=true;location.replace("#s-"+L[i])}});
+  const q=box.querySelector("input");if(q){q.oninput=()=>{const k=q.value.trim().toLowerCase();box.querySelectorAll(".nvi").forEach(b=>{const r=rows[+b.dataset.i];b.style.display=!k||r.n.toLowerCase().includes(k)||r.c.toLowerCase().includes(k)?"":"none"})};if(!matchMedia("(hover:none)").matches)q.focus()}
+}
 function navGo(d){const m=modalEl;const cur=location.hash.replace(/^#s-/,"");const cx=navCtx(decodeURIComponent(cur));if(!cx)return;
   const nx=cx.L[(cx.i+d+cx.L.length)%cx.L.length];const on=m&&m.querySelector('[data-mt="n"].on');window.__keepTab=on?"n":null;window.__navRep=true;location.replace("#s-"+nx)}
 document.addEventListener("click",e=>{const r=e.target.closest&&e.target.closest("#app tr.row[data-c]");if(!r)return;const L=[];(r.closest("table")||document).querySelectorAll("tr.row[data-c]:not(.tgr)").forEach(x=>{if(!L.includes(x.dataset.c))L.push(x.dataset.c)});window.__navList=L},true);
@@ -1038,7 +1063,8 @@ function mountModal(s, headHTML, opts){
   el.querySelector("#mclose").onclick=goBack;
   {const cx=navCtx(s.code);if(cx){const v=window.NVV||3,pos=`${cx.i+1}/${cx.L.length}`;
     el.querySelector("#mclose").insertAdjacentHTML("beforebegin",`<span class="nvb v${v}"><button class="btn" data-nv="-1" title="切到清單裡的上一檔">◀ 上一檔</button><small>${pos}</small><button class="btn" data-nv="1" title="切到清單裡的下一檔">下一檔 ▶</button></span>`);
-    el.querySelectorAll("[data-nv]").forEach(b=>b.onclick=()=>navGo(+b.dataset.nv))}}
+    el.querySelectorAll("[data-nv]").forEach(b=>b.onclick=()=>navGo(+b.dataset.nv));
+    const pl=el.querySelector(".nvb small");if(pl){pl.classList.add("nvp");pl.title="點一下，從清單直接選股票";pl.onclick=e=>{e.stopPropagation();navList(pl,cx)}}}}
   document.body.appendChild(el); modalEl=el;
   if(window.__keepTab==="n"){window.__keepTab=null;const nb=el.querySelector('[data-mt="n"]');if(nb)nb.click()}
   chart=new Chart(el.querySelector("#chart"), s, opts||{});
