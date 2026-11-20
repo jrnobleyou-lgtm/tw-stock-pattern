@@ -70,6 +70,7 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
 
 .mute{color:var(--mute)}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}@media(min-width:1140px){header{padding-left:calc((100% - 1260px)/2 + 16px);padding-right:calc((100% - 1260px)/2 + 16px)}}
+.fpg h2{font-size:18px;margin:6px 0 8px;display:flex;align-items:center;gap:8px}.fi{padding:0 9px;border-radius:50%;font-size:15px;line-height:24px;min-width:26px}.fhelp{margin:8px 0;padding:10px 12px;border:1px solid #3b3566;border-radius:10px;background:rgba(22,18,39,.7);font-size:13px;line-height:1.7}.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:12px 0}.fcard{padding:12px 14px;border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.7)}.fcard h3{margin:0 0 8px;font-size:15px}.fkv{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.fkv small{display:block;color:var(--mute);font-size:11px}.fkv b{font-size:19px}.fsv{width:100%;height:130px;margin-top:10px;display:block}.fax{display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-top:2px}.fnote{font-size:12.5px;line-height:1.6;margin:8px 0 0}.fstale .fcard{opacity:.55}
 .swp{margin:14px 0;padding:12px 14px;border:1px solid #3b3566;border-radius:12px;background:rgba(22,18,39,.7)}.swh{font-weight:800;font-size:16px;margin-bottom:8px}.swh .mute{font-weight:400;font-size:12px}.mkr{display:flex;gap:12px;flex-wrap:wrap}.mkc{flex:1 1 220px;padding:10px 14px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5);display:flex;flex-direction:column;gap:3px}.mkv{font-size:26px;font-weight:800;letter-spacing:.5px}.mkc>.mute:first-child{color:#fff;font-weight:800;font-size:15px}.mkd{margin-left:8px;font-size:12px;font-weight:400;color:#a5b4fc}.swbar b,.swr b,.swchip b{color:#fff;font-weight:800}.swbar small.mute,.swr>.mute,.swchip small.mute{color:#fff;font-size:13px}.mki{display:grid;grid-template-columns:48px 1fr 56px;gap:8px;align-items:center;font-size:13px;color:#fff}.mki .swtr{height:8px;background:#1c1738;border-radius:4px;overflow:hidden}.mki .swtr i{display:block;height:100%}.mki>span:last-child{text-align:right}.mkbtn{float:right;padding:3px 12px;font-size:13px}.swp.mkcol .swbody{display:none}.swchips{display:flex;flex-wrap:wrap;gap:8px}.swchip{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border:1px solid #3b3566;border-radius:10px;background:rgba(9,5,26,.5)}.swchip b{font-size:15px}.swchip small{font-size:12px}.swbar{display:grid;grid-template-columns:96px 1fr 64px;gap:2px 8px;align-items:center;padding:5px 0;border-top:1px solid #2a2450}.swbar .swtr{height:10px;background:#1c1738;border-radius:5px;overflow:hidden}.swbar .swtr i{display:block;height:100%}.bg-s{background:var(--s-strong)}.bg-w{background:var(--s-weak)}.swbar small{grid-column:1/4}.swbar>span:nth-child(3){text-align:right}.swg{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.swc h3{margin:0 0 6px;font-size:14px}.swr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 0;border-top:1px solid #2a2450}.swr b{font-size:15px}.swr .mute{grid-column:1/3;font-size:12px}@media(max-width:640px){.swg{grid-template-columns:1fr}}
 .sum{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0;position:sticky;top:var(--hh,0px);z-index:25;padding:8px 0;background:transparent;justify-content:center}
 @media(max-width:640px){.sum{justify-content:safe center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:10px -10px;padding:6px 10px}.sum::-webkit-scrollbar{display:none}.sum .chip{flex:0 0 auto}}
@@ -401,7 +402,7 @@ html.mc3 .stt td.sn1 .sn,html.mc3 .stt td.sn1 .tvm{font-weight:700}html.mc3 .cv2
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><a class="btn" id="xl" href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;color:inherit">🔗 停利停損試算器 ↗</a>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#funds" id="n-funds" style="display:none">專業資金</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
@@ -2086,15 +2087,45 @@ async function myDraw(){
   document.querySelectorAll("tr.row[data-href]").forEach(r=>r.onclick=()=>{location.href=r.dataset.href});
 }
 
+/* ───────── 11/20 專業資金期貨部位（只有美股；資料 funds.json 由 scripts/cftc_funds.py 每天抓 CFTC 週報） ───────── */
+const fesc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+const FUNDS_HELP="資料來源：美國期貨交易委員會（CFTC）每週五公布的期貨持倉報告，取其中「槓桿基金」（主要是對沖基金與趨勢型基金）在指數期貨的多單與空單。資料日是週二，週五才公布，所以一定晚幾天。\n\n重點提醒：這只看期貨，看不到它們的股票部位。對沖基金常常「股票做多、期貨放空來避險」，所以期貨淨空單很大，不代表它們看空。請看「跟自己過去一年比」的位置，不要看絕對數字，也不是買賣建議。";
+function fundsCard(k,S){
+  const R=S.rows, net=R.map(r=>r[1]-r[2]), n=R.length, cur=net[n-1], prev=net[n-2]??cur;
+  const yr=net.slice(-52), pct=Math.round(yr.filter(v=>v<=cur).length/yr.length*100), long=R[n-1][1], short=R[n-1][2];
+  const ratio=short?(long/short):0, share=Math.round(long/(long+short)*100);
+  const ch=cur-prev, fmt=v=>(v>0?"+":"")+v.toLocaleString();
+  const seg=net.slice(-156), lo=Math.min(0,...seg), hi=Math.max(0,...seg), W=600, H=130, x=i=>i/(seg.length-1)*W, y=v=>6+(1-(v-lo)/(hi-lo||1))*(H-12);
+  const line=seg.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join("");
+  const lab=pct>=80?"相對自己過去一年，偏多":pct<=20?"相對自己過去一年，偏空":"相對自己過去一年，位置中性";
+  const note=k==="vix"?`槓桿基金在 VIX 期貨${cur<0?"淨空單":"淨多單"}（${cur<0?"偏向押注波動會降、市場平穩":"偏向押注波動會升"}）；${lab}。`:`槓桿基金在${S.name}${cur<0?"淨空單":"淨多單"}；${lab}。這常包含「股票做多、期貨避險」，不等於看空。`;
+  return `<div class="fcard"><h3>${S.name}</h3><div class="fkv"><div><small>淨口數（多減空）</small><b style="color:${cur<0?"#4ade80":"#f87171"}">${fmt(cur)}</b></div><div><small>多單 ÷ 空單</small><b>${ratio.toFixed(2)}</b><small>多單佔 ${share}%</small></div><div><small>近 52 週百分位</small><b>${pct}</b><small>0＝最空　100＝最多</small></div><div><small>比上週</small><b>${fmt(ch)}</b></div></div>
+  <svg viewBox="0 0 ${W} ${H}" class="fsv" preserveAspectRatio="none"><line x1="0" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="#8b86b8" stroke-dasharray="4 4" stroke-width="1"/><path d="${line}" fill="none" stroke="#7FDBFF" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="${W}" cy="${y(cur).toFixed(1)}" r="4" fill="#facc15"/></svg>
+  <div class="fax"><span>近 3 年淨口數（虛線＝0）</span><span>最高 ${hi.toLocaleString()}　最低 ${lo.toLocaleString()}</span></div><p class="fnote">${note}</p></div>`;
+}
+async function fundsPage(){
+  $("#app").innerHTML='<div class="mute" style="padding:30px;text-align:center">載入中…</div>';
+  const F=await fetch("funds.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null);
+  if(baseRaw!=="funds")return;
+  if(!F||!F.series){$("#app").innerHTML='<p class="note">專業資金期貨部位資料暫時讀不到，請稍後再試。</p>';return}
+  const age=Math.floor((Date.now()-new Date(F.asof+"T00:00:00Z"))/864e5), stale=age>10;
+  $("#app").innerHTML=`<div class="fpg${stale?" fstale":""}"><h2>專業資金期貨部位 <button class="btn fi" id="fhelp" type="button" title="${fesc(FUNDS_HELP)}" aria-label="說明">ⓘ</button></h2>
+  <div class="src">資料日：${F.asof.slice(5).replace("-","/")}（週二；每週五公布，下次約 ${(new Date(new Date(F.asof+"T00:00:00Z").getTime()+10*864e5)).toISOString().slice(5,10).replace("-","/")}）${stale?'　<b style="color:#fbbf24">⚠️ 資料超過 10 天沒更新</b>':""}</div>
+  <div class="fhelp" id="fhelpbox" hidden>${fesc(FUNDS_HELP).replace(/\n/g,"<br>")}</div>
+  <div class="fgrid">${["sp","nq","vix"].filter(k=>F.series[k]).map(k=>fundsCard(k,F.series[k])).join("")}</div>
+  <div class="src">資料：美國期貨交易委員會（CFTC）持倉週報，槓桿基金類別；僅供參考，非投資建議。</div></div>`;
+  $("#fhelp").onclick=()=>{const b=$("#fhelpbox");b.hidden=!b.hidden};
+}
 /* ───────── 路由 ───────── */
 let baseRaw=null;                 // 目前底層頁面的 hash（列表頁）
 function renderBase(h){
   baseRaw=h;
-  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&!h.startsWith("mix")&&h!=="mydraw"&&h!=="learn"&&h!=="etf"&&!h.startsWith("etf-"));
+  $("#n-home").classList.toggle("on", !h.startsWith("scr")&&!h.startsWith("mix")&&h!=="mydraw"&&h!=="learn"&&h!=="etf"&&!h.startsWith("etf-")&&h!=="funds");
   $("#n-scr").classList.toggle("on", h.startsWith("scr")||h==="learn");
   $("#n-mix").classList.toggle("on", h.startsWith("mix"));
   $("#n-draw").classList.toggle("on", h==="mydraw");
   $("#n-etf").classList.toggle("on", h==="etf"||h.startsWith("etf-"));
+  $("#n-funds").classList.toggle("on", h==="funds");
   { const lb=h==="learn"; document.documentElement.classList.toggle("lrn",lb); ["lz1","lz2"].forEach((c,i)=>document.documentElement.classList.toggle(c,lb&&(window.LZV||2)===i+1)); ["lb1","lb2","lb3"].forEach((c,i)=>document.documentElement.classList.toggle(c,lb&&(window.LBG||1)===i+1)); const de=document.documentElement; const ltp=window.LTP||"B"; de.classList.toggle("ltA",lb&&ltp==="A"); de.classList.toggle("ltB",lb&&ltp==="B"); const lcv=window.LCV||"X"; de.classList.toggle("lcX",lb&&lcv==="X"); de.classList.toggle("lcY",lb&&lcv==="Y"); if(!lb){const d=document.getElementById("ldock");if(d)d.classList.remove("on")} de.classList.toggle("lmb2",lb&&window.LMB===2) }
   if(h.startsWith("g-")) group((D.groups[+h.slice(2)]||{}).name);
   else if(h.startsWith("find-")) finder(h.slice(5));
@@ -2103,6 +2134,7 @@ function renderBase(h){
   else if(h==="mix"||h.startsWith("mix-")) screener(h.slice(4),1);
   else if(h==="mydraw") myDraw();
   else if(h==="etf"||h.startsWith("etf-")) etfPage(h.slice(4));
+  else if(h==="funds") fundsPage();
   else if(h==="learn") learnPage();
   else if(h==="about") aboutPage();
   else home();
@@ -2110,7 +2142,7 @@ function renderBase(h){
 function goBack(){
   const h = decodeURIComponent(location.hash.slice(1));
   if(h.startsWith("s-")||h.startsWith("i-")||h.startsWith("e-")){ if(navStack.length>1&&navStack[navStack.length-2]===(baseRaw||"")) history.back(); else {window.__navRep=true;location.replace("#"+(baseRaw||""))} }
-  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("mix") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn" || h==="etf" || h.startsWith("etf-") || h==="about") location.hash = "";
+  else if(h.startsWith("g-") || h.startsWith("scr-") || h.startsWith("mix") || h.startsWith("find-") || h.startsWith("st-") || h==="mydraw" || h==="learn" || h==="etf" || h.startsWith("etf-") || h==="funds" || h==="about") location.hash = "";
 }
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape") return;
@@ -2197,6 +2229,7 @@ if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textCon
 /* 11/17 使用者：手機版「美股／台股」鈕移到「設定」左邊（上班模式那一列），電腦版維持在導覽列 */
 {const mq=matchMedia("(max-width:900px)"),pl=()=>{const m=$("#n-mkt"),fz=document.querySelector("header .fz"),st=$("#n-set");if(mq.matches)fz.insertBefore(m,st);else document.querySelector("header nav").appendChild(m)};pl();mq.addEventListener&&mq.addEventListener("change",pl)}
 if(D.market==="US") $("#n-etf").style.display="none";   /* ETF 專區只有台股 */
+if(D.market==="US") $("#n-funds").style.display="";   /* 11/20 專業資金期貨部位：只有美股（管理者專區）有 */
 if(D.market==="US"||/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-set").style.display="";   /* 11/17 使用者：設定鈕在最右邊，台股登入後也要有 */   // 登入後顯示「美股」，登入前才顯示「管理者專區」
 renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋

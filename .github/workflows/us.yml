@@ -25,6 +25,9 @@ jobs:
       - name: 抓美股季財報（SEC 官方公開資料，失敗不影響其他）
         continue-on-error: true
         run: python3 scripts/us_fin.py
+      - name: 抓專業資金期貨部位（CFTC 週報，失敗不影響其他）
+        continue-on-error: true
+        run: python3 scripts/cftc_funds.py
       - name: 分析並產生頁面
         run: |
           python3 scripts/analyze.py us
