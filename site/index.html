@@ -1476,7 +1476,7 @@ class Chart{
     if(a==="sc-box"||a==="sc-zoom"){this.scMode=a==="sc-box"?"box":"zoom";this.range=null;return this.build()}
     if(a==="boxon"){this.boxOn=!this.boxOn;return this.build()}
     if(a==="draw"){this.drMode=this.drMode?null:"menu";this.drPts=[];this.drForm=false;this.scMode=null;return this.build()}
-    if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"){this.drMode=a.slice(3);this.drPts=[];return this.build()}
+    if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"||a==="dr-chan"){this.drMode=a.slice(3);this.drPts=[];return this.build()}
     if(a==="dr-done"){if(this.drPts.length>=2){this.drForm=true;this.build()}return}
     if(a==="dr-cancel"){this.cancelTools();return}
     if(a==="dr-save"){
@@ -1530,7 +1530,7 @@ class Chart{
       if(e.pointerType==="mouse"&&e.button!==0) return;
       const i=this.indexAt(e),p=this.priceAt(e); if(i<0||p==null) return;
       this.drPts.push([this.bars[i].d,+p.toFixed(2)]);
-      const need=this.drMode==="hline"?1:this.drMode==="line"?2:0;
+      const need=this.drMode==="hline"?1:this.drMode==="line"?2:this.drMode==="chan"?4:0;
       if(need&&this.drPts.length>=need){this.drForm=true;this.build()} else this.draw();
       return;
     }
@@ -1898,7 +1898,8 @@ class Chart{
       const P=d.pts.map(([dd,pp])=>[this.idxOfDate(dd),pp]).filter(([i])=>i>=0); if(!P.length) return;
       if(d.kind==="hline"){const [i,pp]=P[0];o+=`<line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="#000" stroke-width="4.6" stroke-opacity=".75" ${preview?'stroke-dasharray="4 3"':""}/><line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="${DC}" stroke-width="1.8" ${preview?'stroke-dasharray="4 3"':""}/>`;
         if(!preview&&d.name) labels.push([d.name+" "+fmt(pp),x(Math.max(vs,i))+30,y(pp),{color:DC,weight:700,prefer:["up","down","right"]}]);return}
-      {const pd2=P.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pd2}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pd2}" fill="none" stroke="${DC}" stroke-width="2.2" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/>`}
+      if(d.kind==="chan"){[P.slice(0,2),P.slice(2,4)].forEach(sg=>{if(sg.length<2) return;const pc=sg.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pc}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pc}" fill="none" stroke="${DC}" stroke-width="2.2" ${preview?'stroke-dasharray="4 3"':""}/>`})}
+      else {const pd2=P.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pd2}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pd2}" fill="none" stroke="${DC}" stroke-width="2.2" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/>`}
       P.forEach(([i,pp])=>{if(i>=vs&&i<ve)o+=`<circle cx="${x(i)}" cy="${y(pp)}" r="2.6" fill="${DC}"/>`});
       if(!preview&&d.name){const [li,lp]=P.reduce((a,b)=>b[1]>a[1]?b:a);labels.push([d.name,x(li),y(lp),{color:DC,weight:700,prefer:["up","right","left","down"]}])}
     };
@@ -2034,8 +2035,8 @@ class Chart{
       if(this.drForm){ if(rb.dataset.form!=="1"){rb.dataset.form="1";rb.innerHTML=`<div class="rangebar" style="flex-wrap:wrap"><input id="dr-name" placeholder="型態名稱，例如 雙重底" maxlength="30" style="flex:1;min-width:140px"><input id="dr-note" placeholder="備註（選填）" maxlength="200" style="flex:2;min-width:160px"><button class="btn on" data-a="dr-save">儲存</button><button class="btn" data-a="dr-cancel">取消</button></div>`;
           rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); const n=rb.querySelector("#dr-name"); n&&n.focus()} }
       else { rb.dataset.form=""; rb.innerHTML=this.drMode==="menu"
-        ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
-        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button></div>`;
+        ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button><button class="btn on" data-a="dr-chan">平行線（畫兩條）</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
+        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":this.drMode==="chan"?`平行線：先點兩下畫第 1 條（起點、終點），再點兩下畫第 2 條（已點 ${this.drPts.length}/4 個）`:"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button></div>`;
         rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); }
     }
     else if(this.scMode==="menu") rb.innerHTML=`<div class="rangebar"><span>剪刀要做什麼？</span><button class="btn on" data-a="sc-box">自訂盤整區間</button><button class="btn on" data-a="sc-zoom">放大 K 線圖</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`;
