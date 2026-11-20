@@ -1403,7 +1403,7 @@ class Chart{
     if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
     if(/^scr-dmi(b|up|soon|pre)$/.test(baseRaw||"")) this.ind.dmi=1;
     if(/^scr-dmi(b|up|soon|pre)$/.test(baseRaw||"")) this.ind.kd=1;   /* 11/15 使用者：從任何 DMI 篩選點進來都同時開 DMI 和 KD */      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
-    this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.chn=false; this.range=null; this.active=null; this.listOpen=false;
+    this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.chn=0; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
     this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[]; this.drUndo=[]; this.drRedo=[]; this.drPtRedo=[];
     if(/^[A-Za-z0-9.\-^]{1,12}$/.test(s.code)) fetch(`/api/draw?m=${D.market==="US"?"US":"TW"}&c=${encodeURIComponent(s.code)}`,{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(v=>{if(Array.isArray(v)&&v.length){this.drawings=v;this.draw()}}).catch(()=>{});
@@ -1436,7 +1436,7 @@ class Chart{
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
       this.btn("geo","形態",this.geo,`style="color:${this.geo?"#1E40AF":"#4D7CFF"};font-weight:700"`);      // 開啟（黃底）用深藍、關閉（黑底）用亮一點的藍才看得清楚
     const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
-    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+((this.s.geo||[]).some(g=>/趨勢通道/.test(g.kind))?this.btn("chn","通道",this.chn):"")+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb)+this.btn("rb","反彈%",this.rb);
+    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+((this.s.geo||[]).some(g=>/趨勢通道/.test(g.kind))?this.btn("chn",this.chn?"通道："+this.chnWhich():"通道",!!this.chn):"")+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb)+this.btn("rb","反彈%",this.rb);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
     const allOn=MA_ALL.every(n=>this.maOn[n]);
     const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"✓ 全選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${this.maOn[n]?"✓ ":""}${n}日</button>`).join("")}</div>`:"";
@@ -1482,9 +1482,11 @@ class Chart{
     if(a==="scissor"){this.scMode=this.scMode?null:"menu";this.range=null;return this.build()}
     if(a==="sc-box"||a==="sc-zoom"){this.scMode=a==="sc-box"?"box":"zoom";this.range=null;return this.build()}
     if(a==="boxon"){this.boxOn=!this.boxOn;return this.build()}
-    if(a==="chn"){this.chn=!this.chn;return this.build()}
+    if(a==="chn"){const n=(this.s.geo||[]).filter(g=>/趨勢通道/.test(g.kind)).length;this.chn=this.chn>=n?0:this.chn+1;return this.build()}   /* 關 → 第 1 條（長）→ 第 2 條（短）→ 關 */
     if(a==="draw"){this.drMode=this.drMode?null:"menu";this.drPts=[];this.drForm=false;this.scMode=null;return this.build()}
-    if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"||a==="dr-chan"||a==="dr-cup"){this.drMode=a.slice(3);this.drPts=[];return this.build()}
+    if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"||a==="dr-chan"||a==="dr-cup"){this.drMode=a.slice(3);this.drPts=[];this.drOff=null;return this.build()}
+    if(a==="ch-wide"||a==="ch-narrow"||a==="ch-flip"){const o=this.drOff||-1;this.drOff=a==="ch-flip"?-o:+(o*(a==="ch-wide"?1.15:1/1.15)).toFixed(2);return this.draw()}
+    if(a==="ch-ok"){this.drPts=this.chanPts();this.drForm=true;return this.build()}
     if(a==="dr-undo"){
       if(this.drMode&&this.drMode!=="menu"&&!this.drForm&&this.drPts.length){this.drPtRedo.push(this.drPts.pop());return this.build()}   /* 畫到一半：先退一個點 */
       if(this.drUndo.length){this.drRedo.push(this.drawings||[]);this.saveDrawings(this.drUndo.pop(),true);this.drForm=false;this.drPts=[];return this.build()}
@@ -1545,8 +1547,12 @@ class Chart{
     if(this.drMode&&this.drMode!=="menu"&&!this.drForm){            // 畫線模式：點一下加一個點
       if(e.pointerType==="mouse"&&e.button!==0) return;
       const i=this.drIdx(e),p=this.priceAt(e); if(i<0||p==null) return;
+      if(this.drMode==="chan"&&this.drPts.length===2){            // 平行線第 2 階段：點圖上的位置＝第 2 條線通過的價位（也可按「加寬／縮小」）
+        const [a,b]=this.drPts.map(q=>[this.idxOfDate(q[0]),q[1]]);
+        const v=(b[0]===a[0])?a[1]:a[1]+(b[1]-a[1])*(i-a[0])/(b[0]-a[0]); this.drOff=+(p-v).toFixed(2); this.draw(); return}
       this.drPtRedo=[];this.drPts.push([i<this.bars.length?this.bars[i].d:this.futDate(i-this.bars.length+1),+p.toFixed(2)]);
-      const need=this.drMode==="hline"?1:this.drMode==="line"?2:(this.drMode==="chan"||this.drMode==="cup")?4:0;
+      const need=this.drMode==="hline"?1:this.drMode==="line"?2:this.drMode==="cup"?4:0;
+      if(this.drMode==="chan"&&this.drPts.length===2){this.drOff=-Math.round(this.drPts[1][1]*0.08*100)/100||-1;this.build();return}   /* 平行線：畫完第 1 條，自動帶出第 2 條（預設在下方約 8%） */
       if(need&&this.drPts.length>=need){this.drForm=true;this.build()} else this.draw();
       return;
     }
@@ -1628,6 +1634,8 @@ class Chart{
     this.cboxes.push({from:this.bars[a].s,to:this.bars[b].d,hi:+hi.toFixed(2),lo:+lo.toFixed(2)});    // 自訂盤整區間：存起來
     saveBoxes(this.s.code,this.cboxes); this.scMode=null; this.build();
   }
+  chanPts(){const [p0,p1]=this.drPts,o=this.drOff||-1;return [p0,p1,[p0[0],+(p0[1]+o).toFixed(2)],[p1[0],+(p1[1]+o).toFixed(2)]]}
+  chnWhich(){const L=(this.s.geo||[]).filter(g=>/趨勢通道/.test(g.kind));const g=L[this.chn-1];return g&&g.which?g.which:"長"}
   cancelScissor(){ return this.cancelTools() }
   cancelTools(){ if(!this.scMode&&!this.drMode) return false; this.scMode=null; this.drMode=null; this.drPts=[]; this.drForm=false; this.range=null; this.drawing=false; this.build(); return true }
   saveDrawings(list,noHist){
@@ -1776,14 +1784,13 @@ class Chart{
     if(this.geo&&this.tf!=="M"){
       const ad=this.adjOn;
       const GA=(s.geo||[]), isCh=g=>/趨勢通道/.test(g.kind);
-      for(const gm of GA.filter(g=>!isCh(g)).slice(0,2).concat(GA.filter(isCh))){                                // 同時最多畫 2 個形態（已依重要性排序）；趨勢通道另外畫
+      for(const gm of GA.filter(g=>!isCh(g)).slice(0,2).concat(this.chn?[GA.filter(isCh)[this.chn-1]].filter(Boolean):[])){                                // 同時最多畫 2 個形態（已依重要性排序）；趨勢通道另外畫
         if(isCh(gm)){                                                          // 趨勢通道：預設不畫，按「通道」才畫上下兩條平行線（橘色）；標籤放左上角（橘底白字毛玻璃）
-          if(!this.chn) continue;
           const CC="#f59e0b";
           (gm.lines||[]).forEach(L=>{const d0=L[0],p0=ad&&L[4]!=null?L[4]:L[1],p1=ad&&L[5]!=null?L[5]:L[3],i0=idxOf(B,d0),i1=idxOf(B,L[2]);if(i0<0||i1<0)return;
             o+=`<line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="#000" stroke-width="5.4" stroke-opacity=".5"/><line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="${CC}" stroke-width="2.4" stroke-opacity=".9" stroke-dasharray="${gm.status==="break"?"6 4":""}"/>`;
             });
-          {const tx=dn(gm.kind)+(gm.status==="break"?"（"+(gm.side>0?"突破上緣":"跌破下緣")+"）":"")+(gm.pos!=null&&gm.status==="inchan"?"　位置 "+Math.round(gm.pos*100)+"%":""),tw=tx.length*13+18;
+          {const tx=dn(gm.kind)+(gm.which?"（"+gm.which+"）":"")+(gm.status==="break"?"（"+(gm.side>0?"突破上緣":"跌破下緣")+"）":"")+(gm.pos!=null&&gm.status==="inchan"?"　位置 "+Math.round(gm.pos*100)+"%":""),tw=tx.length*13+18;
             o+=`<g><defs><linearGradient id="chnG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fb923c" stop-opacity=".78"/><stop offset="1" stop-color="#c2410c" stop-opacity=".5"/></linearGradient></defs><rect x="${pl+8}" y="${pt+6}" width="${tw}" height="24" rx="8" fill="url(#chnG)" stroke="rgba(253,224,171,.7)"/><text x="${pl+8+tw/2}" y="${pt+23}" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">${tx}</text></g>`}
           continue}
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
@@ -1943,7 +1950,7 @@ class Chart{
       if(!preview&&d.name){const [li,lp]=P.reduce((a,b)=>b[1]>a[1]?b:a);labels.push([d.name,x(li),y(lp),{color:DC,weight:700,prefer:["up","right","left","down"]}])}
     };
     (this.drawings||[]).forEach(d=>drawOne(d,false));
-    if(this.drMode&&this.drPts.length) drawOne({kind:this.drMode,pts:this.drPts},true);
+    if(this.drMode&&this.drPts.length) drawOne({kind:this.drMode,pts:(this.drMode==="chan"&&this.drPts.length===2&&!this.drForm)?this.chanPts():this.drPts},true);
     for(const [t,ax,ay,op] of labels) put(t,ax,ay,op);
     for(const [text,ax,ay,col,pref] of neckJobs){         // 頸線文字（白底小框）
       const fs=11,wd=textW(text,fs)+8,ht=fs+6; let best=null;
@@ -2076,8 +2083,9 @@ class Chart{
       if(this.drForm){ if(rb.dataset.form!=="1"){rb.dataset.form="1";rb.innerHTML=`<div class="rangebar" style="flex-wrap:wrap"><input id="dr-name" placeholder="型態名稱，例如 雙重底" maxlength="30" style="flex:1;min-width:140px"><input id="dr-note" placeholder="備註（選填）" maxlength="200" style="flex:2;min-width:160px"><button class="btn on" data-a="dr-save">儲存</button><button class="btn" data-a="dr-cancel">取消</button></div>`;
           rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); const n=rb.querySelector("#dr-name"); n&&n.focus()} }
       else { rb.dataset.form=""; rb.innerHTML=this.drMode==="menu"
-        ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button><button class="btn on" data-a="dr-chan">平行線（畫兩條）</button><button class="btn on" data-a="dr-cup">杯柄（點 4 下）</button>${UD()}</div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
-        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":this.drMode==="cup"?`杯柄：依序點 ①杯口左緣 ②杯底 ③杯口右緣 ④柄的最低點（已點 ${this.drPts.length}/4 個）`:this.drMode==="chan"?`平行線：先點兩下畫第 1 條（起點、終點），再點兩下畫第 2 條（已點 ${this.drPts.length}/4 個）`:"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button>${UD()}</div><div class="note" style="margin:2px 0 6px">${this.drMode==="poly"?"點錯了可按 ESC 取消重來。":"最後一根 K 棒右邊的空白處也可以點（日 K）。按 ESC 取消。"}</div>`;
+        ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button><button class="btn on" data-a="dr-chan">平行線（畫一條，自動帶第二條）</button><button class="btn on" data-a="dr-cup">杯柄（點 4 下）</button>${UD()}</div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
+        :(this.drMode==="chan"&&this.drPts.length===2)?`<div class="rangebar"><span>✏️ 第 2 條平行線已自動帶出：點圖上想要的位置，或按「加寬／縮小」；上下顛倒按「翻面」</span><button class="btn on" data-a="ch-wide">加寬 ＋</button><button class="btn on" data-a="ch-narrow">縮小 －</button><button class="btn on" data-a="ch-flip">翻面 ⇅</button><button class="btn on" data-a="ch-ok">確定</button><button class="btn" data-a="dr-cancel">取消</button>${UD()}</div>`
+        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":this.drMode==="cup"?`杯柄：依序點 ①杯口左緣 ②杯底 ③杯口右緣 ④柄的最低點（已點 ${this.drPts.length}/4 個）`:this.drMode==="chan"?`平行線：點兩下畫第 1 條（起點、終點），第 2 條會自動帶出（已點 ${this.drPts.length}/2 個）`:"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button>${UD()}</div><div class="note" style="margin:2px 0 6px">${this.drMode==="poly"?"點錯了可按 ESC 取消重來。":"最後一根 K 棒右邊的空白處也可以點（日 K）。按 ESC 取消。"}</div>`;
         rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); }
     }
     else if(this.scMode==="menu") rb.innerHTML=`<div class="rangebar"><span>剪刀要做什麼？</span><button class="btn on" data-a="sc-box">自訂盤整區間</button><button class="btn on" data-a="sc-zoom">放大 K 線圖</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`;

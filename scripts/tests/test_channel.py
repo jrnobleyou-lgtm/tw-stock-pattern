@@ -21,6 +21,14 @@ class Channel(unittest.TestCase):
             self.assertEqual(r["kind"], kind, code)
             self.assertEqual(r["status"], "inchan", code)
 
+    def test_2412_has_short_channel_like_user_drawing(self):
+        B = load("2412")
+        r = PT.detect_channels(B, len(B) - 1)
+        short = [c for c in r if c["which"] == "短"]
+        self.assertTrue(short)
+        self.assertTrue(30 <= short[0]["L"] <= 40)        # 使用者畫的是最近約 35 天
+        self.assertEqual(short[0]["kind"], "上升趨勢通道")
+
     def test_flat_series_has_no_channel(self):
         B = [{"d": str(i), "o": 100, "h": 101 + (i % 3), "l": 99 - (i % 2), "c": 100 + (i % 4 - 1.5), "v": 1} for i in range(200)]
         self.assertIsNone(PT.detect_channel(B, len(B) - 1))

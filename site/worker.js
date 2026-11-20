@@ -420,6 +420,7 @@ function jobsAt(t) {                                       // t 為 UTC 時間�
   if (d >= 2 && d <= 6 && hm === 10) jobs.push("us.yml");                          // 台灣 08:10 美股（等 KV 每日寫入額度在台灣 08:00 重置後）
   if (d === 6 && hm === 1260) jobs.push("weekly-adjust.yml");                       // 台灣 週日 05:00 除權息檢查
   if ((hm >= 1320 || hm <= 930) && hm % ((hm >= 1320 ? d <= 4 : wk) ? 30 : 60) === 0) jobs.push("news.yml");   // 台灣 06:00–23:30 個股新聞：平日每 30 分、週末每小時
+  if (hm === 1020 || hm === 1170) jobs.push("news.yml");                           // 11/21 使用者：台灣 01:00、03:30 各補一輪新聞（夜間 RSS 只留最新 20 篇，避免漏）
   return jobs;
 }
 // ── 部署看門狗：GitHub deploy 分支有新版，但 Cloudflare 超過 4 分鐘沒開始部署 → 自動觸發一次（Worker secret CF_BUILD_TOKEN）

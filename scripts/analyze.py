@@ -547,12 +547,13 @@ def main():
         draw_upd = []
         if code in adm:                                # 管理者畫過：比對時間範圍
             geo, draw_upd = filter_by_drawings(geo, bars, adm[code])
-        chan = PT.detect_channel(bars, T)               # 趨勢通道：獨立欄位，不進形態打架；和楔形／三角形同時成立只留最後碰線日期較近的（相同留通道）
+        chans = PT.detect_channels(bars, T)             # 趨勢通道（長、短各一）：獨立欄位，不進形態打架；和楔形／三角形同時成立只留最後碰線日期較近的（相同留通道）
+        chan = chans[0] if chans else None
         if chan:
             for w in [g for g in geo if "楔形" in g["kind"] or "三角形" in g["kind"]]:
                 wl = max([i for i, _ in w["pts"] if i != T] or [-1])
                 if wl > chan["last_touch"]:
-                    chan = None
+                    chan, chans = None, []
                     break
             if chan:
                 geo = [g for g in geo if not ("楔形" in g["kind"] or "三角形" in g["kind"])]
@@ -658,15 +659,15 @@ def main():
                       "volup": bool(g.get("volup")),
                       "stop": (r2(R(g["stop"], bars[g["rect"][0]]["d"])) if g.get("stop") else None), "stopA": (r2(g["stop"]) if g.get("stop") else None),
                       "rect": ([bars[g["rect"][0]]["d"], bars[g["rect"][1]]["d"], r2(R(g["rect"][2], bars[g["rect"][0]]["d"])), r2(R(g["rect"][3], bars[g["rect"][0]]["d"])), r2(g["rect"][2]), r2(g["rect"][3])] if g.get("rect") else None)} for g in geo]
-        if chan:
+        for chan in chans:
             st["geo"].append({"kind": chan["kind"], "dir": chan["dir"], "status": chan["status"], "day": chan["day"], "neck": None, "neckA": None,
                               "pts": [[bars[i]["d"], r2(R(p, bars[i]["d"])), r2(p)] for i, p in chan["pts"]],
                               "lines": [[bars[a]["d"], r2(R(pa, bars[a]["d"])), bars[b]["d"], r2(R(pb, bars[b]["d"])), r2(pa), r2(pb)] for a, pa, b, pb in chan["lines"]],
                               "volup": False, "stop": None, "stopA": None, "rect": None,
-                              "L": chan["L"], "width": chan["width"], "move": chan["move"], "r2": chan["r2"], "pos": chan["pos"], "acc": chan["acc"], "side": chan["side"]})
+                              "L": chan["L"], "width": chan["width"], "move": chan["move"], "r2": chan["r2"], "pos": chan["pos"], "acc": chan["acc"], "side": chan["side"], "which": chan["which"]})
         gfull = st["geo"]
         if not us:                                       # 台股：data.js 只留篩選要用的欄位，畫圖座標放進個股檔 s/<代號>.json（點開才下載）
-            st["geo"] = [{k: g[k] for k in ("kind", "dir", "status", "day", "pos", "acc", "side") if k in g} for g in gfull]
+            st["geo"] = [{k: g[k] for k in ("kind", "dir", "status", "day", "pos", "acc", "side", "which") if k in g} for g in gfull]
         st["candle"] = [{"n": n, "d": d} for n, d in candle]
         if rb:
             rb["low"] = r2(R(rb["low"], bars[rb["low_idx"]]["d"]))

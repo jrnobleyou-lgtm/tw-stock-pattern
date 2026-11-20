@@ -797,7 +797,7 @@ def _chan_fit(B, e, L, T):
     # 先用便宜的條件擋掉大部分視窗：中線漲跌幅太小的不看（通道全程＝中線漲跌＋通道寬度，要 ≥25%，寬度最多 45%）
     m, b0 = _line(list(enumerate(mid)))
     move = abs(m) * (L - 1) / avg
-    if move < 0.1:
+    if move < 0.08:
         return None
     my = sum(mid) / L
     sst = sum((v - my) ** 2 for v in mid)
@@ -827,7 +827,7 @@ def _chan_fit(B, e, L, T):
                 continue
             lo0 = _pct([l[k] - sl * k for k in range(L)], 0.15)   # 下線平行：去趨勢後低點的第 15 百分位
             wid = (up0 - lo0) / avg
-            if not (0.04 <= wid <= 0.45) or move < 2.5 * wid or move + wid < 0.25:
+            if not (0.04 <= wid <= 0.45) or move < 2.0 * wid or move + wid < 0.15:
                 continue
             upv = [sl * k + up0 for k in range(L)]
             lov = [sl * k + lo0 for k in range(L)]
@@ -846,8 +846,75 @@ def _chan_fit(B, e, L, T):
     return best
 
 
+def _chan_cands(B, T):
+    cands = []
+    for k in range(0, 4):                                   # 視窗終點可以比最新一根早 0～3 根（那幾根是出界）
+        e = T - k
+        for L in range(10, 101):
+            f = _chan_fit(B, e, L, T)
+            if not f:
+                continue
+            sl, up0, lo0, s = f["sl"], f["up0"], f["lo0"], f["s"]
+            at = lambda i: (sl * (i - s) + up0, sl * (i - s) + lo0)
+            if k == 0:
+                up, lo = at(T)
+                if not (lo * 0.99 <= B[T]["c"] <= up * 1.01):
+                    continue
+                status, side = "inchan", 0
+            else:
+                sides = set()
+                for i in range(e + 1, T + 1):
+                    up, lo = at(i)
+                    sides.add(1 if B[i]["c"] > up * 1.01 else -1 if B[i]["c"] < lo * 0.99 else 0)
+                if len(sides) != 1 or 0 in sides:
+                    continue
+                status, side = "break", sides.pop()
+            f["status"], f["side"], f["k"] = status, side, k
+            cands.append(f)
+    return cands
+
+
+def _chan_out(B, T, f, label):
+    s, sl, up0, lo0 = f["s"], f["sl"], f["up0"], f["lo0"]
+    uT, lT = sl * (T - s) + up0, sl * (T - s) + lo0
+    pos = (B[T]["c"] - lT) / (uT - lT) if uT > lT else 0.5
+    up_dir = f["dir"] > 0
+    return {"kind": "上升趨勢通道" if up_dir else "下降趨勢通道", "dir": "bull" if up_dir else "bear",
+            "status": f["status"], "day": f["k"], "neck": None, "stop": None, "volup": False,
+            "pts": [(i, B[i]["h"]) for i in f["tu"][-2:]],
+            "lines": [(s, up0, T, uT), (s, lo0, T, lT)],
+            "L": f["L"], "width": round(f["wid"] * 100, 1), "move": round(f["move"] * 100, 1), "r2": round(f["r2"], 2),
+            "pos": round(pos, 2), "acc": 1 if f["side"] == f["dir"] else 0,
+            "last_touch": max(f["tu"] + f["tl"]), "side": f["side"], "which": label}
+
+
+def detect_channels(B, T):
+    """回傳 0～2 個通道：「長」＝碰觸次數最多的；「短」＝貼合度（R²）和最好的差 0.03 以內裡最短的（11/21 使用者：2412 人手畫的是最近一小段）。
+    兩個差不多（長度差 <10 根）就只回一個。"""
+    if T < 30:
+        return []
+    cands = _chan_cands(B, T)
+    if not cands:
+        return []
+    strict = [c for c in cands if c["move"] >= 2.5 * c["wid"] and c["move"] + c["wid"] >= 0.25]     # 「長」維持原規格；「短」才用放寬的條件
+    lg = max(strict, key=lambda c: (c["key"], -c["k"])) if strict else None
+    top = max(c["r2"] for c in cands)
+    sh = min((c for c in cands if c["r2"] >= top - 0.03), key=lambda c: (c["L"], -c["key"][0], c["k"]))
+    if lg is None:
+        return [_chan_out(B, T, sh, "短")]
+    out = [_chan_out(B, T, lg, "長")]
+    if lg["L"] - sh["L"] >= 10 and sh["dir"] == lg["dir"]:
+        out.append(_chan_out(B, T, sh, "短"))
+    return out
+
+
 def detect_channel(B, T):
-    """回傳 None 或 dict：kind／dir／status(inchan|break)／day／lines／pts／L／width／move／r2／pos／acc。"""
+    r = detect_channels(B, T)
+    return r[0] if r else None
+
+
+def _old_detect_channel(B, T):
+    """（舊版，只留參考）"""
     if T < 30:
         return None
     best = None

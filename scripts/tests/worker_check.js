@@ -43,6 +43,9 @@ let n = 0; const t = (name, f) => Promise.resolve().then(f).then(() => { n++; },
     assert.ok(F.jobsAt(new Date("2026-11-16T02:00:00Z")).includes("news.yml"));       // 平日每 30 分
     assert.ok(!F.jobsAt(new Date("2026-11-14T02:30:00Z")).includes("news.yml"));      // 週末只有整點
     assert.ok(F.jobsAt(new Date("2026-11-14T02:00:00Z")).includes("news.yml"));
+    assert.ok(F.jobsAt(new Date("2026-11-16T17:00:00Z")).includes("news.yml"));       // 台灣 01:00 夜間補一輪
+    assert.ok(F.jobsAt(new Date("2026-11-16T19:30:00Z")).includes("news.yml"));       // 台灣 03:30
+    assert.ok(!F.jobsAt(new Date("2026-11-16T18:00:00Z")).includes("news.yml"));      // 其他夜間時段不跑
   });
   await t("登入驗證", async () => {
     const hash = "ab".repeat(32), exp = String(Date.now() + 3600e3), sig = await F.hmac(hash, exp);
