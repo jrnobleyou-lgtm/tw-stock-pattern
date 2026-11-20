@@ -557,6 +557,8 @@ def main():
             if chan:
                 geo = [g for g in geo if not ("楔形" in g["kind"] or "三角形" in g["kind"])]
         state, tags, sub = E.apply_patterns(state, tags, sub, geo)
+        if chan:                                       # 標記（個股視窗上方的小標籤）：上升趨勢通道／（突破上緣）
+            tags = list(tags) + [chan["kind"] + ("" if chan["status"] == "inchan" else "（突破上緣）" if chan["side"] > 0 else "（跌破下緣）")]
         if state == "轉強":                         # 均線還沒排列向上（5>10>20 且三條都往上）之前的轉強＝弱轉強
             m5, m10, m20 = ma[5], ma[10], ma[20]
             j = max(T - 3, 0)

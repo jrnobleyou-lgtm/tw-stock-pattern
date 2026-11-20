@@ -98,6 +98,7 @@ tr.row:hover{background:rgba(255,255,255,.08)}
 .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid rgba(229,231,235,.5);color:var(--mute);margin:1px 0 1px 4px}
 .tag.hot{border-color:var(--s-strong);color:var(--s-strong);font-weight:700}
 .tag.bad{border-color:#fb7185;color:#fb7185}
+.tag.chn{background:rgba(245,158,11,.55);color:#fff;border-color:rgba(255,255,255,.45);font-weight:700;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .tag.pat{border-color:#7dd3fc;color:#7dd3fc}
 .badge{padding:2px 8px;border-radius:6px;font-size:12px;color:#fff}
 .btn{background:none;border:1px solid var(--line-t);color:var(--fg);padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit;font-size:13px}
@@ -424,6 +425,7 @@ $("#asof").textContent = D.live ? liveTxt() : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TP
 /* ───────── 共用 ───────── */
 function badge(s,sub){return `<span class="badge b-${CLS[s]}">${s}</span>` + (sub?`<span class="tag ${sub==="破底走弱"?"bad":""}">${sub}</span>`:"")}
 function tagCls(x){
+  if(/趨勢通道/.test(x)) return "chn";   /* 11/21 使用者：通道標記用橘底、白字、毛玻璃 */
   if(/^本週強勢/.test(x)) return "fl flw";
   if(/^今日強勢/.test(x)) return "fl fld";   /* 11/18 使用者：本週／今日強勢要分開底色、火焰感（window.FLV 切版本） */
   if(/突破第1根|準備突破|強勢止跌反彈|蓄勢待發/.test(x)) return "hot";
@@ -1400,7 +1402,7 @@ class Chart{
     if(/^scr-kd(lo|hi)$/.test(baseRaw||"")) this.ind.kd=1;
     if(/^scr-dmi(b|up|soon|pre)$/.test(baseRaw||"")) this.ind.dmi=1;
     if(/^scr-dmi(b|up|soon|pre)$/.test(baseRaw||"")) this.ind.kd=1;   /* 11/15 使用者：從任何 DMI 篩選點進來都同時開 DMI 和 KD */      /* 從「KD低檔／高檔鈍化」篩選點進來的個股，預設開 KD */
-    this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.range=null; this.active=null; this.listOpen=false;
+    this.sel=null; this.scissor=false; this.scMode=null; this.boxOn=true; this.chn=false; this.range=null; this.active=null; this.listOpen=false;
     this.cboxes=loadBoxes(s.code);
     this.isAdmin=/(?:^|;\s*)adm=1/.test(document.cookie); this.drMode=null; this.drPts=[]; this.drForm=false; this.drawings=[];
     if(/^[A-Za-z0-9.\-^]{1,12}$/.test(s.code)) fetch(`/api/draw?m=${D.market==="US"?"US":"TW"}&c=${encodeURIComponent(s.code)}`,{cache:"no-store"}).then(r=>r.ok?r.json():[]).then(v=>{if(Array.isArray(v)&&v.length){this.drawings=v;this.draw()}}).catch(()=>{});
@@ -1433,7 +1435,7 @@ class Chart{
     const row1=[["D","日K"],["W","週K"],["M","月K"]].map(([k,t])=>this.btn("tf-"+k,t,this.tf===k)).join("")+
       this.btn("geo","形態",this.geo,`style="color:${this.geo?"#1E40AF":"#4D7CFF"};font-weight:700"`);      // 開啟（黃底）用深藍、關閉（黑底）用亮一點的藍才看得清楚
     const row2=this.btn("maopen",(MA_ALL.some(n=>this.maOn[n])?"✓ ":"")+"均線"+(this.maOpen?" ▴":" ▾"),MA_ALL.some(n=>this.maOn[n]))+this.btn("boll","布林",this.ind.boll)+this.btn("dmi","DMI趨勢",this.ind.dmi)+this.btn("kd","KD",this.ind.kd)+this.btn("macd","MACD",this.ind.macd);
-    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb)+this.btn("rb","反彈%",this.rb);
+    const row3=this.btn("list","自訂區間"+(this.custom.length?`（${this.custom.length}）`:""),this.listOpen)+this.btn("scissor","✂️ 剪刀",!!this.scMode)+this.btn("boxon","區間框",this.boxOn)+((this.s.geo||[]).some(g=>/趨勢通道/.test(g.kind))?this.btn("chn","通道",this.chn):"")+(this.isAdmin?this.btn("draw","✏️ 畫線",!!this.drMode):"")+this.btn("adj","還原價",this.adjOn,hasAdj?"":'disabled title="這檔沒有除權息調整"')+this.btn("sup","支撐",this.sup)+this.btn("pb","回檔%",this.pb)+this.btn("rb","反彈%",this.rb);
     const row4=this.btn("older","◀ 早",0,'title="看更早"')+this.btn("newer","近 ▶",0,'title="看更近"')+this.btn("out","−",0,'title="縮小"')+this.btn("in","+",0,'title="放大"')+this.btn("reset","重設");
     const allOn=MA_ALL.every(n=>this.maOn[n]);
     const maopts=this.maOpen?`<div class="chips">${this.btn("maall",allOn?"✓ 全選":"全選",allOn)}${MA_ALL.map(n=>`<button class="btn ${this.maOn[n]?"on":""}" data-a="ma-${n}" style="${this.maOn[n]?"":"border-color:"+MA_COL[n]}">${this.maOn[n]?"✓ ":""}${n}日</button>`).join("")}</div>`:"";
@@ -1479,6 +1481,7 @@ class Chart{
     if(a==="scissor"){this.scMode=this.scMode?null:"menu";this.range=null;return this.build()}
     if(a==="sc-box"||a==="sc-zoom"){this.scMode=a==="sc-box"?"box":"zoom";this.range=null;return this.build()}
     if(a==="boxon"){this.boxOn=!this.boxOn;return this.build()}
+    if(a==="chn"){this.chn=!this.chn;return this.build()}
     if(a==="draw"){this.drMode=this.drMode?null:"menu";this.drPts=[];this.drForm=false;this.scMode=null;return this.build()}
     if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"||a==="dr-chan"||a==="dr-cup"){this.drMode=a.slice(3);this.drPts=[];return this.build()}
     if(a==="dr-done"){if(this.drPts.length>=2){this.drForm=true;this.build()}return}
@@ -1764,12 +1767,14 @@ class Chart{
       const ad=this.adjOn;
       const GA=(s.geo||[]), isCh=g=>/趨勢通道/.test(g.kind);
       for(const gm of GA.filter(g=>!isCh(g)).slice(0,2).concat(GA.filter(isCh))){                                // 同時最多畫 2 個形態（已依重要性排序）；趨勢通道另外畫
-        if(isCh(gm)){                                                          // 趨勢通道：上下兩條平行線（橘色）＋標籤，不畫折線與箭頭
-          const CC="#f59e0b"; let lx=null,ly=null;
+        if(isCh(gm)){                                                          // 趨勢通道：預設不畫，按「通道」才畫上下兩條平行線（橘色）；標籤放左上角（橘底白字毛玻璃）
+          if(!this.chn) continue;
+          const CC="#f59e0b";
           (gm.lines||[]).forEach(L=>{const d0=L[0],p0=ad&&L[4]!=null?L[4]:L[1],p1=ad&&L[5]!=null?L[5]:L[3],i0=idxOf(B,d0),i1=idxOf(B,L[2]);if(i0<0||i1<0)return;
             o+=`<line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="#000" stroke-width="5.4" stroke-opacity=".5"/><line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="${CC}" stroke-width="2.4" stroke-opacity=".9" stroke-dasharray="${gm.status==="break"?"6 4":""}"/>`;
-            if(lx===null||p1>ly){lx=x(i1);ly=y(p1)}});
-          if(lx!==null) labels.push([dn(gm.kind)+(gm.status==="break"?"（"+(gm.side>0?"突破上緣":"跌破下緣")+"）":""),lx-60,ly-6,{color:CC,weight:700}]);
+            });
+          {const tx=dn(gm.kind)+(gm.status==="break"?"（"+(gm.side>0?"突破上緣":"跌破下緣")+"）":"")+(gm.pos!=null&&gm.status==="inchan"?"　位置 "+Math.round(gm.pos*100)+"%":""),tw=tx.length*13+18;
+            o+=`<g><rect x="${pl+8}" y="${pt+6}" width="${tw}" height="24" rx="8" fill="rgba(245,158,11,.6)" stroke="rgba(255,255,255,.5)"/><text x="${pl+8+tw/2}" y="${pt+23}" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">${tx}</text></g>`}
           continue}
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
         const isV=gm.kind.startsWith("V形");                                  // V 形用鈷藍色粗圓角虛線（使用者 11/14 選定）
