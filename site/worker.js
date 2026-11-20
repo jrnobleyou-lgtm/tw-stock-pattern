@@ -252,10 +252,31 @@ async function usRoute(req, env, u) {
       }
       dayTbl += `<div class="m" style="margin-top:12px"><b>各 AI 型號工作狀況</b>（每批文章算一次呼叫；忙碌＝503、額度＝429、不存在＝型號被停用；秒數＝每次成功的平均耗時）</div><div class="xs" style="margin-top:6px"><table class="st"><tr>${["日期", "型號", "呼叫", "成功", "忙碌 503", "額度 429", "格式錯", "不存在", "平均秒數"].map(x => `<th>${x}</th>`).join("")}</tr>${ar.join("") || '<tr><td colspan="9" class="m">從 11/18 起累積</td></tr>'}</table></div>`;
     } catch (e) {}
+    // 11/20 使用者：新聞判斷日報做成設定頁小區塊（算前一天；數字都是 daily.json／meta.json 直接算，不靠 AI）；手機通知仍由每天 07:47 的排程送
+    let rptBlk = "";
+    try {
+      const E = (x) => String(x ?? "").replace(/[<>&]/g, ""), dj = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/daily.json", { cf: { cacheTtl: 300 } })).json();
+      const nm = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/meta.json", { cf: { cacheTtl: 300 } })).json();
+      const ys = new Date(Date.now() + 8 * 3600e3 - 86400e3).toISOString().slice(0, 10), pd = new Date(Date.now() + 8 * 3600e3 - 2 * 86400e3).toISOString().slice(0, 10);
+      const d = dj[ys], q = dj[pd] || {};
+      if (d) {
+        const al = Object.keys(dj).sort().slice(-3).map(k => dj[k].alert).filter(Boolean).pop(), stale = nm.ai_ok_t && (Date.now() / 1000 - nm.ai_ok_t) > 3 * 3600;
+        const hr = +new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 13);
+        const st = al ? `<span style="color:#fbbf24">⚠️ ${E(al)}</span>` : (stale && hr >= 6 && hr < 23 ? '<span style="color:#f87171">⚠️ AI 超過 3 小時沒有成功判斷</span>' : `✅ 新聞 AI 正常，目前型號：${E((nm.models || []).join("、")) || "—"}`);
+        const df = (a, b) => b === undefined ? "" : `（${a - b >= 0 ? "+" : ""}${a - b}）`;
+        const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
+        const ar = Object.entries(d.api || {}).map(([m, v]) => { const dr = (d.dirby || {})[m] || (d.dirby || {})["Gemini " + m], ok = v.ok || 0;
+          return `<tr><td>${E(m)}</td><td class="n">${v.calls}</td><td class="n">${pct(ok, v.calls)}</td><td class="n">${v.busy}</td><td class="n">${v.quota}</td><td class="n">${v.bad}</td><td class="n">${ok ? (v.secs / ok).toFixed(1) : "—"}</td><td class="n">${dr ? `${dr.up}／${dr.flat}／${dr.down}` : "—"}</td></tr>`; }).join("");
+        rptBlk = `<h1 style="font-size:16px;margin:14px 0 6px">新聞判斷日報（${ys.slice(5)}）</h1><div class="m">${st}</div>
+<div class="m">判斷 <b>${d.articles}</b> 篇${df(d.articles, q.articles)}　提到個股 <b>${d.withStock}</b> 篇${df(d.withStock, q.withStock)}　<span style="color:#f87171">上修 ${d.up}</span>　持平 ${d.flat}　<span style="color:#4ade80">下修 ${d.down}</span>　優先名單 ${d.pri || 0}／其他 ${d.non || 0}　忙碌 503：${d.busy || 0} 次　額度 429：${d.quota || 0} 次</div>
+<div class="xs" style="margin-top:6px"><table class="st"><tr><th>型號</th><th>呼叫</th><th>成功率</th><th>503</th><th>429</th><th>格式錯</th><th>平均秒數</th><th>上修／持平／下修</th></tr>${ar}</table></div>
+<div class="m" style="margin-top:4px">上修／持平／下修依型號分開記錄是 11/20 才開始，之前的日子顯示「—」。</div>`;
+      }
+    } catch (e) {}
     const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="k">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
     return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table class="st">${rows}</table>
-<button type="button" class="ghost" onclick="const d=document.getElementById('daytbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>每日新聞判斷統計（按一下展開／收合）</button><div id="daytbl" hidden>${dayTbl}</div>
+${rptBlk}<button type="button" class="ghost" onclick="const d=document.getElementById('daytbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>每日新聞判斷統計（按一下展開／收合）</button><div id="daytbl" hidden>${dayTbl}</div>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
 <input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
 <div class="m"><a href="/admin/">← 回管理者專區</a>　<a href="/admin/logout">登出</a></div>`, true);
