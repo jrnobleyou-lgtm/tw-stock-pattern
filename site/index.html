@@ -44,6 +44,7 @@ svg text{text-shadow:none}
 html.sub #home-link::after{content:"↩ 回首頁";font-size:12px;font-weight:400;color:#c4b5fd;background:rgba(167,139,250,.22);padding:2px 8px;border-radius:6px;margin-left:8px;margin-right:-6px}
 header{position:sticky;top:0;z-index:30;background:rgba(9,5,26,.8);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:16px;border-bottom:1px solid var(--line-t);display:flex;flex-wrap:wrap;gap:8px 12px;align-items:baseline}
 h1{font-size:18px;margin:0}
+#ttl{display:flex;flex-direction:column;align-items:flex-start;gap:3px}   /* 11/20 使用者：資料日期那行放在標題正下方，空出來的橫向空間給搜尋框 */
 header p{min-width:0;max-width:100%}
 nav{display:flex;gap:8px}
 nav a{color:var(--fg);text-decoration:none;padding:4px 12px;border:1px solid var(--line-t);border-radius:8px;font-size:13px}
@@ -58,7 +59,7 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
   /* 設定＋字體放在三個指數那一列的右邊（左邊用空白撐開，指數維持置中），不佔第一列 */
   header .hr::before{content:"";flex:1 1 100%;height:0;margin:-4px 0;order:1}
   header .hr::after{content:"";flex:1 1 0;order:2}
-  header #home-link,header #asof{order:-2}header .sf{order:-1}header #work{order:0}   /* 11/17 使用者：上班模式移到第一列最右邊（搜尋框右邊） */
+  header #ttl{order:-2}header .sf{order:-1}header #work{order:0}   /* 11/17 使用者：上班模式移到第一列最右邊（搜尋框右邊） */
   header #idx{order:3;flex:0 0 auto}
   header .fz{order:4;flex:1 1 0;justify-content:flex-end;margin-left:0}
   header nav{order:5}header>p{order:6}
@@ -400,8 +401,8 @@ html.mc3 .stt td.sn1 .sn,html.mc3 .stt td.sn1 .tvm{font-weight:700}html.mc3 .cv2
 </head>
 <body>
 <header>
-  <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
-  <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><a class="btn" id="xl" href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;color:inherit">🔗 停利停損試算器 ↗</a>
+  <div id="ttl"><h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
+  <span class="mute" id="asof"></span></div><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><a class="btn" id="xl" href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;color:inherit">🔗 停利停損試算器 ↗</a>
   <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#funds" id="n-funds">專業機構多空比</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
