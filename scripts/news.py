@@ -401,7 +401,7 @@ kind 填：事件（公司營運、財報、訂單、法說）／法人（外資
 
 
 class Quota(Exception):
-    pass
+    real = True                           # True＝真的遇到 429 額度用完；False＝只是 503 忙碌（11/21：忙碌只暫停約 10 分鐘）
 
 
 class BadBatch(Exception):
@@ -556,6 +556,7 @@ EV = {"busy": 0, "quota": 0}      # 本輪 AI 忙碌（503）、額度（429）�
 def judge(batch, prov):
     """回傳 (結果, 用哪個 AI)。額度用完換下一個 AI；回傳格式壞掉丟 BadBatch（呼叫端拆小再送），不換 AI。"""
     body = PROMPT + "".join(f"\n=== {a['id']}（{a['src']}）\n標題：{a['title']}\n內文：{a['text'][:TEXT_MAX]}\n" for a in batch)
+    saw429 = False
     while prov:
         name, url, key, model = prov[0]
         bad = 0
@@ -570,6 +571,7 @@ def judge(batch, prov):
             except Quota as e:
                 ev(model, "quota")
                 EV["quota"] += 1
+                saw429 = True
                 if tryno == 0:
                     time.sleep(WAIT_429)               # 多半是每分鐘上限，等一下再試
                     continue
@@ -598,7 +600,9 @@ def judge(batch, prov):
         prov.pop(0)                                    # 這個模型今天不能用了，換下一個
     if GONE:
         MINFO["fatal"] = True                          # 清單裡的型號全被 Google 回報不存在：要寄信
-    raise Quota("所有 AI 都不能用")
+    q = Quota("所有 AI 都不能用")
+    q.real = saw429
+    raise q
 
 
 # ───────── 主流程 ─────────
@@ -820,9 +824,9 @@ def main(out):
             else:
                 seen[batch[0]["k"]] = now               # 單篇還是壞：跳過這篇
             continue
-        except Quota:
-            meta["quota_until"] = now + 3600                # 1 小時內不再抓內文，避免一直打媒體網站
-            print("AI 額度都用完，剩下的之後再判斷")
+        except Quota as q:
+            meta["quota_until"] = now + (3600 if q.real else 600)   # 真的 429：1 小時；只是 503 忙碌：約 10 分鐘（11/21 修正）
+            print("AI 額度都用完，剩下的之後再判斷" if q.real else "AI 伺服器忙碌，約 10 分鐘後再試")
             break
         used[who] = used.get(who, 0) + 1
         day_stat["batches"] += 1

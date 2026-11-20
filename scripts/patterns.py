@@ -761,3 +761,131 @@ def rebound(B, T):
     score += 1 if c > B[T - 1]["h"] else 0               # 收復昨日高點
     return {"low": low20, "low_idx": lo_i, "drop": round(drop * 100, 1), "bounce": round(bounce * 100, 1),
             "pattern": cp, "vol_ratio": round(B[T]["v"] / vol5, 2) if vol5 else None, "score": score}
+
+
+# ───────────────────────── 趨勢通道（上升／下降，日K；獨立欄位，不進 resolve_conflicts）─────────────────────────
+# 規格：docs/topics/patterns.md 最後一條（11/21 Opus 審查＋使用者同意）
+def _pct(a, q):
+    b = sorted(a)
+    k = (len(b) - 1) * q
+    f = int(k)
+    return b[f] + (b[min(f + 1, len(b) - 1)] - b[f]) * (k - f)
+
+
+def _touches(vals, ref, tol, gap=3):
+    """連續碰觸算一次（相隔 ≥gap 根才算新的一次）；回傳碰觸的索引。"""
+    out = []
+    for i, (v, r) in enumerate(zip(vals, ref)):
+        if abs(v - r) <= tol[i]:
+            if not out or i - out[-1] >= gap:
+                out.append(i)
+    return out
+
+
+def _chan_fit(B, e, L, T):
+    """以 e 為終點、長度 L 的視窗找通道；不成立回傳 None。回傳 dict（索引為整段 B 的索引）。"""
+    s = e - L + 1
+    if s < 0:
+        return None
+    h = [B[i]["h"] for i in range(s, e + 1)]
+    l = [B[i]["l"] for i in range(s, e + 1)]
+    c = [B[i]["c"] for i in range(s, e + 1)]
+    mid = [(a + b) / 2 for a, b in zip(h, l)]
+    avg = sum(c) / L
+    if avg <= 0:
+        return None
+    # 先用便宜的條件擋掉大部分視窗：中線漲跌幅太小的不看（通道全程＝中線漲跌＋通道寬度，要 ≥25%，寬度最多 45%）
+    m, b0 = _line(list(enumerate(mid)))
+    move = abs(m) * (L - 1) / avg
+    if move < 0.1:
+        return None
+    my = sum(mid) / L
+    sst = sum((v - my) ** 2 for v in mid)
+    if sst <= 0:
+        return None
+    sse = sum((v - (m * i + b0)) ** 2 for i, v in enumerate(mid))
+    r2 = 1 - sse / sst
+    if r2 < 0.6:
+        return None
+    sign = 1 if m > 0 else -1
+    # 轉折高點：左右 2 根內最高，只用 T-2 以前
+    ph = [i for i in range(2, L - 2) if h[i] == max(h[i - 2:i + 3]) and s + i <= T - 2]
+    if len(ph) < 2:
+        return None
+    best = None
+    for a_ in range(len(ph)):
+        for b_ in range(a_ + 1, len(ph)):
+            i, j = ph[a_], ph[b_]
+            if j - i < L / 4:
+                continue
+            sl = (h[j] - h[i]) / (j - i)
+            if sl * sign <= 0:
+                continue
+            up0 = h[i] - sl * i                                   # 上線截距：y = sl*x + up0
+            over = sum(1 for k in range(L) if h[k] > (sl * k + up0) * 1.02)
+            if over > 0.075 * L:
+                continue
+            lo0 = _pct([l[k] - sl * k for k in range(L)], 0.15)   # 下線平行：去趨勢後低點的第 15 百分位
+            wid = (up0 - lo0) / avg
+            if not (0.04 <= wid <= 0.45) or move < 2.5 * wid or move + wid < 0.25:
+                continue
+            upv = [sl * k + up0 for k in range(L)]
+            lov = [sl * k + lo0 for k in range(L)]
+            tol = [min(0.02 * upv[k], 0.2 * (upv[k] - lov[k])) for k in range(L)]
+            tu = _touches(h, upv, tol)
+            tl = _touches(l, lov, tol)
+            if len(tu) < 3 or len(tl) < 3:
+                continue
+            allt = tu + tl
+            if max(allt) - min(allt) < 0.6 * L:
+                continue
+            key = (len(tu) + len(tl), r2, L)
+            if best is None or key > best["key"]:
+                best = {"key": key, "sl": sl, "up0": up0, "lo0": lo0, "s": s, "e": e, "L": L, "wid": wid, "move": move,
+                        "r2": r2, "tu": [s + t for t in tu], "tl": [s + t for t in tl], "dir": sign}
+    return best
+
+
+def detect_channel(B, T):
+    """回傳 None 或 dict：kind／dir／status(inchan|break)／day／lines／pts／L／width／move／r2／pos／acc。"""
+    if T < 30:
+        return None
+    best = None
+    for k in range(0, 4):                                   # 視窗終點可以比最新一根早 0～3 根（那幾根是出界）
+        e = T - k
+        for L in range(10, 101):
+            f = _chan_fit(B, e, L, T)
+            if not f:
+                continue
+            sl, up0, lo0, s = f["sl"], f["up0"], f["lo0"], f["s"]
+            at = lambda i: (sl * (i - s) + up0, sl * (i - s) + lo0)
+            if k == 0:
+                up, lo = at(T)
+                if not (lo * 0.99 <= B[T]["c"] <= up * 1.01):
+                    continue
+                status, side = "inchan", 0
+            else:
+                sides = set()
+                for i in range(e + 1, T + 1):
+                    up, lo = at(i)
+                    sides.add(1 if B[i]["c"] > up * 1.01 else -1 if B[i]["c"] < lo * 0.99 else 0)
+                if len(sides) != 1 or 0 in sides:
+                    continue
+                status, side = "break", sides.pop()
+            f["status"], f["side"], f["k"] = status, side, k
+            if best is None or (f["key"], -k) > (best["key"], -best["k"]):
+                best = f
+    if not best:
+        return None
+    f = best
+    s, sl, up0, lo0 = f["s"], f["sl"], f["up0"], f["lo0"]
+    uT, lT = sl * (T - s) + up0, sl * (T - s) + lo0
+    pos = (B[T]["c"] - lT) / (uT - lT) if uT > lT else 0.5
+    up_dir = f["dir"] > 0
+    return {"kind": "上升趨勢通道" if up_dir else "下降趨勢通道", "dir": "bull" if up_dir else "bear",
+            "status": f["status"], "day": f["k"], "neck": None, "stop": None, "volup": False,
+            "pts": [(i, B[i]["h"]) for i in f["tu"][-2:]],
+            "lines": [(s, up0, T, uT), (s, lo0, T, lT)],
+            "L": f["L"], "width": round(f["wid"] * 100, 1), "move": round(f["move"] * 100, 1), "r2": round(f["r2"], 2),
+            "pos": round(pos, 2), "acc": 1 if f["side"] == f["dir"] else 0,
+            "last_touch": max(f["tu"] + f["tl"]), "side": f["side"]}

@@ -641,7 +641,7 @@ function swPanel(){
   const md=a=>{const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length?(b.length%2?b[m]:(b[m-1]+b[m])/2):0};
   const ok1=x=>x&&x.chg!=null&&x.close*x.vol*1000>=1e7, ALL=Object.values(D.stocks).filter(ok1), mk=md(ALL.map(x=>x.chg));
   let resist=null;
-  if(D.market!=="US"&&ALL.length>100&&mk<=-1){
+  if(ALL.length>100&&mk<=-1){
     const dayM=[0,1,2,3,4].map(k=>md(ALL.map(x=>(x.r5||[]).slice(-5)[k]).filter(v=>v!=null)));
     const over=(r,o)=>{let k=0;for(const c of r.set) if(o.set.has(c)) k++;return k>0.5*Math.min(r.set.size,o.set.size)};
     resist=[];
@@ -661,7 +661,7 @@ function swPanel(){
     :`<div class="swr" ${go}><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`};
   const col=(title,cls,list,isS,isRel)=>`<div class="swc"><h3 class="${cls}">${title}${isRel?'<span class="mute" style="font-weight:400;font-size:12px">（沒有族群達 6 成，列相對'+(isS?'最強':'最弱')+' 3 個）</span>':""}</h3>${V===2?`<div class="swchips">${list.map(r=>item(r,cls,isS)).join("")}</div>`:list.map(r=>item(r,cls,isS)).join("")}</div>`;
   setTimeout(fitSw,0);
-  return `<div id="swwrap"><div class="swp${mkColState()?" mkcol":""}"><div class="swh swhead">盤後一眼看懂<button class="btn mkbtn" onclick="toggleMk()"></button></div><div class="swbody">`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div></div></div><div class="swp swgrp${grpColState()?" mkcol":""}"><div class="swh swhead">強弱族群<span class="mute"> ${D.live?D.live.date+" "+D.live.hms+" 盤中":D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span><button class="btn mkbtn grpbtn" onclick="toggleGrp()"></button></div><div class="swbody"><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+(resist?`<div class="swc"><h3 class="c-strong">相對抗跌族群<span class="mute" style="font-weight:400;font-size:12px">（全市場個股中位數 ${mk.toFixed(2)}%${(()=>{const t=twiiChg();return t!=null?`，加權 ${t.toFixed(2)}%`:""})()}）</span></h3>${resist.length?resist.map(r=>item(r,"c-strong",2)).join(""):'<div class="mute" style="padding:6px 0">今天沒有明顯抗跌的族群</div>'}<div class="mute" style="font-size:12px;margin-top:6px">有跌但跌不到市場一半的族群。抗跌不代表之後會漲，也可能只是還沒補跌。</div></div>`:"")+`</div></div></div></div>`;
+  return `<div id="swwrap"><div class="swp${mkColState()?" mkcol":""}"><div class="swh swhead">盤後一眼看懂<button class="btn mkbtn" onclick="toggleMk()"></button></div><div class="swbody">`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div></div></div><div class="swp swgrp${grpColState()?" mkcol":""}"><div class="swh swhead">強弱族群<span class="mute"> ${D.live?D.live.date+" "+D.live.hms+" 盤中":D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span><button class="btn mkbtn grpbtn" onclick="toggleGrp()"></button></div><div class="swbody"><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+(resist?`<div class="swc"><h3 class="c-strong">相對抗跌族群<span class="mute" style="font-weight:400;font-size:12px">（全市場個股中位數 ${mk.toFixed(2)}%${(()=>{if(D.market==="US")return "";const t=twiiChg();return t!=null?`，加權 ${t.toFixed(2)}%`:""})()}）</span></h3>${resist.length?resist.map(r=>item(r,"c-strong",2)).join(""):'<div class="mute" style="padding:6px 0">今天沒有明顯抗跌的族群</div>'}<div class="mute" style="font-size:12px;margin-top:6px">有跌但跌不到市場一半的族群。抗跌不代表之後會漲，也可能只是還沒補跌。</div></div>`:"")+`</div></div></div></div>`;
 }
 
 /* 11/19 使用者：首頁族群表自己選排序（不再固定幫他排）。def＝原本順序（轉強＋型態好比例高的在前，樣本少的最後） */
@@ -918,6 +918,8 @@ const FILTERS = [
   {k:"cup", name:"杯柄", f:s=>s.geo.some(g=>g.kind==="杯柄")},
   {k:"rnd", name:"圓弧底", f:s=>s.geo.some(g=>g.kind==="圓弧底")},
   {k:"bot", name:"底部反轉（雙底・頭肩底・V底）", f:s=>s.geo.some(g=>(["雙重底","雙重底（不對稱）","頭肩底","V形底"].includes(g.kind)||(g.kind==="島型反轉底"&&g.status!=="hist")))},   /* 11/16 使用者同意：島型反轉底也算 */
+  {k:"chin", name:"趨勢通道（目前在通道內）", f:s=>s.geo.some(g=>/趨勢通道/.test(g.kind)&&g.status==="inchan")},   /* 11/21 使用者：上升／下降通道，日K；在通道內 */
+  {k:"chbk", name:"趨勢通道剛突破（3 天內）", f:s=>s.geo.some(g=>/趨勢通道/.test(g.kind)&&g.status==="break")},
   {k:"wdg", name:"下降楔形／三角形", f:s=>s.geo.some(g=>["下降楔形","上升三角形","對稱三角形"].includes(g.kind))},
   {k:"top", name:"頂部反轉（走弱）", f:s=>s.geo.some(g=>["雙重頂","頭肩頂","V形頂","圓弧頂","上升楔形","島型反轉頂","下降三角形"].includes(g.kind)&&g.status==="confirmed"&&g.dir==="bear")},   /* 11/16 Fable：上升楔形往上突破是看漲，不算；加島型反轉頂、下降三角形 */
   {k:"pb",  name:"多頭回檔（觀察）", f:s=>s.sub==="多頭回檔"},
@@ -1084,7 +1086,7 @@ function notesHTML(s){
   let h="";
   if(s.box) h+=`<p>盤整區間：${s.box.s} ～ ${s.box.e}<br>上緣 ${s.box.hi}　下緣 ${s.box.lo}<br>${s.ev?`事件：${s.ev.date} ${evText(s.ev)}`:"價格仍在區間內"}</p>`;
   else if(s.state) h+=`<p>目前沒有符合規則的盤整區間。</p>`;
-  if(s.geo&&s.geo.length) h+=`<p>形態（系統判斷）：`+s.geo.map(g=>`${dn(g.kind)}（${({confirmed:"剛成立",near:"接近頸線",forming:"成形中",hist:"成立超過 10 天，只標在圖上"})[g.status]}${g.neck?"，頸線 "+g.neck:""}${g.stop?"，停損參考 "+g.stop:""}${g.volup?"，量增":""}）`).join("、")+`</p>`;
+  if(s.geo&&s.geo.length) h+=`<p>形態（系統判斷）：`+s.geo.map(g=>`${dn(g.kind)}（${({confirmed:"剛成立",near:"接近頸線",forming:"成形中",hist:"成立超過 10 天，只標在圖上",inchan:"目前在通道內"+(g.pos!=null?"，位置 "+Math.round(g.pos*100)+"%（0%＝下緣、100%＝上緣）":""),break:(g.side>0?"收盤突破上緣":"收盤跌破下緣")+g.day+"天"+(g.acc?"，加速"+(g.side>0?"上漲":"下跌"):"")})[g.status]}${g.neck?"，頸線 "+g.neck:""}${g.stop?"，停損參考 "+g.stop:""}${g.volup?"，量增":""}）`).join("、")+`</p>`;
   if(s.rebound) h+=`<p>止跌反彈：自高點跌 ${s.rebound.drop}%，谷底 ${fmt(s.rebound.low)}，已反彈 ${s.rebound.bounce}%，分數 ${s.rebound.score}。</p>`;
   return h;
 }
@@ -1760,7 +1762,15 @@ class Chart{
     }
     if(this.geo&&this.tf!=="M"){
       const ad=this.adjOn;
-      for(const gm of (s.geo||[]).slice(0,2)){                                // 同時最多畫 2 個形態（已依重要性排序）
+      const GA=(s.geo||[]), isCh=g=>/趨勢通道/.test(g.kind);
+      for(const gm of GA.filter(g=>!isCh(g)).slice(0,2).concat(GA.filter(isCh))){                                // 同時最多畫 2 個形態（已依重要性排序）；趨勢通道另外畫
+        if(isCh(gm)){                                                          // 趨勢通道：上下兩條平行線（橘色）＋標籤，不畫折線與箭頭
+          const CC="#f59e0b"; let lx=null,ly=null;
+          (gm.lines||[]).forEach(L=>{const d0=L[0],p0=ad&&L[4]!=null?L[4]:L[1],p1=ad&&L[5]!=null?L[5]:L[3],i0=idxOf(B,d0),i1=idxOf(B,L[2]);if(i0<0||i1<0)return;
+            o+=`<line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="#000" stroke-width="5.4" stroke-opacity=".5"/><line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="${CC}" stroke-width="2.4" stroke-opacity=".9" stroke-dasharray="${gm.status==="break"?"6 4":""}"/>`;
+            if(lx===null||p1>ly){lx=x(i1);ly=y(p1)}});
+          if(lx!==null) labels.push([dn(gm.kind)+(gm.status==="break"?"（"+(gm.side>0?"突破上緣":"跌破下緣")+"）":""),lx-60,ly-6,{color:CC,weight:700}]);
+          continue}
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
         const isV=gm.kind.startsWith("V形");                                  // V 形用鈷藍色粗圓角虛線（使用者 11/14 選定）
         const ZC="#4D7CFF", LC=col;                                            // 所有型態折線固定鈷藍色（使用者 11/14 定）；趨勢線與頸線依多空紅綠
@@ -2141,7 +2151,7 @@ async function fundsPage(){
   if(!F||!F.series){$("#app").innerHTML='<p class="note">專業機構多空比資料暫時讀不到，請稍後再試。</p>';return}
   const age=Math.floor((Date.now()-new Date(F.asof+"T00:00:00Z"))/864e5), stale=age>10;
   $("#app").innerHTML=`<div class="fpg${stale?" fstale":""}"><h2>專業機構多空比 <button class="btn fi" id="fhelp" type="button" title="${fesc(FUNDS_HELP)}" aria-label="說明">ⓘ</button></h2>
-  <div class="src">資料日：${F.asof.slice(5).replace("-","/")}（週二資料；美東每週五下午 3:30 公布＝台灣週六凌晨 4:30（夏令 3:30），本站約週六早上更新；下次約 ${(new Date(new Date(F.asof+"T00:00:00Z").getTime()+10*864e5)).toISOString().slice(5,10).replace("-","/")}）${stale?'　<b style="color:#fbbf24">⚠️ 資料超過 10 天沒更新</b>':""}</div>
+  <div class="src">資料日：${F.asof.slice(5).replace("-","/")}（週二；每週五公布，下次約 ${(new Date(new Date(F.asof+"T00:00:00Z").getTime()+10*864e5)).toISOString().slice(5,10).replace("-","/")}；美東時間週五下午 3:30 公布＝台灣週六凌晨 4:30，夏令為 3:30）${stale?'　<b style="color:#fbbf24">⚠️ 資料超過 10 天沒更新</b>':""}</div>
   <div class="fhelp" id="fhelpbox" hidden>${fesc(FUNDS_HELP).replace(/\n/g,"<br>")}</div>
   <div class="fgrid">${["sp","nq","vix"].filter(k=>F.series[k]).map(k=>fundsCard(k,F.series[k])).join("")}</div>
   <div class="src">資料：美國期貨交易委員會（CFTC）持倉週報，槓桿基金類別；僅供參考，非投資建議。</div></div>`;
@@ -2441,6 +2451,9 @@ const LV=(()=>{
       ["成交量 1.5 倍以上突破上緣＝轉強（已突破的看「突破第1根」篩選）","沒帶量走出去＝無量突破待追蹤","突破後 3 天內又收回＝假突破；連 3 天在下緣下＝區間失效（紫色框）"],"整理越久越要等「帶量」突破再確認。","rdy"),
     I("sym","整理","對稱三角形","三角收斂、收斂三角形","neu","高點越來越低、低點越來越高，像三角形越收越小。多空都在等，突破哪一邊就往哪邊走。",
       ["上線往下、下線往上，越收越窄"],["靠近上線或下線 3% 以內＝接近","最近 3 天突破上線看漲、跌破下線看跌"],"突破後又回到三角形裡面＝假突破。","wdg"),
+    I("chan","整理","趨勢通道","上升通道、下降通道、軌道線、趨勢軌道","neu","股價沿著一條斜斜的軌道走，上緣和下緣是兩條平行線，高點碰上緣、低點碰下緣。順著軌道買在下緣、減碼在上緣；突破上緣常是加速，跌破下緣常是趨勢轉壞。上升和下降通道都找（日K）。",
+      ["取 10～100 根日K，中線漲跌要夠明顯（整段通道至少 25%）、貼合度 R² 0.6 以上","上線連兩個高點、下線與它平行，通道寬度 4%～45%","上下線各碰到 3 次以上，而且碰觸分布在整段的 6 成以上時間"],
+      ["最新收盤在通道內（上下緣各放寬 1%）＝「目前在通道內」，並顯示位置 0%～100%","收盤出界 3 天內＝「剛突破（突破上緣／跌破下緣）」；順著趨勢方向出界標「加速」","超過 3 天沒回通道就不顯示"],"收盤回到通道內就算假突破；通道方向不代表一定續漲或續跌。","chin"),
     I("asc","整理","上升三角形","上升三角","bull","上面是一條水平的壓力線，低點卻越墊越高。代表買方越來越積極，常常往上突破。",
       ["上緣差不多水平","低點一次比一次高"],["靠近上緣 3% 以內＝接近","收盤突破上緣＝已突破（標 3 天）"],"跌破下面那條上升線就失敗。","wdg"),
     I("desc","整理","下降三角形","下降三角","bear","下面是一條水平的支撐線，高點卻越來越低。代表賣方越來越積極，常常往下跌破。",
