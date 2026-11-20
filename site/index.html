@@ -384,6 +384,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:900px){html.mc1 .stt .c-dup,html.mc2 .stt .c-dup{display:none}}   /* 11/18 使用者：手機版名稱下已有成交值、股價欄已有收盤，右邊不用再放（window.MCV：1 只拿掉重複欄、2 再讓標記自動換行不用左右滑） */
 .xlb{display:block;margin:0 0 10px;padding:9px 14px;border:1px solid rgba(167,139,250,.5);border-radius:10px;background:rgba(167,139,250,.12);color:#e9e5ff;text-decoration:none;font-size:14px;text-align:center}
+html:not(.xl1) #tl{display:none}.tl{position:relative;display:inline-block}.tlm{position:absolute;top:calc(100% + 6px);right:0;min-width:210px;max-width:calc(100vw - 24px);z-index:60;background:rgba(20,14,46,.97);border:1px solid var(--line-t);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.5)}.tlm[hidden]{display:none}.tlm a{display:block;padding:9px 12px;border-radius:8px;color:var(--fg);text-decoration:none;font-size:14px;white-space:nowrap}.tlm a:hover{background:rgba(255,255,255,.1)}.tlm small{display:block;color:var(--mute);font-size:11px;margin-top:2px}@media(max-width:900px){.tlm{right:auto;left:0}}   /* 11/21 使用者：小工具選單（停利停損試算器、台股玄學預測回預測） */
 html.xl1 #xl{display:inline-block!important}#xl{border-color:rgba(var(--g),.55)!important;background:rgba(167,139,250,.14)!important;color:#e9e5ff!important;font-weight:600}   /* 11/18 使用者：網站入口放外部連結（window.XLV：1 頁首按鈕、2 首頁最上方橫條） */
 .stt tr.tgr{display:none}.stt .tgl{display:none}
 /* 11/18 使用者：手機版「標記」要有標題；名稱＋成交值、股價＋漲跌幅各用框框起來（window.MBX：1 細框線、2 淡底色框） */
@@ -402,7 +403,7 @@ html.mc3 .stt td.sn1 .sn,html.mc3 .stt td.sn1 .tvm{font-weight:700}html.mc3 .cv2
 <body>
 <header>
   <div id="ttl"><h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
-  <span class="mute" id="asof"></span></div><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><a class="btn" id="xl" href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;color:inherit">🔗 停利停損試算器 ↗</a>
+  <span class="mute" id="asof"></span></div><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><div class="tl" id="tl"><button class="btn" id="xl" type="button" aria-haspopup="true" aria-expanded="false">🧰 小工具 ▾</button><div class="tlm" id="tlm" hidden><a href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer">🔗 停利停損試算器 ↗<small>算停利、停損價位</small></a><a href="https://taiex-four-schools.vercel.app/" target="_blank" rel="noopener noreferrer">🔗 台股玄學預測回預測 ↗<small>另一個網站</small></a></div></div>
   <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#funds" id="n-funds">專業機構多空比</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
@@ -2231,6 +2232,7 @@ function restoreNav(h){ if(navBack&&navPos[h]!=null){const y=navPos[h];[0,120,40
 })();
 
 (function(){const h=document.querySelector("header"),f=()=>document.documentElement.style.setProperty("--hh",h.offsetHeight+"px");if(window.ResizeObserver)new ResizeObserver(f).observe(h);f()})();   // 型態標籤列貼在頁首下方
+{const tb=document.getElementById("xl"),tm=document.getElementById("tlm");if(tb&&tm){const cl=()=>{tm.hidden=true;tb.setAttribute("aria-expanded","false")};tb.onclick=e=>{e.stopPropagation();tm.hidden=!tm.hidden;tb.setAttribute("aria-expanded",String(!tm.hidden))};tm.onclick=e=>{e.stopPropagation();if(e.target.closest("a"))setTimeout(cl,0)};document.addEventListener("click",cl);document.addEventListener("keydown",e=>{if(e.key==="Escape")cl()})}}
 {const v=window.MCV||3;document.documentElement.classList.add("mt"+(window.MTV||2),"ai"+(window.AIV||2),"xl"+(window.XLV||1),"fl"+(window.FLV||2));document.documentElement.classList.add("mc"+v,"bx"+(window.MBX||2));document.documentElement.classList.add("mbc"+(window.MBC||4))}
 if(window.NVA!==false) document.documentElement.classList.add("nvA");
 if(/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-draw").style.display="";   // 只有管理者看得到「我的畫線」
