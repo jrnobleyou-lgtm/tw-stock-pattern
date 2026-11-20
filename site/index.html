@@ -618,7 +618,7 @@ function swLiveStart(){ if(swTimer) clearInterval(swTimer); swTimer=setInterval(
 let swRO=null;
 function fitSw(){   /* 11/16 修：表頭寬度一變（展開、A＋A−、盤中重畫、字型載入）就重算；縮到 8px 還放不下才用「…」 */
   if(!swRO&&window.ResizeObserver) swRO=new ResizeObserver(es=>es.forEach(e=>fit1(e.target)));
-  document.querySelectorAll(".swg .swc h3").forEach(h=>{if(swRO&&!h.__ro){h.__ro=1;swRO.observe(h)}fit1(h)});
+  document.querySelectorAll(".swg .swc h3").forEach(h=>{if(swRO&&!h.__ro){h.__ro=1;swRO.observe(h)}h.title=h.textContent;fit1(h)});
 }
 function fit1(h){
   const m=h.querySelector(".mute");if(!m)return;m.style.fontSize="";m.style.textOverflow="";
