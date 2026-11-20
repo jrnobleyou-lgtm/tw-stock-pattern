@@ -1528,8 +1528,8 @@ class Chart{
     this.ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(this.drMode&&this.drMode!=="menu"&&!this.drForm){            // 畫線模式：點一下加一個點
       if(e.pointerType==="mouse"&&e.button!==0) return;
-      const i=this.indexAt(e),p=this.priceAt(e); if(i<0||p==null) return;
-      this.drPts.push([this.bars[i].d,+p.toFixed(2)]);
+      const i=this.drIdx(e),p=this.priceAt(e); if(i<0||p==null) return;
+      this.drPts.push([i<this.bars.length?this.bars[i].d:this.futDate(i-this.bars.length+1),+p.toFixed(2)]);
       const need=this.drMode==="hline"?1:this.drMode==="line"?2:this.drMode==="chan"?4:0;
       if(need&&this.drPts.length>=need){this.drForm=true;this.build()} else this.draw();
       return;
@@ -1619,7 +1619,12 @@ class Chart{
     fetch(`/api/draw?m=${D.market==="US"?"US":"TW"}&c=${encodeURIComponent(this.s.code)}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(list)})
       .then(r=>{if(!r.ok) alertBox(this.el,r.status===403?"登入已過期，請重新登入管理者專區後再存":"儲存失敗，請再試一次")}).catch(()=>alertBox(this.el,"儲存失敗，請檢查網路"));
   }
-  idxOfDate(d){const B=this.bars;let lo=0,hi=B.length-1;if(!B.length)return -1;if(d<=B[0].d)return 0;if(d>B[hi].d)return hi;
+  futDate(k){const t=new Date(this.bars[this.bars.length-1].d+"T00:00:00Z");let n=0;while(n<k){t.setUTCDate(t.getUTCDate()+1);const w=t.getUTCDay();if(w&&w!==6)n++}return t.toISOString().slice(0,10)}   /* 日 K 最後一根之後第 k 個交易日（只跳週末），畫線點到右邊空白處用 */
+  futK(d){const t=new Date(this.bars[this.bars.length-1].d+"T00:00:00Z"),e=new Date(d+"T00:00:00Z");let n=0;while(t<e&&n<60){t.setUTCDate(t.getUTCDate()+1);const w=t.getUTCDay();if(w&&w!==6)n++}return n}
+  drIdx(e){const N=this.bars.length,g=this.geom(),r=this.rect(),x=(e.clientX-r.left)/r.width*g.W;let i=g.vs+Math.floor((x-g.pl)/g.cw);
+    if(this.tf==="D"&&this.end===N){const mx=g.vs+Math.floor((g.W-2-g.pl)/g.cw);return Math.max(g.vs,Math.min(mx,i))}   /* 看最新畫面時，可以點右邊空白處（最後一根之後） */
+    return Math.min(this.end-1,Math.max(g.vs,i))}
+  idxOfDate(d){const B=this.bars;let lo=0,hi=B.length-1;if(!B.length)return -1;if(d<=B[0].d)return 0;if(d>B[hi].d)return this.tf==="D"?hi+this.futK(d):hi;
     while(lo<hi){const m=(lo+hi)>>1;if(B[m].d<d)lo=m+1;else hi=m}return lo}
 
   draw(){
@@ -1900,7 +1905,7 @@ class Chart{
         if(!preview&&d.name) labels.push([d.name+" "+fmt(pp),x(Math.max(vs,i))+30,y(pp),{color:DC,weight:700,prefer:["up","down","right"]}]);return}
       if(d.kind==="chan"){[P.slice(0,2),P.slice(2,4)].forEach(sg=>{if(sg.length<2) return;const pc=sg.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pc}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pc}" fill="none" stroke="${DC}" stroke-width="2.2" ${preview?'stroke-dasharray="4 3"':""}/>`})}
       else {const pd2=P.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pd2}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pd2}" fill="none" stroke="${DC}" stroke-width="2.2" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/>`}
-      P.forEach(([i,pp])=>{if(i>=vs&&i<ve)o+=`<circle cx="${x(i)}" cy="${y(pp)}" r="2.6" fill="${DC}"/>`});
+      P.forEach(([i,pp])=>{if(i>=vs&&(i<ve||(i>=B.length&&x(i)<W)))o+=`<circle cx="${x(i)}" cy="${y(pp)}" r="2.6" fill="${DC}"/>`});
       if(!preview&&d.name){const [li,lp]=P.reduce((a,b)=>b[1]>a[1]?b:a);labels.push([d.name,x(li),y(lp),{color:DC,weight:700,prefer:["up","right","left","down"]}])}
     };
     (this.drawings||[]).forEach(d=>drawOne(d,false));
@@ -2036,7 +2041,7 @@ class Chart{
           rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); const n=rb.querySelector("#dr-name"); n&&n.focus()} }
       else { rb.dataset.form=""; rb.innerHTML=this.drMode==="menu"
         ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button><button class="btn on" data-a="dr-chan">平行線（畫兩條）</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
-        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":this.drMode==="chan"?`平行線：先點兩下畫第 1 條（起點、終點），再點兩下畫第 2 條（已點 ${this.drPts.length}/4 個）`:"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button></div>`;
+        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":this.drMode==="chan"?`平行線：先點兩下畫第 1 條（起點、終點），再點兩下畫第 2 條（已點 ${this.drPts.length}/4 個）`:"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button></div><div class="note" style="margin:2px 0 6px">${this.drMode==="poly"?"點錯了可按 ESC 取消重來。":"最後一根 K 棒右邊的空白處也可以點（日 K）。按 ESC 取消。"}</div>`;
         rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); }
     }
     else if(this.scMode==="menu") rb.innerHTML=`<div class="rangebar"><span>剪刀要做什麼？</span><button class="btn on" data-a="sc-box">自訂盤整區間</button><button class="btn on" data-a="sc-zoom">放大 K 線圖</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`;
