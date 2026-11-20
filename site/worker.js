@@ -403,7 +403,7 @@ async function drawRoute(req, env, u) {
   if (!(await usAuthed(req, env))) return new Response("請先登入管理者專區", { status: 403 });
   const list = await req.json();
   if (!Array.isArray(list) || list.length > 200) return new Response("bad", { status: 400 });
-  const clean = list.map(d => ({ id: String(d.id || "").slice(0, 20), kind: ["poly", "line", "hline", "chan"].includes(d.kind) ? d.kind : "poly",
+  const clean = list.map(d => ({ id: String(d.id || "").slice(0, 20), kind: ["poly", "line", "hline", "chan", "cup"].includes(d.kind) ? d.kind : "poly",
     name: String(d.name || "").slice(0, 30), note: String(d.note || "").slice(0, 200),
     pts: (d.pts || []).slice(0, 30).map(p => [String(p[0]).slice(0, 10), Number(p[1])]).filter(p => /^\d{4}-\d\d-\d\d$/.test(p[0]) && isFinite(p[1])) }));
   await env.US.put(key, JSON.stringify(clean));

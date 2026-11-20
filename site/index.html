@@ -1477,7 +1477,7 @@ class Chart{
     if(a==="sc-box"||a==="sc-zoom"){this.scMode=a==="sc-box"?"box":"zoom";this.range=null;return this.build()}
     if(a==="boxon"){this.boxOn=!this.boxOn;return this.build()}
     if(a==="draw"){this.drMode=this.drMode?null:"menu";this.drPts=[];this.drForm=false;this.scMode=null;return this.build()}
-    if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"||a==="dr-chan"){this.drMode=a.slice(3);this.drPts=[];return this.build()}
+    if(a==="dr-poly"||a==="dr-line"||a==="dr-hline"||a==="dr-chan"||a==="dr-cup"){this.drMode=a.slice(3);this.drPts=[];return this.build()}
     if(a==="dr-done"){if(this.drPts.length>=2){this.drForm=true;this.build()}return}
     if(a==="dr-cancel"){this.cancelTools();return}
     if(a==="dr-save"){
@@ -1531,7 +1531,7 @@ class Chart{
       if(e.pointerType==="mouse"&&e.button!==0) return;
       const i=this.drIdx(e),p=this.priceAt(e); if(i<0||p==null) return;
       this.drPts.push([i<this.bars.length?this.bars[i].d:this.futDate(i-this.bars.length+1),+p.toFixed(2)]);
-      const need=this.drMode==="hline"?1:this.drMode==="line"?2:this.drMode==="chan"?4:0;
+      const need=this.drMode==="hline"?1:this.drMode==="line"?2:(this.drMode==="chan"||this.drMode==="cup")?4:0;
       if(need&&this.drPts.length>=need){this.drForm=true;this.build()} else this.draw();
       return;
     }
@@ -1905,6 +1905,13 @@ class Chart{
       if(d.kind==="hline"){const [i,pp]=P[0];o+=`<line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="#000" stroke-width="4.6" stroke-opacity=".75" ${preview?'stroke-dasharray="4 3"':""}/><line x1="${x(Math.max(vs,i))}" x2="${W-pr}" y1="${y(pp)}" y2="${y(pp)}" stroke="${DC}" stroke-width="1.8" ${preview?'stroke-dasharray="4 3"':""}/>`;
         if(!preview&&d.name) labels.push([d.name+" "+fmt(pp),x(Math.max(vs,i))+30,y(pp),{color:DC,weight:700,prefer:["up","down","right"]}]);return}
       if(d.kind==="chan"){[P.slice(0,2),P.slice(2,4)].forEach(sg=>{if(sg.length<2) return;const pc=sg.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pc}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pc}" fill="none" stroke="${DC}" stroke-width="2.2" ${preview?'stroke-dasharray="4 3"':""}/>`})}
+      else if(d.kind==="cup"){
+        let pc="";
+        if(P.length>=3&&P[0][0]!==P[1][0]&&P[1][0]!==P[2][0]&&P[0][0]!==P[2][0]){const [a,b,c]=P,L=t=>a[1]*(t-b[0])*(t-c[0])/((a[0]-b[0])*(a[0]-c[0]))+b[1]*(t-a[0])*(t-c[0])/((b[0]-a[0])*(b[0]-c[0]))+c[1]*(t-a[0])*(t-b[0])/((c[0]-a[0])*(c[0]-b[0]));
+          const x0=Math.min(a[0],c[0]),x1=Math.max(a[0],c[0]);for(let k=0;k<=40;k++){const t=x0+(x1-x0)*k/40;pc+=(k?"L":"M")+x(t)+","+y(L(t))}}
+        else pc=P.slice(0,3).map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");
+        if(P.length>=4) pc+="L"+x(P[3][0])+","+y(P[3][1]);
+        o+=`<path d="${pc}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pc}" fill="none" stroke="${DC}" stroke-width="2.2" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/>`}
       else {const pd2=P.map(([i,pp],k)=>(k?"L":"M")+x(i)+","+y(pp)).join("");o+=`<path d="${pd2}" fill="none" stroke="#000" stroke-width="5" stroke-opacity=".75" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/><path d="${pd2}" fill="none" stroke="${DC}" stroke-width="2.2" stroke-linejoin="round" ${preview?'stroke-dasharray="4 3"':""}/>`}
       P.forEach(([i,pp])=>{if(i>=vs&&(i<ve||(i>=B.length&&x(i)<W)))o+=`<circle cx="${x(i)}" cy="${y(pp)}" r="2.6" fill="${DC}"/>`});
       if(!preview&&d.name){const [li,lp]=P.reduce((a,b)=>b[1]>a[1]?b:a);labels.push([d.name,x(li),y(lp),{color:DC,weight:700,prefer:["up","right","left","down"]}])}
@@ -2041,8 +2048,8 @@ class Chart{
       if(this.drForm){ if(rb.dataset.form!=="1"){rb.dataset.form="1";rb.innerHTML=`<div class="rangebar" style="flex-wrap:wrap"><input id="dr-name" placeholder="型態名稱，例如 雙重底" maxlength="30" style="flex:1;min-width:140px"><input id="dr-note" placeholder="備註（選填）" maxlength="200" style="flex:2;min-width:160px"><button class="btn on" data-a="dr-save">儲存</button><button class="btn" data-a="dr-cancel">取消</button></div>`;
           rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); const n=rb.querySelector("#dr-name"); n&&n.focus()} }
       else { rb.dataset.form=""; rb.innerHTML=this.drMode==="menu"
-        ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button><button class="btn on" data-a="dr-chan">平行線（畫兩條）</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
-        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":this.drMode==="chan"?`平行線：先點兩下畫第 1 條（起點、終點），再點兩下畫第 2 條（已點 ${this.drPts.length}/4 個）`:"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button></div><div class="note" style="margin:2px 0 6px">${this.drMode==="poly"?"點錯了可按 ESC 取消重來。":"最後一根 K 棒右邊的空白處也可以點（日 K）。按 ESC 取消。"}</div>`;
+        ?`<div class="rangebar"><span>畫什麼？</span><button class="btn on" data-a="dr-poly">折線（W、M、頭肩）</button><button class="btn on" data-a="dr-line">直線</button><button class="btn on" data-a="dr-hline">水平線</button><button class="btn on" data-a="dr-chan">平行線（畫兩條）</button><button class="btn on" data-a="dr-cup">杯柄（點 4 下）</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`
+        :`<div class="rangebar"><span>✏️ ${this.drMode==="poly"?`在圖上依序點下每個轉折點（已點 ${this.drPts.length} 個），畫完按「完成」`:this.drMode==="line"?"點兩下：起點、終點":this.drMode==="cup"?`杯柄：依序點 ①杯口左緣 ②杯底 ③杯口右緣 ④柄的最低點（已點 ${this.drPts.length}/4 個）`:this.drMode==="chan"?`平行線：先點兩下畫第 1 條（起點、終點），再點兩下畫第 2 條（已點 ${this.drPts.length}/4 個）`:"點一下要畫線的價位"}</span>${this.drMode==="poly"?`<button class="btn on" data-a="dr-done" ${this.drPts.length<2?"disabled":""}>完成</button>`:""}<button class="btn" data-a="dr-cancel">取消</button></div><div class="note" style="margin:2px 0 6px">${this.drMode==="poly"?"點錯了可按 ESC 取消重來。":"最後一根 K 棒右邊的空白處也可以點（日 K）。按 ESC 取消。"}</div>`;
         rb.querySelectorAll("[data-a]").forEach(el=>el.onclick=()=>this.act(el.dataset.a)); }
     }
     else if(this.scMode==="menu") rb.innerHTML=`<div class="rangebar"><span>剪刀要做什麼？</span><button class="btn on" data-a="sc-box">自訂盤整區間</button><button class="btn on" data-a="sc-zoom">放大 K 線圖</button></div><div class="note" style="margin:2px 0 6px">點空白處或按 ESC 取消。</div>`;
@@ -2133,7 +2140,7 @@ async function fundsPage(){
   if(!F||!F.series){$("#app").innerHTML='<p class="note">專業機構多空比資料暫時讀不到，請稍後再試。</p>';return}
   const age=Math.floor((Date.now()-new Date(F.asof+"T00:00:00Z"))/864e5), stale=age>10;
   $("#app").innerHTML=`<div class="fpg${stale?" fstale":""}"><h2>專業機構多空比 <button class="btn fi" id="fhelp" type="button" title="${fesc(FUNDS_HELP)}" aria-label="說明">ⓘ</button></h2>
-  <div class="src">資料日：${F.asof.slice(5).replace("-","/")}（週二；每週五公布，下次約 ${(new Date(new Date(F.asof+"T00:00:00Z").getTime()+10*864e5)).toISOString().slice(5,10).replace("-","/")}）${stale?'　<b style="color:#fbbf24">⚠️ 資料超過 10 天沒更新</b>':""}</div>
+  <div class="src">資料日：${F.asof.slice(5).replace("-","/")}（週二資料；美東每週五下午 3:30 公布＝台灣週六凌晨 4:30（夏令 3:30），本站約週六早上更新；下次約 ${(new Date(new Date(F.asof+"T00:00:00Z").getTime()+10*864e5)).toISOString().slice(5,10).replace("-","/")}）${stale?'　<b style="color:#fbbf24">⚠️ 資料超過 10 天沒更新</b>':""}</div>
   <div class="fhelp" id="fhelpbox" hidden>${fesc(FUNDS_HELP).replace(/\n/g,"<br>")}</div>
   <div class="fgrid">${["sp","nq","vix"].filter(k=>F.series[k]).map(k=>fundsCard(k,F.series[k])).join("")}</div>
   <div class="src">資料：美國期貨交易委員會（CFTC）持倉週報，槓桿基金類別；僅供參考，非投資建議。</div></div>`;
