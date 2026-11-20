@@ -19,6 +19,7 @@ data/classify_manual.txt
 data/uncertain.csv
 data/backfill.log
 site/data.js
+site/funds.json
 site/s/
 site/f/
 site/preview.html

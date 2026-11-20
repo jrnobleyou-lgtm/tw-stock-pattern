@@ -54,13 +54,16 @@ jobs:
         run: |
           python3 scripts/etf.py daily
           python3 scripts/etf.py build
+      - name: 專業資金期貨部位（CFTC 週報，台股頁也看得到；失敗沿用舊資料）
+        continue-on-error: true
+        run: python3 scripts/cftc_funds.py
       - name: 提交資料
         if: steps.chg.outputs.changed == 'true'
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
           git add data/hist data/adjust.csv data/pending_ex.csv data/index_TWII.json data/index_OTC.json data/index_TX.json data/index_TX_day.json data/index_TX_night.json
-          git add data/hist_etf data/etf_class.csv data/rev $(ls data/eps_cum.json data/eps_fm.json data/margin_cum.json data/margin_fm.json data/fin_meta.json 2>/dev/null)
+          git add data/hist_etf data/etf_class.csv data/rev $(ls data/funds.json 2>/dev/null) $(ls data/eps_cum.json data/eps_fm.json data/margin_cum.json data/margin_fm.json data/fin_meta.json 2>/dev/null)
           git diff --cached --quiet || (git commit -m "data $(date -u +%F)" && (git push || (git pull --rebase -q origin main && git push)))
       - name: 發布到 deploy 分支（Cloudflare Pages 會自動從這個分支發布）
         if: steps.chg.outputs.changed == 'true'

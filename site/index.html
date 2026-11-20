@@ -402,7 +402,7 @@ html.mc3 .stt td.sn1 .sn,html.mc3 .stt td.sn1 .tvm{font-weight:700}html.mc3 .cv2
 <header>
   <h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
   <span class="mute" id="asof"></span><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><a class="btn" id="xl" href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer" style="display:none;text-decoration:none;color:inherit">🔗 停利停損試算器 ↗</a>
-  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#funds" id="n-funds" style="display:none">專業資金</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
+  <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#funds" id="n-funds">專業資金</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
 <div class="wrap" id="app"></div>
@@ -2099,7 +2099,7 @@ function fundsCard(k,S){
   const line=seg.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join("");
   const lab=pct>=80?"相對自己過去一年，偏多":pct<=20?"相對自己過去一年，偏空":"相對自己過去一年，位置中性";
   const note=k==="vix"?`槓桿基金在 VIX 期貨${cur<0?"淨空單":"淨多單"}（${cur<0?"偏向押注波動會降、市場平穩":"偏向押注波動會升"}）；${lab}。`:`槓桿基金在${S.name}${cur<0?"淨空單":"淨多單"}；${lab}。這常包含「股票做多、期貨避險」，不等於看空。`;
-  return `<div class="fcard"><h3>${S.name}</h3><div class="fkv"><div><small>淨口數（多減空）</small><b style="color:${cur<0?"#4ade80":"#f87171"}">${fmt(cur)}</b></div><div><small>多單 ÷ 空單</small><b>${ratio.toFixed(2)}</b><small>多單佔 ${share}%</small></div><div><small>近 52 週百分位</small><b>${pct}</b><small>0＝最空　100＝最多</small></div><div><small>比上週</small><b>${fmt(ch)}</b></div></div>
+  return `<div class="fcard"><h3>${S.name}</h3><div class="fkv"><div><small>淨口數（多減空）</small><b style="color:${cur<0?"#4ade80":"#f87171"}">${fmt(cur)}</b></div><div><small>多單 ÷ 空單</small><b>${ratio.toFixed(2)}</b><small>多單佔 ${share}%</small></div><div><small>近 52 週百分位</small><b>${pct}</b><small>0＝最空　100＝最多</small></div><div><small>比上週</small><b style="color:${ch<0?"#4ade80":ch>0?"#f87171":"inherit"}">${fmt(ch)}</b></div></div>
   <svg viewBox="0 0 ${W} ${H}" class="fsv" preserveAspectRatio="none"><line x1="0" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="#8b86b8" stroke-dasharray="4 4" stroke-width="1"/><path d="${line}" fill="none" stroke="#7FDBFF" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="${W}" cy="${y(cur).toFixed(1)}" r="4" fill="#facc15"/></svg>
   <div class="fax"><span>近 3 年淨口數（虛線＝0）</span><span>最高 ${hi.toLocaleString()}　最低 ${lo.toLocaleString()}</span></div><p class="fnote">${note}</p></div>`;
 }
@@ -2229,7 +2229,6 @@ if(D.market!=="US"&&/(?:^|;\s*)adm=1/.test(document.cookie)){$("#n-mkt").textCon
 /* 11/17 使用者：手機版「美股／台股」鈕移到「設定」左邊（上班模式那一列），電腦版維持在導覽列 */
 {const mq=matchMedia("(max-width:900px)"),pl=()=>{const m=$("#n-mkt"),fz=document.querySelector("header .fz"),st=$("#n-set");if(mq.matches)fz.insertBefore(m,st);else document.querySelector("header nav").appendChild(m)};pl();mq.addEventListener&&mq.addEventListener("change",pl)}
 if(D.market==="US") $("#n-etf").style.display="none";   /* ETF 專區只有台股 */
-if(D.market==="US") $("#n-funds").style.display="";   /* 11/20 專業資金期貨部位：只有美股（管理者專區）有 */
 if(D.market==="US"||/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-set").style.display="";   /* 11/17 使用者：設定鈕在最右邊，台股登入後也要有 */   // 登入後顯示「美股」，登入前才顯示「管理者專區」
 renderIdx();if(D.market!=="US")pollIdx();
 {const q=new URLSearchParams(location.search).get("q");if(new URLSearchParams(location.search).get("from")==="1"){window.__bounced=true;try{history.replaceState(null,"",location.pathname+location.hash)}catch(_){}}if(q){history.replaceState(null,"",location.pathname+"#find-"+encodeURIComponent(q))}}   // 從另一個市場跳過來的搜尋
