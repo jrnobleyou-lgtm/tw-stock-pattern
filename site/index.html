@@ -386,7 +386,7 @@ html.kdA .swbar small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stt td.sn1{white-space:nowrap}.stt th.sn1,.stt td.sn1,.stt th.gp,.stt td.gp{text-align:center}.stt td.chg2{min-width:0;padding-left:4px;padding-right:4px}.stt td.tg{min-width:300px}
 @media(max-width:900px){html.mc1 .stt .c-dup,html.mc2 .stt .c-dup{display:none}}   /* 11/18 使用者：手機版名稱下已有成交值、股價欄已有收盤，右邊不用再放（window.MCV：1 只拿掉重複欄、2 再讓標記自動換行不用左右滑） */
 .xlb{display:block;margin:0 0 10px;padding:9px 14px;border:1px solid rgba(167,139,250,.5);border-radius:10px;background:rgba(167,139,250,.12);color:#e9e5ff;text-decoration:none;font-size:14px;text-align:center}
-html:not(.xl1) #tl{display:none}.tl{position:relative;display:inline-block}.tlm{position:absolute;top:calc(100% + 6px);right:0;min-width:210px;max-width:calc(100vw - 24px);z-index:60;background:rgba(20,14,46,.97);border:1px solid var(--line-t);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.5)}.tlm[hidden]{display:none}.tlm a{display:block;padding:9px 12px;border-radius:8px;color:var(--fg);text-decoration:none;font-size:14px;white-space:nowrap}.tlm a:hover{background:rgba(255,255,255,.1)}.tlm small{display:block;color:var(--mute);font-size:11px;margin-top:2px}@media(max-width:900px){.tlm{right:auto;left:0}}   /* 11/21 使用者：小工具選單（停利停損試算器、台股玄學預測回預測） */
+html:not(.xl1) #tl{display:none}.tl{position:relative;display:inline-block}.tlm{position:absolute;top:calc(100% + 6px);left:0;min-width:210px;max-width:calc(100vw - 24px);z-index:60;background:rgba(20,14,46,.97);border:1px solid var(--line-t);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.5)}.tlm[hidden]{display:none}.tlm a{display:block;padding:9px 12px;border-radius:8px;color:var(--fg);text-decoration:none;font-size:14px;white-space:nowrap}.tlm a:hover{background:rgba(255,255,255,.1)}.tlm small{display:block;color:var(--mute);font-size:11px;margin-top:2px}   /* 11/21 使用者：小工具選單（停利停損試算器、台股玄學預測回預測） */
 html.xl1 #xl{display:inline-block!important}#xl{border-color:rgba(var(--g),.55)!important;background:rgba(167,139,250,.14)!important;color:#e9e5ff!important;font-weight:600}   /* 11/18 使用者：網站入口放外部連結（window.XLV：1 頁首按鈕、2 首頁最上方橫條） */
 .stt tr.tgr{display:none}.stt .tgl{display:none}
 /* 11/18 使用者：手機版「標記」要有標題；名稱＋成交值、股價＋漲跌幅各用框框起來（window.MBX：1 細框線、2 淡底色框） */
@@ -405,7 +405,7 @@ html.mc3 .stt td.sn1 .sn,html.mc3 .stt td.sn1 .tvm{font-weight:700}html.mc3 .cv2
 <body>
 <header>
   <div id="ttl"><h1 id="home-link" style="cursor:pointer" title="回首頁">每日股票型態確認</h1>
-  <span class="mute" id="asof"></span></div><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button><div class="tl" id="tl"><button class="btn" id="xl" type="button" aria-haspopup="true" aria-expanded="false">🧰 小工具 ▾</button><div class="tlm" id="tlm" hidden><a href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer">🔗 停利停損試算器 ↗<small>算停利、停損價位</small></a><a href="https://taiex-four-schools.vercel.app/" target="_blank" rel="noopener noreferrer">🔗 台股玄學預測回預測 ↗<small>另一個網站</small></a></div></div>
+  <span class="mute" id="asof"></span><div class="tl" id="tl" style="display:block;margin-top:6px"><button class="btn" id="xl" type="button" aria-haspopup="true" aria-expanded="false">🧰 小工具 ▾</button><div class="tlm" id="tlm" hidden><a href="https://timber-quiet-heart-sapphire.grok.me/" target="_blank" rel="noopener noreferrer">🔗 停利停損試算器 ↗<small>算停利、停損價位</small></a><a href="https://taiex-four-schools.vercel.app/" target="_blank" rel="noopener noreferrer">🔗 台股玄學預測回預測 ↗<small>另一個網站</small></a></div></div></div><button class="btn" id="work" title="切換成低調的上班背景">上班模式</button>
   <div class="hr"><form id="sf" class="sf" autocomplete="off"><input id="sq" type="search" enterkeyhint="search" placeholder="自訂搜尋：台積電 2330 聯亞…"><button class="btn" type="submit">搜尋</button></form><div id="idx"></div><nav><a href="#" id="n-home">族群統計</a><a href="#scr" id="n-scr">型態篩選</a><a href="#mix" id="n-mix">綜合篩選</a><a href="#etf" id="n-etf">ETF專區</a><a href="#funds" id="n-funds">專業機構多空比</a><a href="#mydraw" id="n-draw" style="display:none">我的畫線✏️</a><a href="/admin/" id="n-mkt">管理者專區</a></nav><div class="fz"><button class="btn" id="hbk" onclick="goPrev()">← 返回上一頁</button><a href="/admin/settings" id="n-set" style="display:none">設定</a><span class="mute">字體</span><button class="btn" id="fzm" title="縮小字體">A−</button><button class="btn" id="fzp" title="放大字體">A＋</button></div></div>
   <p class="mute" style="flex-basis:100%;margin:0;font-size:13px">每日收盤後自動更新，依族群統計台股有多少檔轉強、弱轉強、型態好、盤整、走弱，並在 K 線圖上標出盤整區間與突破訊號。</p>
 </header>
@@ -642,10 +642,10 @@ function swPanel(){
      M ≤ -1% 才顯示；族群中位數 G ≤ 0 且跌幅不到市場一半（G ≥ M/2）、族群內 ≥60% 跌得比 M 少；排除強勢族群與跟它重疊過半的；依 G−M 排前 5，不硬湊。
      近 5 日也抗跌：近 5 日市場下跌的日子（至少 2 天），族群累積跌幅不到市場累積的一半。 */
   const md=a=>{const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length?(b.length%2?b[m]:(b[m-1]+b[m])/2):0};
-  const ok1=x=>x&&x.chg!=null&&x.close*x.vol*1000>=1e7, ALL=Object.values(D.stocks).filter(ok1), mk=md(ALL.map(x=>x.chg));
+  const ok1=x=>x&&x.chg!=null&&x.close*x.vol*1000>=1e7, ALL=Object.values(D.stocks).filter(ok1), US_=D.market==="US", BASE=US_?ALL.slice().sort((a,b)=>b.close*b.vol-a.close*a.vol).slice(0,100):ALL, mk=md(BASE.map(x=>x.chg));   /* 11/21 美股：全市場中位數看不出大型股重挫（中位數只 −0.14%、前 100 大成交值 −2.8%），美股基準改用成交值前 100 大個股的中位數 */
   let resist=null;
   if(ALL.length>100&&mk<=-1){
-    const dayM=[0,1,2,3,4].map(k=>md(ALL.map(x=>(x.r5||[]).slice(-5)[k]).filter(v=>v!=null)));
+    const dayM=[0,1,2,3,4].map(k=>md(BASE.map(x=>(x.r5||[]).slice(-5)[k]).filter(v=>v!=null)));
     const over=(r,o)=>{let k=0;for(const c of r.set) if(o.set.has(c)) k++;return k>0.5*Math.min(r.set.size,o.set.size)};
     resist=[];
     for(const r of rows.slice().sort((a,b)=>(b.med-mk)-(a.med-mk))){
@@ -664,7 +664,7 @@ function swPanel(){
     :`<div class="swr" ${go}><b>${r.name}</b><span class="${cls}">${f(r.med)}</span><span class="mute">${sub(r,isS)}</span></div>`};
   const col=(title,cls,list,isS,isRel)=>`<div class="swc"><h3 class="${cls}">${title}${isRel?'<span class="mute" style="font-weight:400;font-size:12px">（沒有族群達 6 成，列相對'+(isS?'最強':'最弱')+' 3 個）</span>':""}</h3>${V===2?`<div class="swchips">${list.map(r=>item(r,cls,isS)).join("")}</div>`:list.map(r=>item(r,cls,isS)).join("")}</div>`;
   setTimeout(fitSw,0);
-  return `<div id="swwrap"><div class="swp${mkColState()?" mkcol":""}"><div class="swh swhead">盤後一眼看懂<button class="btn mkbtn" onclick="toggleMk()"></button></div><div class="swbody">`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div></div></div><div class="swp swgrp${grpColState()?" mkcol":""}"><div class="swh swhead">強弱族群<span class="mute"> ${D.live?D.live.date+" "+D.live.hms+" 盤中":D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span><button class="btn mkbtn grpbtn" onclick="toggleGrp()"></button></div><div class="swbody"><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+(resist?`<div class="swc"><h3 class="c-strong">相對抗跌族群<span class="mute" style="font-weight:400;font-size:12px">（全市場個股中位數 ${mk.toFixed(2)}%${(()=>{if(D.market==="US")return "";const t=twiiChg();return t!=null?`，加權 ${t.toFixed(2)}%`:""})()}）</span></h3>${resist.length?resist.map(r=>item(r,"c-strong",2)).join(""):'<div class="mute" style="padding:6px 0">今天沒有明顯抗跌的族群</div>'}<div class="mute" style="font-size:12px;margin-top:6px">有跌但跌不到市場一半的族群。抗跌不代表之後會漲，也可能只是還沒補跌。</div></div>`:"")+`</div></div></div></div>`;
+  return `<div id="swwrap"><div class="swp${mkColState()?" mkcol":""}"><div class="swh swhead">盤後一眼看懂<button class="btn mkbtn" onclick="toggleMk()"></button></div><div class="swbody">`+mktCards()+`<div class="mkr" id="macro" style="margin-top:10px"></div></div></div><div class="swp swgrp${grpColState()?" mkcol":""}"><div class="swh swhead">強弱族群<span class="mute"> ${D.live?D.live.date+" "+D.live.hms+" 盤中":D.asof}・族群內個股漲跌幅中位數，至少 5 檔、成交值太小的不算</span><button class="btn mkbtn grpbtn" onclick="toggleGrp()"></button></div><div class="swbody"><div class="swg">`+col("強勢族群","c-strong",strong,true,sRel)+col("弱勢族群","c-weak",weak,false,wRel)+(resist?`<div class="swc"><h3 class="c-strong">相對抗跌族群<span class="mute" style="font-weight:400;font-size:12px">（${US_?"成交值前 100 大個股":"全市場個股"}中位數 ${mk.toFixed(2)}%${(()=>{if(D.market==="US")return "";const t=twiiChg();return t!=null?`，加權 ${t.toFixed(2)}%`:""})()}）</span></h3>${resist.length?resist.map(r=>item(r,"c-strong",2)).join(""):'<div class="mute" style="padding:6px 0">今天沒有明顯抗跌的族群</div>'}<div class="mute" style="font-size:12px;margin-top:6px">有跌但跌不到市場一半的族群。抗跌不代表之後會漲，也可能只是還沒補跌。</div></div>`:"")+`</div></div></div></div>`;
 }
 
 /* 11/19 使用者：首頁族群表自己選排序（不再固定幫他排）。def＝原本順序（轉強＋型態好比例高的在前，樣本少的最後） */
@@ -921,6 +921,8 @@ const FILTERS = [
   {k:"cup", name:"杯柄", f:s=>s.geo.some(g=>g.kind==="杯柄")},
   {k:"rnd", name:"圓弧底", f:s=>s.geo.some(g=>g.kind==="圓弧底")},
   {k:"bot", name:"底部反轉（雙底・頭肩底・V底）", f:s=>s.geo.some(g=>(["雙重底","雙重底（不對稱）","頭肩底","V形底"].includes(g.kind)||(g.kind==="島型反轉底"&&g.status!=="hist")))},   /* 11/16 使用者同意：島型反轉底也算 */
+  {k:"chup", name:"上升趨勢通道（在通道內或剛突破）", f:s=>s.geo.some(g=>g.kind==="上升趨勢通道")},   /* 11/21 使用者：型態篩選多兩個上升／下降 */
+  {k:"chdn", name:"下降趨勢通道（在通道內或剛突破）", f:s=>s.geo.some(g=>g.kind==="下降趨勢通道")},
   {k:"chin", name:"趨勢通道（目前在通道內）", f:s=>s.geo.some(g=>/趨勢通道/.test(g.kind)&&g.status==="inchan")},   /* 11/21 使用者：上升／下降通道，日K；在通道內 */
   {k:"chbk", name:"趨勢通道剛突破（3 天內）", f:s=>s.geo.some(g=>/趨勢通道/.test(g.kind)&&g.status==="break")},
   {k:"wdg", name:"下降楔形／三角形", f:s=>s.geo.some(g=>["下降楔形","上升三角形","對稱三角形"].includes(g.kind))},
