@@ -1,0 +1,649 @@
+// 盤中即時 K 棒：瀏覽器呼叫 /api/quote?s=2330.TW ，這裡代為向 Yahoo 取當日 1 分 K 並合成今天的 開高低收量。
+// 其餘網址由 Cloudflare 直接提供靜態網站檔案（不會進到這支程式）。
+const SYM = /^(\d{4,6}[A-Z]?\.(TW|TWO)|\^TWII|\^TWOII|[A-Z][A-Z0-9.\-]{0,9})$/;     // 最後一種是美股代號
+
+function parseChart(j) {
+  const r = j && j.chart && j.chart.result && j.chart.result[0];
+  if (!r || !r.timestamp || !r.indicators || !r.indicators.quote) return null;
+  const q = r.indicators.quote[0], ts = r.timestamp, off = (r.meta && r.meta.gmtoffset) || 28800;
+  let o = null, h = -Infinity, l = Infinity, c = null, last = 0, n = 0;
+  for (let i = 0; i < ts.length; i++) {
+    if (q.close[i] == null || q.high[i] == null || q.low[i] == null) continue;
+    if (o == null) o = q.open[i] != null ? q.open[i] : q.close[i];
+    h = Math.max(h, q.high[i]); l = Math.min(l, q.low[i]); c = q.close[i]; last = ts[i]; n++;
+  }
+  if (!n) return null;
+  const meta = r.meta || {};
+  let v = meta.regularMarketVolume;
+  if (v == null) { v = 0; for (let i = 0; i < ts.length; i++) v += q.volume && q.volume[i] || 0; }
+  const day = new Date((last + off) * 1000).toISOString().slice(0, 10);
+  const r2 = x => Math.round(x * 100) / 100;
+  return { date: day, o: r2(o), h: r2(h), l: r2(l), c: r2(c), v, t: last, prev: meta.chartPreviousClose || meta.previousClose || null };
+}
+
+// ── 證交所即時行情（mis.twse.com.tw，幾秒延遲）：個股、加權、櫃買指數都有；失敗才退回 Yahoo（約延遲 20 分）
+const MIS_URL = "https://mis.twse.com.tw/stock/";
+let misCookie = "", misCookieAt = 0, misErr = "";
+const lastGood = {};   // 每個代號最近一次成功的證交所資料（失敗時暫用，最多 90 秒）
+function misChannel(sym) {
+  if (sym === "^TWII") return "tse_t00.tw";
+  if (sym === "^TWOII") return "otc_o00.tw";
+  const m = sym.match(/^(\d{4,6}[A-Z]?)\.(TW|TWO)$/);
+  return m ? (m[2] === "TW" ? "tse_" : "otc_") + m[1].toLowerCase() + ".tw" : null;
+}
+const num = x => { const v = parseFloat(x); return isFinite(v) ? v : null; };
+function parseMis(j) {
+  const m = j && j.msgArray && j.msgArray[0];
+  if (!m) return null;
+  const pos = x => { const v = num(x); return v != null && v > 0 ? v : null; };      // 價格一定大於 0（"-"、0 都視為沒有）
+  const first = str => { for (const t of String(str || "").split("_")) { const v = pos(t); if (v != null) return v; } return null; };
+  const z = pos(m.z), o = pos(m.o), y = pos(m.y);
+  const c = z != null ? z : (first(m.b) != null ? first(m.b) : (first(m.a) != null ? first(m.a) : o));
+  let h = pos(m.h), l = pos(m.l);
+  if (c == null || o == null) return null;               // 還沒開盤／沒有可用價格
+  if (h == null) h = Math.max(o, c);
+  if (l == null) l = Math.min(o, c);
+  h = Math.max(h, o, c); l = Math.min(l, o, c);
+  const d = String(m.d || ""); if (d.length !== 8) return null;
+  const date = d.slice(0, 4) + "-" + d.slice(4, 6) + "-" + d.slice(6, 8);
+  const tl = m.tlong ? Math.floor(Number(m.tlong) / 1000) : 0;
+  const idx = m.c === "t00" || m.c === "o00", amt = idx && num(m.m) != null ? Math.round(num(m.m) * (m.c === "t00" ? 0.776 : 0.967)) / 1000 : null;   // 指數：m 換算成億元，再依 11/12 官方值校正（證交所即時的 m 比官方成交金額高：加權約 +29%、櫃買約 +3.5%）；收盤後以官方為準
+  return { date, o, h, l, c, amt, v: (num(m.v) || 0) * 1000, t: tl, hms: m.t || "", prev: y, delay: 0 };
+}
+async function misQuote(sym) {
+  const ch = misChannel(sym); if (!ch) { misErr = "nochannel"; return null; }
+  const now = Date.now();
+  if (!misCookie || now - misCookieAt > 600000) {
+    const r0 = await fetch(MIS_URL + "index.jsp", { headers: { "user-agent": "Mozilla/5.0" } });
+    const sc = r0.headers.getSetCookie ? r0.headers.getSetCookie() : [r0.headers.get("set-cookie") || ""];
+    misCookie = sc.map(x => x.split(";")[0]).filter(Boolean).join("; "); misCookieAt = now;
+    misErr = "idx " + r0.status;
+  }
+  const r = await fetch(`${MIS_URL}api/getStockInfo.jsp?ex_ch=${ch}&json=1&delay=0&_=${now}`, {
+    headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": misCookie, "accept": "application/json" },
+  });
+  if (!r.ok) { misCookie = ""; misErr = "http " + r.status; return null; }
+  const txt = await r.text(); let j; try { j = JSON.parse(txt); } catch (e) { misCookie = ""; misErr = "notjson " + txt.slice(0, 60).replace(/\s+/g, " "); return null; }
+  const pm = parseMis(j); if (!pm) misErr = "empty"; return pm;
+}
+
+// 批次：給排程程式一次取多檔（上限 100 檔），回傳證交所原始欄位
+const EX = /^(tse|otc)_([0-9a-z]{4,6}|t00|o00)\.tw$/;
+async function misBatch(ex) {
+  const list = ex.split("|").filter(Boolean);
+  if (!list.length || list.length > 100 || !list.every(x => EX.test(x))) return null;
+  for (let k = 0; k < 3; k++) {
+    try {
+      const now = Date.now();
+      if (!misCookie || now - misCookieAt > 600000) {
+        const r0 = await fetch(MIS_URL + "index.jsp", { headers: { "user-agent": "Mozilla/5.0" } });
+        const sc = r0.headers.getSetCookie ? r0.headers.getSetCookie() : [r0.headers.get("set-cookie") || ""];
+        misCookie = sc.map(x => x.split(";")[0]).filter(Boolean).join("; "); misCookieAt = now;
+      }
+      const r = await fetch(`${MIS_URL}api/getStockInfo.jsp?ex_ch=${list.join("%7C")}&json=1&delay=0&_=${now}`, {
+        headers: { "user-agent": "Mozilla/5.0", "referer": MIS_URL + "index.jsp", "cookie": misCookie, "accept": "application/json" },
+      });
+      if (r.ok) { const j = JSON.parse(await r.text()); if (j && j.msgArray) return j.msgArray.map(m => ({ c: m.c, ex: m.ex, z: m.z, o: m.o, h: m.h, l: m.l, y: m.y, v: m.v, tv: m.tv, d: m.d, t: m.t, b: m.b, a: m.a })); }
+    } catch (e) { /* 重試 */ }
+    misCookie = ""; await new Promise(r => setTimeout(r, 300));
+  }
+  return null;
+}
+
+// ── 台指期（大台近月）即時：期交所行情網站，日盤（MarketType 0）與夜盤（MarketType 1）
+let txErr = "";
+const txLast = {};
+async function taifexList(mt) {
+  const body = JSON.stringify({ MarketType: String(mt), SymbolType: "F", KindID: "1", CID: "TXF", ExpireMonth: "", RowSize: "全部", PageNo: "", SortColumn: "", AscDesc: "A" });
+  for (let k = 0; k < 2; k++) {
+    try {
+      const r = await fetch("https://mis.taifex.com.tw/futures/api/getQuoteList", { method: "POST", body, headers: {
+        "content-type": "application/json;charset=UTF-8", "accept": "application/json, text/plain, */*",
+        "origin": "https://mis.taifex.com.tw", "referer": "https://mis.taifex.com.tw/futures/RegularSession/EquityIndices/FuturesDomestic/",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36" } });
+      const t = await r.text();
+      if (!r.ok) { txErr = "http " + r.status + " " + t.slice(0, 60); continue; }
+      const j = JSON.parse(t);
+      const list = j && j.RtData && j.RtData.QuoteList;
+      if (list && list.length) { txLast[mt] = { list, at: Date.now() }; return list; }
+      txErr = "empty " + t.slice(0, 80);
+    } catch (e) { txErr = "exc " + String(e).slice(0, 80); }
+  }
+  const c = txLast[mt];
+  return c && Date.now() - c.at < 120000 ? c.list : null;       // 失敗時暫用 2 分鐘內最近一次成功的資料
+}
+function txPick(list) {
+  if (!list) return { fut: null, spot: null };
+  const spot = list.find(q => /^TXF-[SP]$/.test(q.SymbolID)) || null;
+  const fut = list.find(q => /^TXF[A-L]\d-[FM]$/.test(q.SymbolID)) || null;      // 清單依到期月份排序，第一個就是近月
+  const f = q => q && {
+    id: q.SymbolID, name: q.DispCName, date: q.CDate, time: q.CTime,
+    o: num(q.COpenPrice), h: num(q.CHighPrice), l: num(q.CLowPrice), c: num(q.CLastPrice), ref: num(q.CRefPrice),
+    v: num(q.CTotalVolume) || 0, oi: num(q.OpenInterest),
+  };
+  return { fut: f(fut), spot: f(spot) };
+}
+
+
+// ════════ 美股（需要密碼）：資料放在 Cloudflare KV（綁定名稱 US），不經過公開的 GitHub ════════
+// KV 內容：site/<路徑>＝美股頁面檔案；auth＝{salt,hash,iter}（PBKDF2-SHA256）；meta＝更新狀態；state/*＝每日更新用的歷史資料
+const enc = new TextEncoder();
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+const unhex = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+async function pbkdf2(pw, saltHex, iter) {
+  const k = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"]);
+  return hex(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: unhex(saltHex), iterations: iter }, k, 256));
+}
+async function hmac(keyHex, msg) {
+  const k = await crypto.subtle.importKey("raw", unhex(keyHex), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return hex(await crypto.subtle.sign("HMAC", k, enc.encode(msg)));
+}
+async function usAuthed(req, env) {
+  const auth = await env.US.get("auth", "json"); if (!auth) return false;
+  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)us_auth=(\d+)\.([0-9a-f]{64})/);
+  if (!m || Number(m[1]) < Date.now()) return false;
+  return (await hmac(auth.hash, m[1])) === m[2];               // 改密碼後舊的登入自動失效
+}
+const page = (title, body, wide = false) => new Response(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="icon" href="/favicon.ico">
+<script>try{if(localStorage.getItem("work")==="1"){document.documentElement.classList.add("work");document.querySelector("link[rel=icon]").href="/icon-work-32.png"}}catch(_){}</script>
+<style>html.work body{background:#07060d url(/bg-work.jpg) center/cover}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#100c1f url(/bg.jpg) center/cover;font:15px/1.6 -apple-system,"Noto Sans TC","PingFang TC",sans-serif;color:#ece8f5}
+.box{background:rgba(20,16,32,.92);border:1px solid #3a3450;border-radius:12px;padding:24px;width:min(92vw,380px);display:flex;flex-direction:column;gap:12px}
+h1{font-size:19px;margin:0}input{font:inherit;padding:9px 11px;border-radius:8px;border:1px solid #3a3450;background:#0c0a16;color:#ece8f5}
+button{font:inherit;padding:9px;border-radius:8px;border:0;background:#f0d34a;color:#241c00;font-weight:700;cursor:pointer}.m{color:#9a93ad;font-size:13px}.e{color:#fb7185;font-size:13px}a{color:#c9b6ff}
+table{border-collapse:collapse;font-size:13px}td{padding:3px 8px 3px 0}
+.box.w{width:min(96vw,960px);margin:16px 0}table.st{width:100%;font-size:14px}table.st td,table.st th{border:1px solid #3a3450;padding:8px 10px;vertical-align:top}table.st td.k{white-space:nowrap;background:rgba(255,255,255,.05);color:#b9b2cc;width:1%}
+table.st th{background:rgba(255,255,255,.08);color:#d8d2ea;font-weight:600;white-space:nowrap;text-align:center}table.st td.n{text-align:center;white-space:nowrap}.xs{overflow-x:auto}
+button.ghost{background:rgba(255,255,255,.08);color:#ece8f5;border:1px solid #3a3450;text-align:left;padding:10px 14px}</style></head><body><div class="box${wide ? " w" : ""}">${body}</div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+const loginForm = (err = "", next = "/admin/") => page("管理者專區", `<h1>管理者專區</h1><div class="m">請輸入密碼</div>
+<form method="post" action="/admin/login" style="display:flex;flex-direction:column;gap:10px"><input type="hidden" name="next" value="${next.replace(/"/g, "")}"><input type="password" name="pw" id="pw" autocomplete="current-password" autofocus required><button>登入</button></form>
+${err ? `<div class="e">${err}</div>` : ""}<a href="/" class="m">← 回台股</a>`);
+const TYPES = { html: "text/html; charset=utf-8", js: "application/javascript; charset=utf-8", json: "application/json", css: "text/css", png: "image/png", jpg: "image/jpeg" };
+// 從 {"代號":[[…],…],…} 文字切出某檔的陣列文字（不 JSON.parse 整包）
+function sliceArr(txt, code) {
+  const key = JSON.stringify(code) + ":[", i = txt ? txt.indexOf(key) : -1;
+  if (i < 0) return null;
+  let j = i + key.length - 1, depth = 0;
+  const st = j;
+  for (; j < txt.length; j++) { const c = txt.charCodeAt(j); if (c === 91) depth++; else if (c === 93 && --depth === 0) break; }
+  return txt.slice(st, j + 1);
+}
+// 底包＋近期包接起來（底包的日期都早於近期包）
+function joinBars(a, b) {
+  if (!a || a === "[]") return b; if (!b || b === "[]") return a;
+  return a.slice(0, -1) + "," + b.slice(1);
+}
+async function usRoute(req, env, u) {
+  const p = u.pathname;
+  if (!env.US) return new Response("美股尚未設定", { status: 503 });
+  if (p === "/admin/login" && req.method === "POST") {
+    const f = await req.formData(), auth = await env.US.get("auth", "json");
+    const next = /^\/admin\/[\w\-./?=%&]*$/.test(String(f.get("next") || "")) ? String(f.get("next")) : "/admin/";
+    if (!auth || (await pbkdf2(String(f.get("pw") || ""), auth.salt, auth.iter)) !== auth.hash) return loginForm("密碼不對，請再試一次", next);
+    const exp = String(Date.now() + 30 * 864e5);
+    const h = new Headers({ location: next });
+    h.append("set-cookie", `us_auth=${exp}.${await hmac(auth.hash, exp)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax`);
+    h.append("set-cookie", "adm=1; Path=/; Max-Age=2592000; Secure; SameSite=Lax");      // 讓台股頁知道可以跨到管理者專區搜尋（不含任何權限）
+    return new Response(null, { status: 303, headers: h });
+  }
+  if (p === "/admin/logout") { const h = new Headers({ location: "/" });      /* 11/21 使用者：登出後自動跳到首頁，不要停在原頁 */ h.append("set-cookie", "us_auth=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "us_auth=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "adm=; Path=/; Max-Age=0; Secure; SameSite=Lax"); return new Response(null, { status: 303, headers: h }); }
+  if (!(await usAuthed(req, env))) return p === "/admin/login" ? loginForm("", u.searchParams.get("next") || "/admin/") : new Response(null, { status: 303, headers: { location: "/admin/login?next=" + encodeURIComponent(p + u.search) } });
+  if (p === "/admin/login") return new Response(null, { status: 303, headers: { location: "/admin/" } });
+  if (p === "/admin/settings") {
+    let msg = "";
+    if (req.method === "POST") {
+      const f = await req.formData(), auth = await env.US.get("auth", "json");
+      const cur = String(f.get("cur") || ""), n1 = String(f.get("n1") || ""), n2 = String(f.get("n2") || "");
+      if ((await pbkdf2(cur, auth.salt, auth.iter)) !== auth.hash) msg = `<div class="e">目前密碼不對</div>`;
+      else if (n1.length < 6) msg = `<div class="e">新密碼至少 6 個字</div>`;
+      else if (n1 !== n2) msg = `<div class="e">兩次輸入的新密碼不一樣</div>`;
+      else {
+        const salt = hex(crypto.getRandomValues(new Uint8Array(16))), iter = 100000;
+        const hash = await pbkdf2(n1, salt, iter);
+        await env.US.put("auth", JSON.stringify({ salt, hash, iter }));
+        const exp = String(Date.now() + 30 * 864e5);
+        return new Response(null, { status: 303, headers: { location: "/admin/settings?ok=1", "set-cookie": `us_auth=${exp}.${await hmac(hash, exp)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` } });
+      }
+    }
+    if (u.searchParams.get("ok")) msg = `<div class="m" style="color:#7ee0a1">密碼已更新，其他裝置需要重新登入。</div>`;
+    const meta = (await env.US.get("meta", "json")) || {};
+    const cl = (await env.US.get("cron/last", "json")) || null;
+    const nf = await env.US.get("cron/newsfail", "json");
+    const dl = (await env.US.get("deploy/last", "json")) || null, dc = await env.US.get("deploy/check");
+    // 11/16：新聞各家這輪篇數，連續 ≥3 輪 0 篇或失敗標紅（news-data 分支的 meta.json）
+    let nwRow = "讀不到";
+    try {
+      const nm = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/meta.json", { cf: { cacheTtl: 300 } })).json();
+      const NM = { udn: "經濟日報", ctee: "工商時報", cnyes: "鉅亨網", moneydj: "MoneyDJ", cna: "中央社", uanalyze: "優分析", technews: "科技新報", yahoo: "Yahoo股市", search: "鉅亨逐檔搜尋" };
+      const z = nm.zero || {};
+      nwRow = `${new Date(nm.t * 1000).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　共 ${nm.n} 篇<br>` + Object.entries(nm.src || {}).map(([k, v]) => {
+        const bad = (z[k] || 0) >= 3 || typeof v !== "number";
+        const t = typeof v === "number" ? `${v} 篇` : "抓取失敗";
+        return `<span style="${bad ? "color:#f87171;font-weight:bold" : ""}">${NM[k] || k} ${t}${(z[k] || 0) >= 3 ? `（連續 ${z[k]} 輪沒抓到）` : ""}</span>`;
+      }).join("　");
+      const stale = nm.ai_ok_t && (Date.now() / 1000 - nm.ai_ok_t) > 3 * 3600, hr = +new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 13);
+      nwRow += `<br>AI 型號：${(nm.models || []).join("、") || "—"}　最後一次判斷成功：${nm.ai_ok_t ? new Date(nm.ai_ok_t * 1000).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false }) : "—"}` + (stale && hr >= 6 && hr < 23 ? `<span style="color:#f87171;font-weight:bold">（超過 3 小時沒判斷成功）</span>` : "");
+      try {   // 11/19：逐檔搜尋查得到文章、但站上近 7 天沒有該檔新聞 → 列出（可能被 AI 略過，或漏抓）
+        const sc = nm.sc || {}, its = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/items.json", { cf: { cacheTtl: 300 } })).json();
+        const have = new Set(); for (const x of its) if (x.t > Date.now() / 1000 - 7 * 86400) for (const a of x.ai || []) if (a.d !== undefined) have.add(a.c);
+        const miss = Object.entries(sc).filter(([c, v]) => v.n > 0 && !have.has(c)).sort((a, b) => b[1].n - a[1].n);
+        nwRow += `<br>逐檔搜尋已查 ${Object.keys(sc).length} 檔；其中 <b>${miss.length}</b> 檔搜尋到近 7 天文章、但站上沒有（多半是盤面或只被順便點名，依規則不收）` + (miss.length ? "：" + miss.slice(0, 12).map(([c, v]) => `${c}（${v.n} 則，如「${String((v.ttl || [])[0] || "").replace(/[<>&]/g, "")}」）`).join("、") : "");
+      } catch (e) {}
+      try {
+        const dj0 = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/daily.json", { cf: { cacheTtl: 300 } })).json();
+        const al = Object.keys(dj0).sort().slice(-3).map(k => dj0[k].alert).filter(Boolean).pop();
+        if (al) nwRow += `<br><span style="color:#f87171;font-weight:bold">⚠ ${String(al).replace(/[<>&]/g, "")}</span>`;
+      } catch (e) {}
+    } catch (e) {}
+    // 11/17 使用者：每日新聞判斷統計（news-data 的 daily.json），比對要不要改用付費 Claude Haiku
+    let dayTbl = '<div class="m">讀不到</div>';
+    try {
+      const dj = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/daily.json", { cf: { cacheTtl: 300 } })).json();
+      const ds = Object.keys(dj).sort().reverse().slice(0, 14), sum = (f) => ds.reduce((s, k) => s + (f(dj[k]) || 0), 0);
+      const lite = (d) => Object.entries(d.by || {}).filter(([k]) => /lite/.test(k)).reduce((s, [, v]) => s + v, 0);
+      const th = ["日期", "判斷篇數", "有個股", "上修", "持平", "下修", "優先名單", "其他", "flash-lite", "flash", "忙碌 503", "額度 429", "預估 Haiku（美元）"];
+      const tr = ds.map(k => { const d = dj[k], fl = (d.articles || 0) - lite(d); return `<tr><td class="n">${k.slice(5)}</td><td class="n">${d.articles}</td><td class="n">${d.withStock}</td><td class="n" style="color:#f87171">${d.up}</td><td class="n">${d.flat}</td><td class="n" style="color:#4ade80">${d.down}</td><td class="n">${d.pri ?? "—"}</td><td class="n">${d.non ?? "—"}</td><td class="n">${lite(d)}</td><td class="n">${fl}</td><td class="n">${d.busy}</td><td class="n">${d.quota}</td><td class="n">${(d.usd || 0).toFixed(2)}</td></tr>`; }).join("");
+      const full = ds.filter(k => dj[k].runs >= 20), avg = full.length ? full.reduce((s, k) => s + (dj[k].usd || 0), 0) / full.length : null;   // 一整天（≥20 輪）才算進平均
+      dayTbl = `<div class="xs" style="margin-top:8px"><table class="st"><tr>${th.map(x => `<th>${x}</th>`).join("")}</tr>${tr}</table></div><div class="m" style="margin-top:6px">近 14 天合計判斷 ${sum(d => d.articles)} 篇，預估 Haiku 費用 ${sum(d => d.usd).toFixed(2)} 美元；${avg != null ? `完整天數（${full.length} 天）平均每天 ${avg.toFixed(2)} 美元，一個月約 ${(avg * 30).toFixed(1)} 美元` : "還沒有完整一天的資料，累積幾天後才估得準"}。<br>預估算法：輸入約每字 1.3 token＋每批提示詞 700，輸出每篇約 450 token（含思考），Haiku 5.5 每百萬 token 輸入 0.10、輸出 0.50 美元。「有個股」＝AI 認出主要公司且不是盤面的篇數。</div>`;
+      // 11/17 使用者：長期追蹤各 AI 型號的工作狀況（API 的 KPI）：呼叫、成功、忙碌 503、額度 429、格式錯、不存在、平均秒數
+      const ar = [];
+      for (const k of ds) for (const [m, v] of Object.entries((dj[k] || {}).api || {})) {
+        const bad = v.busy + v.quota + v.gone > 0, pct = v.calls ? Math.round(v.ok / v.calls * 100) : 0;
+        ar.push(`<tr><td class="n">${k.slice(5)}</td><td>${String(m).replace(/[<>&]/g, "")}</td><td class="n">${v.calls}</td><td class="n">${v.ok}（${pct}%）</td><td class="n" style="${v.busy ? "color:#fbbf24" : ""}">${v.busy}</td><td class="n" style="${v.quota ? "color:#fbbf24" : ""}">${v.quota}</td><td class="n">${v.bad}</td><td class="n" style="${v.gone ? "color:#f87171;font-weight:bold" : ""}">${v.gone}</td><td class="n">${v.ok ? (v.secs / v.ok).toFixed(1) : "—"}</td></tr>`);
+      }
+      dayTbl += `<div class="m" style="margin-top:12px"><b>各 AI 型號工作狀況</b>（每批文章算一次呼叫；忙碌＝503、額度＝429、不存在＝型號被停用；秒數＝每次成功的平均耗時）</div><div class="xs" style="margin-top:6px"><table class="st"><tr>${["日期", "型號", "呼叫", "成功", "忙碌 503", "額度 429", "格式錯", "不存在", "平均秒數"].map(x => `<th>${x}</th>`).join("")}</tr>${ar.join("") || '<tr><td colspan="9" class="m">從 11/18 起累積</td></tr>'}</table></div>`;
+    } catch (e) {}
+    // 11/20 使用者：新聞判斷日報做成設定頁小區塊（算前一天；數字都是 daily.json／meta.json 直接算，不靠 AI）；手機通知仍由每天 07:47 的排程送
+    let rptBlk = "";
+    try {
+      const E = (x) => String(x ?? "").replace(/[<>&]/g, ""), dj = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/daily.json", { cf: { cacheTtl: 300 } })).json();
+      const nm = await (await fetch("https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/meta.json", { cf: { cacheTtl: 300 } })).json();
+      const ys = new Date(Date.now() + 8 * 3600e3 - 86400e3).toISOString().slice(0, 10), pd = new Date(Date.now() + 8 * 3600e3 - 2 * 86400e3).toISOString().slice(0, 10);
+      const d = dj[ys], q = dj[pd] || {};
+      if (d) {
+        const al = Object.keys(dj).sort().slice(-3).map(k => dj[k].alert).filter(Boolean).pop(), stale = nm.ai_ok_t && (Date.now() / 1000 - nm.ai_ok_t) > 3 * 3600;
+        const hr = +new Date(Date.now() + 8 * 3600e3).toISOString().slice(11, 13);
+        const st = al ? `<span style="color:#fbbf24">⚠️ ${E(al)}</span>` : (stale && hr >= 6 && hr < 23 ? '<span style="color:#f87171">⚠️ AI 超過 3 小時沒有成功判斷</span>' : `✅ 新聞 AI 正常，目前型號：${E((nm.models || []).join("、")) || "—"}`);
+        const df = (a, b) => b === undefined ? "" : `（${a - b >= 0 ? "+" : ""}${a - b}）`;
+        const pct = (a, b) => b ? Math.round(a / b * 100) + "%" : "—";
+        const ar = Object.entries(d.api || {}).map(([m, v]) => { const dr = (d.dirby || {})[m] || (d.dirby || {})["Gemini " + m], ok = v.ok || 0;
+          return `<tr><td>${E(m)}</td><td class="n">${v.calls}</td><td class="n">${pct(ok, v.calls)}</td><td class="n">${v.busy}</td><td class="n">${v.quota}</td><td class="n">${v.bad}</td><td class="n">${ok ? (v.secs / ok).toFixed(1) : "—"}</td><td class="n">${dr ? `${dr.up}／${dr.flat}／${dr.down}` : "—"}</td></tr>`; }).join("");
+        rptBlk = `<h1 style="font-size:16px;margin:14px 0 6px">新聞判斷日報（${ys.slice(5)}）</h1><div class="m">${st}</div>
+<div class="m">判斷 <b>${d.articles}</b> 篇${df(d.articles, q.articles)}　提到個股 <b>${d.withStock}</b> 篇${df(d.withStock, q.withStock)}　<span style="color:#f87171">上修 ${d.up}</span>　持平 ${d.flat}　<span style="color:#4ade80">下修 ${d.down}</span>　優先名單 ${d.pri || 0}／其他 ${d.non || 0}　忙碌 503：${d.busy || 0} 次　額度 429：${d.quota || 0} 次</div>
+<div class="xs" style="margin-top:6px"><table class="st"><tr><th>型號</th><th>呼叫</th><th>成功率</th><th>503</th><th>429</th><th>格式錯</th><th>平均秒數</th><th>上修／持平／下修</th></tr>${ar}</table></div>
+<div class="m" style="margin-top:4px">上修／持平／下修依型號分開記錄是 11/20 才開始，之前的日子顯示「—」。</div>`;
+      }
+    } catch (e) {}
+    let cmpBlk = "";                                  // 11/21 使用者：全市場比對紀錄（可收合）：按下時間、台／美、最近一次的結果
+    try {
+      const E2 = (x) => String(x ?? "").replace(/[<>&]/g, ""), tm = (t) => new Date(t).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false });
+      const lg = (await env.US.get("recmp/log", "json")) || [];
+      const res = { TW: await (await fetch(u.origin + "/recmp.json", { cf: { cacheTtl: 60 } })).json().catch(() => null), US: JSON.parse((await env.US.get("site/recmp.json", "text")) || "null") };
+      const rr = ["TW", "US"].map((m) => { const r = res[m]; if (!r) return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td colspan="4">還沒有紀錄</td></tr>`;
+        return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td class="n">${E2(r.at)}</td><td class="n">${r.checked}${r.scope ? `（${r.scope}）` : ""}</td><td class="n">${r.drawn}</td><td>${r.changed.length ? r.changed.map((c) => `${E2(c[0])} ${E2(c[1])}：${E2(c[2])}`).join("<br>") : "沒有被畫線改變的股票"}</td></tr>`; }).join("");
+      cmpBlk = `<button type="button" class="ghost" onclick="const d=document.getElementById('cmptbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>全市場比對紀錄（按一下展開／收合）</button><div id="cmptbl" hidden>
+<div class="m" style="margin-top:6px"><b>最近一次重算的結果</b>（含排程自動跑的）</div><div class="xs"><table class="st"><tr><th>市場</th><th>算完時間</th><th>比對檔數</th><th>有畫線的檔數</th><th>被畫線改變的股票</th></tr>${rr}</table></div>
+<div class="m" style="margin-top:8px"><b>你按「全市場型態比對」的時間</b>（最近 30 次）</div><div class="m">${lg.length ? lg.map((x) => `${tm(x.at)}　${(x.m === "US" ? "美股" : "台股") + (x.sc === "draw" ? "（只畫線股" : "（全部") + (x.auto ? "，畫線變動自動送出）" : "）")}`).join("<br>") : "還沒有按過"}</div></div>`;
+    } catch (e) {}
+    const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
+      .map(([a, b]) => `<tr><td class="k">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
+    return page("管理者專區｜資料庫狀態與管理", `<style>.bk{position:sticky;top:10px;z-index:20;align-self:flex-start;display:inline-block;margin:0 0 12px;padding:12px 22px;border-radius:999px;color:#fff;font-weight:800;font-size:19px;text-decoration:none;border:1px solid rgba(99,102,241,.7);background:linear-gradient(180deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.07) 46%,rgba(99,102,241,.26) 100%),rgba(15,18,70,.55);-webkit-backdrop-filter:blur(16px) saturate(1.6);backdrop-filter:blur(16px) saturate(1.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -8px 14px rgba(99,102,241,.22),0 0 12px rgba(99,102,241,.45),0 4px 14px rgba(0,0,0,.5)}
+@media(min-width:1300px){.bk{position:fixed;left:max(16px,calc(50vw - 480px - 175px));top:16px;margin:0}}</style><a href="/admin/" id="bk" class="bk">← 回上一頁</a><h1>資料庫狀態與管理</h1><table class="st">${rows}</table>
+${rptBlk}${cmpBlk}<button type="button" class="ghost" onclick="const d=document.getElementById('daytbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>每日新聞判斷統計（按一下展開／收合）</button><div id="daytbl" hidden>${dayTbl}</div>
+<h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
+<input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
+<div class="m"><a href="/admin/logout">登出</a></div><script>try{var r=document.referrer?new URL(document.referrer):null,k="setBack";if(r&&r.origin===location.origin&&r.pathname!=="/admin/settings"&&r.pathname!=="/admin/login")sessionStorage.setItem(k,r.pathname+r.search+r.hash);var b=sessionStorage.getItem(k);if(b){var a=document.getElementById("bk");a.href=b;a.textContent=b.indexOf("/admin/")===0?"← 回美股":"← 回台股"}}catch(_){}</script>`, true);
+  }
+  const sm = p.match(/^\/admin\/s\/([A-Za-z0-9.\-^]+)\.json$/);          // 個股 K 線：從分包裡取出那一檔
+  if (sm) {
+    let h = 0; for (const ch of sm[1]) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
+    // 方案 B：底包 site/sh/<h%256> ＋ 近期包 site/rc/<h%16>，各自用文字切出該檔再接起來（不解析整包，免費方案 CPU 只有約 10 毫秒）
+    const [tb, tr] = await Promise.all([env.US.get("site/sh/" + (h % 256) + ".json"), env.US.get("site/rc/" + (h % 16) + ".json")]);
+    const bars = joinBars(sliceArr(tb, sm[1]), sliceArr(tr, sm[1]));
+    return bars ? new Response('{"bars":' + bars + "}", { headers: { "content-type": "application/json", "cache-control": "private, max-age=300" } }) : new Response("找不到", { status: 404 });
+  }
+  const fm = p.match(/^\/admin\/f\/([A-Za-z0-9.\-^]+)\.json$/);          // 美股季財報（SEC）：32 包裡切出該檔（不解析整包）
+  if (fm) {
+    let h = 0; for (const ch of fm[1]) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
+    const txt = await env.US.get("site/fn/" + (h % 32) + ".json"), key = JSON.stringify(fm[1]) + ":{", i = txt ? txt.indexOf(key) : -1;
+    if (i < 0) return new Response("找不到", { status: 404 });
+    let j = i + key.length - 1, depth = 0; const st = j;
+    for (; j < txt.length; j++) { const c = txt.charCodeAt(j); if (c === 123) depth++; else if (c === 125 && --depth === 0) break; }
+    return new Response(txt.slice(st, j + 1), { headers: { "content-type": "application/json", "cache-control": "private, max-age=300" } });
+  }
+  let key = "site/" + (p.slice(7) || "index.html");
+  if (key.endsWith("/")) key += "index.html";
+  const v = await env.US.get(key, "arrayBuffer");
+  if (!v) return new Response("找不到", { status: 404 });
+  const ext = key.split(".").pop();
+  return new Response(v, { headers: { "content-type": TYPES[ext] || "application/octet-stream", "cache-control": "private, no-cache" } });
+}
+// GitHub Actions 的 OIDC 身分證明：只有本專案 main 分支上的工作流程能上傳，不需要把金鑰放進 GitHub
+let jwks = null, jwksAt = 0;
+const b64u = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+async function githubOidcOk(tok) {
+  try {
+    const [h, p, sig] = tok.split("."); const head = JSON.parse(new TextDecoder().decode(b64u(h))), c = JSON.parse(new TextDecoder().decode(b64u(p)));
+    if (c.iss !== "https://token.actions.githubusercontent.com" || c.aud !== "tw-stock-us" || c.exp * 1000 < Date.now()) return false;
+    if (c.repository !== "jrnobleyou-lgtm/tw-stock-pattern" || c.ref !== "refs/heads/main") return false;
+    const full = c.workflow === "us" || c.workflow === "us_recompare" || /\/us(_recompare)?\.yml@/.test(String(c.workflow_ref || ""));     // 11/19 Opus 審查：只有美股更新（us.yml）能讀寫全部；其他工作（新聞）只能碰關注清單與目標價
+    if (!jwks || Date.now() - jwksAt > 3600e3) { jwks = (await (await fetch("https://token.actions.githubusercontent.com/.well-known/jwks")).json()).keys; jwksAt = Date.now(); }
+    const jwk = jwks.find(k => k.kid === head.kid); if (!jwk) return false;
+    const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+    return (await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, b64u(sig), enc.encode(h + "." + p))) ? (full ? "full" : "limited") : false;
+  } catch (e) { return false; }
+}
+// 11/18 使用者：法人目標價只有登入後看得到。資料在 KV state/targets_tw.json（news.py 整理），這裡驗證現價（0.3～3 倍）、近 60 天、同家只留最新、≥3 家才給最高／中位數／最低
+async function targetsRoute(req, env, u) {
+  if (!env.US || !(await usAuthed(req, env))) return new Response("{}", { status: 401, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  const c = u.searchParams.get("c") || "", close = Number(u.searchParams.get("close")) || 0;
+  const raw = await env.US.get("state/targets_tw.json", "text");
+  const now = Date.now() / 1000, last = {}, prev = {};
+  const rows = (raw ? JSON.parse(raw) : []).filter(r => r.c === c && r.t > now - 60 * 86400 && close && r.p >= 0.3 * close && r.p <= 3 * close).sort((a, b) => a.t - b.t);
+  for (const r of rows) { if (last[r.who]) prev[r.who] = last[r.who]; last[r.who] = r; }
+  const list = Object.entries(last).sort((a, b) => b[1].t - a[1].t).map(([who, r]) => {
+    let d = r.d || 0; if (prev[who] && prev[who].p !== r.p) d = r.p > prev[who].p ? 1 : -1;
+    return { who, p: r.p, t: r.t, d, title: r.title, link: r.link, fs: r.fs || 0 };
+  });
+  const brokers = list.filter(x => !x.fs), out = { list: list.slice(0, 12), fs: list.find(x => x.fs) || null, n: brokers.length };
+  if (brokers.length >= 3) {
+    const ps = brokers.map(x => x.p).sort((a, b) => a - b), m = ps.length >> 1;
+    out.hi = ps[ps.length - 1]; out.lo = ps[0]; out.med = ps.length % 2 ? ps[m] : Math.round((ps[m - 1] + ps[m]) * 5) / 10;
+  }
+  return new Response(JSON.stringify(list.length ? out : null), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+}
+
+async function usIngest(req, env, u) {          // 每日更新程式用：上傳／下載 KV。GitHub Actions 用 OIDC，手動用 X-Ingest-Key
+  const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+  const byKey = env.US_INGEST_KEY && req.headers.get("x-ingest-key") === env.US_INGEST_KEY;
+  const oidc = byKey ? "full" : (bearer ? await githubOidcOk(bearer) : false);
+  if (!env.US || !oidc) return new Response("forbidden", { status: 403 });
+  if (oidc === "limited") {                          // 新聞排程：只准讀關注清單、讀寫目標價
+    const lk = u.searchParams.get("key") || "";
+    const okk = req.method === "GET" ? (lk === "state/watchlist_tw" || lk === "state/targets_tw.json") : (req.method === "PUT" && lk === "state/targets_tw.json");
+    if (!okk) return new Response("forbidden", { status: 403 });
+  }
+  if (req.method === "GET") {
+    if (u.searchParams.get("key") === "draw-list/US")          // 分析程式讀美股畫線（只讀取、不寫入 KV）
+      return new Response(JSON.stringify(await drawList(env, "US", true)), { headers: { "content-type": "application/json" } });
+    const rk = u.searchParams.get("key") || "";
+    if (!/^(site|state)\/[\w\-./]+$/.test(rk) && rk !== "meta") return new Response("bad key", { status: 400 });   // 11/17 Fable：只能讀頁面與狀態檔，不能讀密碼雜湊等
+    const v = await env.US.get(rk, "arrayBuffer");
+    return v ? new Response(v) : new Response("not found", { status: 404 });
+  }
+  if (req.method === "PUT") {                       // 一次一個檔案、原始內容直接寫入（不解析，避免超過 Worker 的 CPU 上限）
+    const k = u.searchParams.get("key") || "";
+    if (!/^(site|state)\/[\w\-./]+$/.test(k) && k !== "meta") return new Response("bad key", { status: 400 });
+    await env.US.put(k, await req.arrayBuffer());
+    return new Response(JSON.stringify({ ok: true }), { headers: { "content-type": "application/json" } });
+  }
+  const j = await req.json();
+  for (const [k, b64] of Object.entries(j.files || {})) {
+    if (!/^(site|state)\//.test(k)) continue;
+    await env.US.put(k, Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+  }
+  if (j.meta) await env.US.put("meta", JSON.stringify(j.meta));
+  return new Response(JSON.stringify({ ok: true, n: Object.keys(j.files || {}).length }), { headers: { "content-type": "application/json" } });
+}
+
+// 備援：Yahoo 奇摩股市的台指期近一（WTX&）與現貨（WTX00），只有「目前時段」的報價，期交所連不上時使用
+async function yahooTX() {
+  const r = await fetch("https://tw.stock.yahoo.com/_td-stock/api/resource/StockServices.stockList;symbols=WTX%26%2CWTX00", { headers: { "user-agent": "Mozilla/5.0" } });
+  if (!r.ok) return null;
+  const arr = await r.json(), f = arr.find(x => x.symbol === "WTX&"), sp = arr.find(x => x.symbol === "WTX00");
+  if (!f) return null;
+  const raw = x => x && x.raw != null ? Number(x.raw) : null;
+  const t = new Date(f.regularMarketTime), tw = new Date(t.getTime() + 8 * 3600e3);
+  const hm = tw.getUTCHours() * 60 + tw.getUTCMinutes();
+  const isDay = hm >= 525 && hm <= 830;
+  const d0 = new Date(tw.getTime() - (hm < 300 ? 86400e3 : 0));               // 夜盤過了半夜，日期算開盤那天
+  const ymd8 = d0.toISOString().slice(0, 10).replace(/-/g, ""), hms6 = tw.toISOString().slice(11, 19).replace(/:/g, "");
+  const q = { id: "WTX&", name: f.symbolName, date: ymd8, time: hms6, o: raw(f.regularMarketOpen), h: raw(f.regularMarketDayHigh), l: raw(f.regularMarketDayLow),
+              c: raw(f.price), ref: raw(f.regularMarketPreviousClose), v: Number(f.volume) || 0, oi: Number(f.openInterest) || null };
+  const spot = sp ? { c: raw(sp.price), ref: raw(sp.regularMarketPreviousClose) } : null;
+  return isDay ? { day: q, night: null, spot, spotNight: null } : { day: null, night: q, spot: null, spotNight: spot ? { ref: spot.c } : null };
+}
+
+// ── 11/21 使用者：「全市場型態比對」按鈕（只有登入的管理者）。畫了線不用等下一次排程：按一下叫 GitHub 立刻重算一輪，重算時會把畫線拿去和系統形態比對。
+//    台股＝update.yml、美股＝us.yml；防連按：台股 10 分鐘、美股 30 分鐘內只能送一次（美股每輪約寫 300 次 KV，免費額度每天 1000 次）。
+async function dispatchRecmp(env, m, scope, auto) {      // 叫 GitHub 開工；回傳 {ok} 或 {error,status,cooling}
+  const key = `recmp/${m}${scope === "draw" ? "d" : ""}`, wait = (m === "US" ? (scope === "draw" ? 3 : 30) : scope === "draw" ? 3 : 10) * 60000, last = await env.US.get(key, "json");
+  if (last && Date.now() - last.at < wait) return { error: `剛剛已經送出過了，請約 ${Math.ceil((wait - (Date.now() - last.at)) / 60000)} 分鐘後再按`, status: 429, cooling: true };
+  const wf = m === "US" ? (scope === "draw" ? "us_recompare.yml" : "us.yml") : scope === "draw" ? "recompare.yml" : "update.yml";
+  const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, { method: "POST",
+    headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-recompare", "content-type": "application/json" },
+    body: JSON.stringify({ ref: "main" }) });
+  if (r.status !== 204) return { error: `啟動失敗（GitHub 回應 ${r.status}）`, status: 502 };
+  await env.US.put(key, JSON.stringify({ at: Date.now() }));
+  try { const lg = (await env.US.get("recmp/log", "json")) || []; lg.unshift({ at: Date.now(), m, sc: scope, auto: !!auto }); await env.US.put("recmp/log", JSON.stringify(lg.slice(0, 30))); } catch (e) {}   // 11/21：設定頁「全市場比對紀錄」
+  return { ok: true, mins: m === "US" ? (scope === "draw" ? 4 : 15) : scope === "draw" ? 4 : 6 };
+}
+async function recompareRoute(req, env, u) {
+  const J = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  if (req.method !== "POST") return J({ error: "bad" }, 405);
+  if (!env.US || !(await usAuthed(req, env))) return J({ error: "請先登入管理者專區" }, 403);
+  const m = u.searchParams.get("m");
+  if (!/^(TW|US)$/.test(m)) return J({ error: "bad" }, 400);
+  if (!env.GH_TOKEN) return J({ error: "尚未設定 GitHub 金鑰，無法啟動" }, 500);
+  const r = await dispatchRecmp(env, m, u.searchParams.get("scope") === "draw" ? "draw" : "all", false);
+  return r.ok ? J(r) : J(r, r.status || 500);
+}
+// 11/21 使用者：畫線有增減／修改後，自動重算那幾檔（不用自己按）。連續修改時合併：距離上次送出不到 3 分鐘就先記下「待重算」，由排程（每 10 分）補送。
+async function autoRecmp(env, m) {
+  if (!env.GH_TOKEN) return;
+  await env.US.put(`recmp/dirty/${m}`, String(Date.now()));
+  const r = await dispatchRecmp(env, m, "draw", true);
+  if (r.ok) await env.US.delete(`recmp/dirty/${m}`);
+}
+async function recmpDirtySweep(env) {
+  if (!env.GH_TOKEN) return;
+  for (const m of ["TW", "US"]) {
+    const t = await env.US.get(`recmp/dirty/${m}`);
+    if (t && Date.now() - Number(t) > 60000) { const r = await dispatchRecmp(env, m, "draw", true); if (r.ok) await env.US.delete(`recmp/dirty/${m}`); }
+  }
+}
+
+// ── 管理者自己畫的型態線：KV 的 draw/<市場>/<代號>；所有人都能讀（管理者專區的美股本身就要登入），只有管理者能寫
+async function drawRoute(req, env, u) {
+  const m = u.searchParams.get("m"), c = u.searchParams.get("c") || "";
+  if (!env.US || !/^(TW|US)$/.test(m) || !/^[A-Za-z0-9.\-^]{1,12}$/.test(c)) return new Response("bad", { status: 400 });
+  const key = `draw/${m}/${c}`;
+  if (req.method === "GET") {
+    if (m === "US" && !(await usAuthed(req, env))) return new Response("[]", { headers: { "content-type": "application/json" } });
+    return new Response((await env.US.get(key)) || "[]", { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  }
+  if (!(await usAuthed(req, env))) return new Response("請先登入管理者專區", { status: 403 });
+  const list = await req.json();
+  if (!Array.isArray(list) || list.length > 200) return new Response("bad", { status: 400 });
+  const clean = list.map(d => ({ id: String(d.id || "").slice(0, 20), kind: ["poly", "line", "hline", "chan", "cup"].includes(d.kind) ? d.kind : "poly",
+    name: String(d.name || "").slice(0, 30), note: String(d.note || "").slice(0, 200),
+    pts: (d.pts || []).slice(0, 30).map(p => [String(p[0]).slice(0, 10), Number(p[1])]).filter(p => /^\d{4}-\d\d-\d\d$/.test(p[0]) && isFinite(p[1])) }));
+  await env.US.put(key, JSON.stringify(clean));
+  try { await autoRecmp(env, m); } catch (e) {}                // 11/21：畫線有變就自動重算那幾檔
+  return new Response(JSON.stringify({ ok: true, n: clean.length }), { headers: { "content-type": "application/json" } });
+}
+
+// ── 排程：GitHub 自己的排程常常不準時或被略過，改由 Cloudflare 每 10 分鐘檢查一次、到點就叫 GitHub 開工（需要 Worker secret GH_TOKEN）
+const REPO = "jrnobleyou-lgtm/tw-stock-pattern";
+function jobsAt(t) {                                       // t 為 UTC 時間；回傳這個時間點要啟動的工作流程
+  const d = t.getUTCDay(), hm = t.getUTCHours() * 60 + t.getUTCMinutes(), wk = d >= 1 && d <= 5, jobs = [];
+  if (wk && hm === 50) jobs.push("intraday.yml");                                   // 台灣 08:50 盤中循環
+  if (wk && hm >= 430 && hm <= 580 && hm % 30 === 10) jobs.push("update.yml");      // 台灣 15:10–17:40 上櫃收盤資料
+  if (wk && hm >= 1320 && hm <= 1410 && hm % 30 === 0) jobs.push("update.yml");     // 台灣 隔天 06:00–07:30 上市收盤資料
+  if (d >= 2 && d <= 6 && hm === 10) jobs.push("us.yml");                          // 台灣 08:10 美股（等 KV 每日寫入額度在台灣 08:00 重置後）
+  if (d === 6 && hm === 1260) jobs.push("weekly-adjust.yml");                       // 台灣 週日 05:00 除權息檢查
+  if ((hm >= 1320 || hm <= 930) && hm % ((hm >= 1320 ? d <= 4 : wk) ? 30 : 60) === 0) jobs.push("news.yml");   // 台灣 06:00–23:30 個股新聞：平日每 30 分、週末每小時
+  if (hm === 1020 || hm === 1170) jobs.push("news.yml");                           // 11/21 使用者：台灣 01:00、03:30 各補一輪新聞（夜間 RSS 只留最新 20 篇，避免漏）
+  return jobs;
+}
+// ── 部署看門狗：GitHub deploy 分支有新版，但 Cloudflare 超過 4 分鐘沒開始部署 → 自動觸發一次（Worker secret CF_BUILD_TOKEN）
+async function deployWatchdog(env) {
+  if (!env.CF_BUILD_TOKEN || !env.GH_TOKEN) return;
+  const cf = (path, init = {}) => fetch("https://api.cloudflare.com/client/v4" + path, { ...init,
+    headers: { authorization: "Bearer " + env.CF_BUILD_TOKEN, "content-type": "application/json" } }).then(r => r.json());
+  const gh = await fetch(`https://api.github.com/repos/${REPO}/commits/deploy`, {
+    headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-cron" } }).then(r => r.json());
+  const head = Date.parse(gh?.commit?.committer?.date || "");
+  // 11/19 使用者不看信：盤中（週一～五 09:20–13:40）deploy 超過 15 分鐘沒更新 → 記 KV intraday/stale（只在第一次寫入、恢復時刪除），登入後的網頁底部會跳紅色提醒
+  if (env.US && head) {
+    const tw = new Date(Date.now() + 8 * 3600e3), hm = tw.getUTCHours() * 60 + tw.getUTCMinutes(), wd = tw.getUTCDay();
+    const prevS = await env.US.get("intraday/stale");
+    if (wd >= 1 && wd <= 5 && hm >= 560 && hm <= 820 && Date.now() - head > 15 * 60000) { if (!prevS) await env.US.put("intraday/stale", JSON.stringify({ since: new Date().toISOString(), last: new Date(head).toISOString() })); }
+    else if (prevS) await env.US.delete("intraday/stale");
+  }
+  // 權限自我檢查：各步驟結果有變才寫 KV（deploy/check），省寫入額度
+  const chk = async (txt) => { if (env.US && (await env.US.get("deploy/check")) !== txt) await env.US.put("deploy/check", txt); };
+  const acc = (await cf("/accounts")).result?.[0]?.id; if (!acc) return chk("讀不到帳戶（缺 Account Settings 讀取權限？）");
+  const tag = (await cf(`/accounts/${acc}/workers/scripts`)).result?.find(x => x.id === "news-findstockpattern-swing-breakout")?.tag; if (!tag) return chk("讀不到 Workers 指令碼（缺 Workers Scripts 讀取權限？）");
+  const bl = await cf(`/accounts/${acc}/builds/workers/${tag}/builds?per_page=5`);
+  if (!bl.success) return chk("讀不到部署紀錄（缺 Workers Builds Configuration 權限？）");
+  await chk("正常");
+  if (!head) return;
+  const builds = bl.result || [];
+  if (builds.some(b => b.status !== "stopped")) return;                  // 正在部署
+  const last = Math.max(0, ...builds.map(b => Date.parse(b.created_on) || 0));
+  if (head - last < 4 * 60000) return;                                   // 11/17 Fable：改成比對「最後一次建置比最新版舊多久」（盤中每 3 分鐘推一版，原本「等 4 分鐘」永遠等不到）；4 分鐘內的落差算正常
+  const trig = (await cf(`/accounts/${acc}/builds/workers/${tag}/triggers`)).result?.[0]?.trigger_uuid; if (!trig) return;
+  const r = await cf(`/accounts/${acc}/builds/triggers/${trig}/builds`, { method: "POST", body: JSON.stringify({ branch: "deploy" }) });
+  if (env.US) await env.US.put("deploy/last", JSON.stringify({ at: new Date().toISOString(), ok: !!r.success }));
+}
+
+async function runSchedule(env, when) {
+  try { await deployWatchdog(env); } catch (e) { console.log("watchdog", e); }
+  try { await recmpDirtySweep(env); } catch (e) { console.log("recmp", e); }
+  const t = new Date(Math.round(when / 600000) * 600000), jobs = jobsAt(t);
+  if (!jobs.length || !env.GH_TOKEN) return;
+  const res = [];
+  for (const wf of jobs) {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, { method: "POST",
+      headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-cron", "content-type": "application/json" },
+      body: JSON.stringify({ ref: "main" }) });
+    res.push(`${wf} ${r.status}`);
+    if (wf === "news.yml" && env.US) {                                  // 11/17 Fable：新聞觸發失敗（金鑰到期等）要讓設定頁標紅；平時只讀不寫，省 KV 額度
+      const prev = await env.US.get("cron/newsfail");
+      if (r.status !== 204) await env.US.put("cron/newsfail", JSON.stringify({ at: new Date(when).toISOString(), status: r.status }));
+      else if (prev) await env.US.delete("cron/newsfail");
+    }
+  }
+  if (env.US && jobs.some(j => j !== "news.yml")) await env.US.put("cron/last", JSON.stringify({ at: new Date(when).toISOString(), res }));   // 新聞每 30 分觸發，不蓋掉收盤更新的紀錄
+}
+
+// ── 管理者畫線清單（台股，公開）：分析程式用來以管理者的判斷取代系統的形態
+async function drawList(env, m = "TW", span = false) {
+  const out = {}; let cursor; const pre = `draw/${m}/`;
+  do {
+    const r = await env.US.list({ prefix: pre, cursor }); cursor = r.list_complete ? null : r.cursor;
+    for (const k of r.keys) { const v = await env.US.get(k.name, "json"); if (Array.isArray(v) && v.length) out[k.name.slice(pre.length)] = v.map(d => span ? { name: d.name, kind: d.kind, d0: (d.pts || []).map(p => p[0]).sort()[0] || "", d1: (d.pts || []).map(p => p[0]).sort().pop() || "", ...(d.kind === "chan" ? { pts: d.pts } : {}) } : d.name); }
+  } while (cursor);
+  return out;
+}
+
+export default {
+  async scheduled(ev, env, ctx) { ctx.waitUntil(runSchedule(env, ev.scheduledTime)); },
+  async fetch(req, env, ctx) {
+    const u = new URL(req.url);
+    if (u.pathname === "/api/draw-list") {
+      // 預設：台股（公開，分析程式用）；?all=1：管理者的「我的畫線」，台股＋美股（美股要登入）
+      const all = u.searchParams.get("all") === "1" && env.US && (await usAuthed(req, env));
+      const ck = new Request(u.origin + "/__cache/draw-list?span=" + (u.searchParams.get("span") === "1" ? 1 : 0)), cache = caches.default;   // 11/19 Opus 審查：快取鍵只看 span，外人加亂數參數繞不過快取     // 11/17 Fable：公開、每次都列 KV 清單，加 90 秒快取避免被連打耗光額度
+      if (!all) { const hit = await cache.match(ck); if (hit) return hit; }
+      const body = !env.US ? {} : all ? { TW: await drawList(env, "TW"), US: await drawList(env, "US") } : await drawList(env, "TW", u.searchParams.get("span") === "1");   // ?span=1：附每條線的起訖日期（分析程式比對系統形態用）
+      const resp = new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": all ? "no-store" : "public, max-age=90" } });
+      if (!all) ctx.waitUntil(cache.put(ck, resp.clone()));
+      return resp;
+    }
+    if (u.pathname === "/api/draw") return drawRoute(req, env, u);
+    if (u.pathname === "/api/recompare") return recompareRoute(req, env, u);
+    if (u.pathname === "/api/targets") return targetsRoute(req, env, u);
+    if (u.pathname === "/api/alerts") {                      // 11/19：只給登入的管理者（網頁底部紅色提醒）；不快取
+      if (!env.US || !(await usAuthed(req, env))) return new Response("[]", { status: 401, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+      const out = [], tm = (iso) => new Date(iso).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour12: false, hour: "2-digit", minute: "2-digit" });
+      const st = await env.US.get("intraday/stale", "json");
+      if (st) out.push(`盤中資料已經超過 15 分鐘沒更新了（最後一次更新是台灣 ${tm(st.last)}）。如果今天股市休市，可以不用理它；如果今天有開盤，請跟 Claude 說「盤中更新停了」。`);
+      const nf = await env.US.get("cron/newsfail", "json");
+      if (nf) out.push(`新聞自動更新壞掉了（可能是 GitHub 的通行金鑰過期），請跟 Claude 說「新聞排程壞了」。`);
+      const dc = await env.US.get("deploy/check");
+      if (dc && dc !== "正常") out.push(`網站自動上線的檢查有問題（${dc}），請跟 Claude 說。`);
+      return new Response(JSON.stringify(out), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+    }
+    if (u.pathname === "/admin" || u.pathname === "/us" || u.pathname.startsWith("/us/")) return new Response(null, { status: 301, headers: { location: "/admin/" } });
+    if (u.pathname.startsWith("/admin/")) {
+      const r = await usRoute(req, env, u);
+      // 早先登入的裝置沒有 adm 標記：只要帶著有效登入進入管理者專區，就補上（台股頁靠它把右上角改成「美股」）
+      if (r.status === 200 && !/(?:^|;\s*)adm=1/.test(req.headers.get("cookie") || "") && (await usAuthed(req, env))) {
+        const h = new Headers(r.headers); h.append("set-cookie", "adm=1; Path=/; Max-Age=2592000; Secure; SameSite=Lax");
+        return new Response(r.body, { status: 200, headers: h });
+      }
+      return r;
+    }
+    if (u.pathname === "/api/us-ingest") return usIngest(req, env, u);
+    if (u.pathname === "/api/tx") {
+      try {
+        const ck = new Request("https://cache.local/api/tx"), cache = caches.default;        // 同一節點 5 秒內共用一次結果，減少對期交所的請求
+        const hit = await cache.match(ck); if (hit) return hit;
+        const [d, n] = await Promise.all([taifexList(0), taifexList(1)]);
+        const day = txPick(d), night = txPick(n);
+        let out = { day: day.fut, night: night.fut, spot: day.spot, spotNight: night.spot };
+        if (!out.day && !out.night) {
+          const err = txErr;
+          try { const y = await yahooTX(); if (y) out = y; } catch (e) { /* 兩邊都失敗 */ }
+          out.dbg = { colo: (req.cf && req.cf.colo) || "", err };
+        }
+        const resp = new Response(JSON.stringify(out), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=5" } });
+        if (out.day || out.night) ctx.waitUntil(cache.put(ck, resp.clone()));
+        return resp;
+      } catch (e) {
+        return new Response(JSON.stringify({ error: "unavailable" }), { status: 502, headers: { "content-type": "application/json" } });
+      }
+    }
+    if (u.pathname === "/api/mis") {
+      const arr = await misBatch(u.searchParams.get("ex_ch") || "");
+      return new Response(JSON.stringify(arr ? { msgArray: arr } : { error: "unavailable" }), { status: arr ? 200 : 502, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+    }
+    if (u.pathname === "/api/macro") {                                   // 盤後一眼看懂：匯率、原油、美債、美股指數（Yahoo，公開資料，快取 60 秒）
+      const SY = u.searchParams.get("m") === "US"
+        ? [["^DJI", "道瓊"], ["^GSPC", "標普500"], ["^IXIC", "那斯達克"], ["^SOX", "費城半導體"], ["^VIX", "VIX恐慌指數"]]
+        : [["TWD=X", "美元／台幣"], ["CL=F", "原油 WTI"], ["^TNX", "美債10年殖利率"]];
+      const one = async ([sy, name]) => {
+        try {
+          const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sy)}?interval=1d&range=5d`, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 60, cacheEverything: true } });
+          if (!r.ok) return { s: sy, name, error: 1 };
+          const j = await r.json(), res = j.chart && j.chart.result && j.chart.result[0];
+          const cl = ((res.indicators.quote[0] || {}).close || []).filter(x => x != null), m = res.meta || {};
+          const price = m.regularMarketPrice != null ? m.regularMarketPrice : cl[cl.length - 1];
+          const prev = cl.length >= 2 ? cl[cl.length - 2] : m.chartPreviousClose;
+          return { s: sy, name, price, prev, t: m.regularMarketTime, tz: m.exchangeTimezoneName };
+        } catch (e) { return { s: sy, name, error: 1 }; }
+      };
+      const items = await Promise.all(SY.map(one));
+      return new Response(JSON.stringify({ items }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
+    }
+    if (u.pathname === "/api/news") {                                    // 個股新聞：scripts/news.py 每 30 分整理（7 家媒體免費文章＋Gemini 判斷），存在 GitHub news-data 分支，依代號分 64 包
+      const c = u.searchParams.get("c") || "";
+      if (!/^[0-9]{4,6}[A-Z]?$/.test(c)) return new Response(JSON.stringify({ error: "bad code" }), { status: 400, headers: { "content-type": "application/json" } });
+      let h = 0; for (const ch of c) h = (h * 31 + ch.charCodeAt(0)) % 1000003;
+      try {
+        const r = await fetch(`https://raw.githubusercontent.com/jrnobleyou-lgtm/tw-stock-pattern/news-data/s/${h % 64}.json`, { cf: { cacheEverything: true, cacheTtlByStatus: { "200-299": 300, "404": 60, "500-599": 0 } } });
+        if (!r.ok) throw 0;
+        const items = ((await r.json())[c] || []).filter(x => /^https:\/\//.test(x.link || "")).slice(0, 60);
+        return new Response(JSON.stringify({ items }), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=300" } });
+      } catch (e) { return new Response(JSON.stringify({ items: [], error: "unavailable" }), { status: 200, headers: { "content-type": "application/json" } }); }
+    }
+    if (u.pathname !== "/api/quote") return new Response("Not found", { status: 404 });
+    const sym = u.searchParams.get("s") || "";
+    if (!SYM.test(sym)) return new Response(JSON.stringify({ error: "bad symbol" }), { status: 400, headers: { "content-type": "application/json" } });
+    const isUS = !/\.(TW|TWO)$|^\^/.test(sym);
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(isUS ? sym.replace(/\./g, "-") : sym)}?interval=1m&range=1d&includePrePost=false`;
+    let out = { error: "unavailable" }, status = 502;
+    let q = null;
+    for (let k = 0; k < (isUS ? 0 : 3) && !q; k++) { if (k) await new Promise(r => setTimeout(r, 300)); try { q = await misQuote(sym); } catch (e) { misCookie = ""; misErr = "exc " + String(e).slice(0, 80); } }
+    if (q) lastGood[sym] = { q, at: Date.now() };
+    else if (lastGood[sym] && Date.now() - lastGood[sym].at < 90000) q = { ...lastGood[sym].q, stale: true };   // 失敗就換新的連線 cookie 再試一次
+    try { if (q) return new Response(JSON.stringify(q), { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=3" } }); } catch (e) { /* 改用 Yahoo */ }
+    try {
+      const r = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, cf: { cacheTtl: 20, cacheEverything: true } });
+      if (r.ok) { const p = parseChart(await r.json()); if (p) { out = { ...p, delay: isUS ? 0 : 20, dbg: { colo: (req.cf && req.cf.colo) || "", misErr } }; status = 200; } }
+    } catch (e) { /* 回傳 502 */ }
+    if (status !== 200) out.dbg = { colo: (req.cf && req.cf.colo) || "", misErr };   // 失敗原因（在失敗之後才取，才是這次的結果）
+    return new Response(JSON.stringify(out), { status, headers: { "content-type": "application/json", "cache-control": "public, max-age=5" } });
+  },
+};
