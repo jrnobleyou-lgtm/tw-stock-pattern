@@ -61,7 +61,7 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
   header .hr::after{content:"";flex:1 1 0;order:2}
   header #ttl{order:-2}header .sf{order:-1}header #work{order:0}   /* 11/17 使用者：上班模式移到第一列最右邊（搜尋框右邊） */
   header #idx{order:3;flex:0 0 auto}header #idx,header .fz{margin-top:-8px}
-  @media(min-width:1200px){header #ttl{margin-bottom:-24px}}
+  @media(min-width:1200px){header #ttl{margin-bottom:-24px}header #idx:empty{display:none}header:has(#idx:empty) .fz{order:0;flex:0 0 auto;margin-top:0}header:has(#idx:empty) nav{margin-top:-16px}}   /* 美股沒有指數列：設定＋字體併到第一排，不單獨佔一列 */
   header .fz{order:4;flex:1 1 0;justify-content:flex-end;margin-left:0}
   header nav{order:5}header>p{order:6}
 }
