@@ -7,7 +7,6 @@
 - 手機（≤640px）：小工具與「美股／設定／A－／A＋」同一排（`#ttl`／`.arow` 設 `display:contents`）。管理者有🔍全市場型態比對鈕 `#cmpb`（電腦在設定左、手機在資料日期那排右；天空藍毛玻璃）：POST `/api/recompare?m=TW|US` 叫 GitHub 重算（update.yml／us.yml；防連按台股 10 分、美股 30 分）。
 - 🧰小工具：停利停損試算器、台股玄學預測（外部網址）；點外面／Esc 關閉。
 - 返回：`navStack`、`goPrev()`、`navPos`／`restoreNav`；電腦 `#ttBack`、頂端／底部膠囊鈕 `TTV`／`TTA`。
-- 坑：頁內重畫前設 `navBack=false`（否則 `restoreNav` 捲回去）；inline handler 要寫 `window.scrollTo`。
 - 搜尋容錯 `fuzzyStocks()`；跨市場跳轉一次 `__bounced`；最近搜尋 5 筆（localStorage `sqh_T`／`sqh_U`）。
 
 ## 首頁
