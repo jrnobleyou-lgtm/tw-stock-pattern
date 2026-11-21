@@ -827,8 +827,18 @@ def _chan_fit(B, e, L, T):
                 continue
             lo0 = _pct([l[k] - sl * k for k in range(L)], 0.15)   # 下線平行：去趨勢後低點的第 15 百分位
             wid = (up0 - lo0) / avg
-            if not (0.04 <= wid <= 0.45) or move < 2.0 * wid or move + wid < 0.15:
+            if not (0.04 <= wid <= 0.45):
                 continue
+            strict = move >= 2.0 * wid and move + wid >= 0.15
+            if not strict:
+                # 11/21 使用者畫的 2886：斜率小、通道寬（中線漲跌只有寬度的 0.8～2 倍）。這種「寬通道」要走更嚴的路線，
+                # 避免把斜斜的箱型盤整誤判：上線完全不能被超出、下線包住全部低點、漲跌夠大、碰觸要多且早晚都有
+                if over > 0:
+                    continue
+                lo0 = min(l[k] - sl * k for k in range(L))
+                wid = (up0 - lo0) / avg
+                if not (0.04 <= wid <= 0.45) or move < 0.8 * wid or move + wid < 0.20:
+                    continue
             upv = [sl * k + up0 for k in range(L)]
             lov = [sl * k + lo0 for k in range(L)]
             tol = [min(0.02 * upv[k], 0.2 * (upv[k] - lov[k])) for k in range(L)]
@@ -839,10 +849,16 @@ def _chan_fit(B, e, L, T):
             allt = tu + tl
             if max(allt) - min(allt) < 0.6 * L:
                 continue
+            if not strict:
+                under = sum(1 for k in range(L) if l[k] < lov[k] * 0.98)
+                if under > 0 or len(tu) + len(tl) < 12 or min(len(tu), len(tl)) < 5 or r2 < 0.65:
+                    continue
+                if max(tu) - min(tu) < 0.5 * L or max(tl) - min(tl) < 0.5 * L:
+                    continue
             key = (len(tu) + len(tl), r2, L)
             if best is None or key > best["key"]:
                 best = {"key": key, "sl": sl, "up0": up0, "lo0": lo0, "s": s, "e": e, "L": L, "wid": wid, "move": move,
-                        "r2": r2, "tu": [s + t for t in tu], "tl": [s + t for t in tl], "dir": sign}
+                        "r2": r2, "tu": [s + t for t in tu], "tl": [s + t for t in tl], "dir": sign, "relax": not strict}
     return best
 
 
@@ -890,20 +906,33 @@ def _chan_out(B, T, f, label):
 
 def detect_channels(B, T):
     """回傳 0～2 個通道：「長」＝碰觸次數最多的；「短」＝貼合度（R²）和最好的差 0.03 以內裡最短的（11/21 使用者：2412 人手畫的是最近一小段）。
-    兩個差不多（長度差 <10 根）就只回一個。"""
+    兩個差不多（長度差 <10 根）就只回一個。
+    11/21 使用者畫的 2886（斜率小的寬通道）：正常通道沒有「長」時，改用「寬通道」（`relax`，且收盤在通道內）當長；
+    同一組線取最短視窗（線從趨勢起點畫起）；「長」是寬通道而「短」已出界時不顯示「短」。"""
     if T < 30:
         return []
     cands = _chan_cands(B, T)
     if not cands:
         return []
-    strict = [c for c in cands if c["move"] >= 2.5 * c["wid"] and c["move"] + c["wid"] >= 0.25]     # 「長」維持原規格；「短」才用放寬的條件
-    lg = max(strict, key=lambda c: (c["key"], -c["k"])) if strict else None
-    top = max(c["r2"] for c in cands)
-    sh = min((c for c in cands if c["r2"] >= top - 0.03), key=lambda c: (c["L"], -c["key"][0], c["k"]))
+    norm = [c for c in cands if not c.get("relax")]
+    strict = [c for c in norm if c["move"] >= 2.5 * c["wid"] and c["move"] + c["wid"] >= 0.25]     # 「長」維持原規格；「短」才用放寬的條件
+    rel = [c for c in cands if c.get("relax") and c["status"] == "inchan"]
+    if strict:
+        lg = max(strict, key=lambda c: (c["key"], -c["k"]))
+    elif rel:
+        lg = max(rel, key=lambda c: (c["L"], c["key"]))            # 寬通道：取最長（從趨勢起點包住整段）
+        same = lambda c: (round(c["sl"], 6), round(c["sl"] * (T - c["s"]) + c["up0"], 4), round(c["sl"] * (T - c["s"]) + c["lo0"], 4))
+        lg = min((c for c in rel if same(c) == same(lg)), key=lambda c: c["L"])
+    else:
+        lg = None
+    if not norm:
+        return [_chan_out(B, T, lg, "長")] if lg else []
+    top = max(c["r2"] for c in norm)
+    sh = min((c for c in norm if c["r2"] >= top - 0.03), key=lambda c: (c["L"], -c["key"][0], c["k"]))
     if lg is None:
         return [_chan_out(B, T, sh, "短")]
     out = [_chan_out(B, T, lg, "長")]
-    if lg["L"] - sh["L"] >= 10 and sh["dir"] == lg["dir"]:
+    if lg["L"] - sh["L"] >= 10 and sh["dir"] == lg["dir"] and not (lg.get("relax") and sh["status"] != "inchan"):
         out.append(_chan_out(B, T, sh, "短"))
     return out
 
