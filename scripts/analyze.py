@@ -38,6 +38,40 @@ def filter_by_drawings(geo, bars, drawings):
         # 其他重疊：以管理者的畫線為準，系統的不顯示
     return keep, upd
 
+def drawn_channels(raw, drawings):
+    """管理者畫的趨勢通道（kind=chan、4 個點＝兩條線，價格是原始價）→ 用最新一根算「在通道內／出界」。
+    回傳 [{"kind","dir","status","pos","d0","d1"}]；畫的通道和系統通道只要時間重疊，就以畫的為準（系統的拿掉）。"""
+    import bisect
+    ds = [b["d"] for b in raw]
+    T = len(raw) - 1
+    out = []
+    for d in drawings:
+        if not isinstance(d, dict) or d.get("kind") != "chan" or len(d.get("pts") or []) < 4 or not ds:
+            continue
+        try:
+            P = [(bisect.bisect_left(ds, q[0]), float(q[1])) for q in d["pts"][:4]]
+        except (TypeError, ValueError, IndexError):
+            continue
+        vals, sls = [], []
+        for a, b in ((P[0], P[1]), (P[2], P[3])):
+            if a[0] == b[0]:
+                break
+            sl = (b[1] - a[1]) / (b[0] - a[0])
+            sls.append(sl)
+            vals.append(a[1] + sl * (T - a[0]))
+        if len(vals) < 2:
+            continue
+        up, lo = max(vals), min(vals)
+        if up <= lo:
+            continue
+        c = raw[T]["c"]
+        inside = lo * 0.99 <= c <= up * 1.01
+        sl = sum(sls) / 2
+        out.append({"kind": "上升趨勢通道" if sl > 0 else "下降趨勢通道", "dir": "bull" if sl > 0 else "bear",
+                    "status": "inchan" if inside else "break", "side": 0 if inside else (1 if c > up else -1),
+                    "pos": round(min(max((c - lo) / (up - lo), 0), 1), 2), "d0": min(q[0] for q in d["pts"][:4]), "d1": max(q[0] for q in d["pts"][:4])})
+    return out
+
 def gl_of(g):
     """族群清單：主族群、副族群都可以用「+」或「、」列多個（例如 汽車+電池/能源+機器人/自動化），第一個是主族群。"""
     out = []
@@ -529,6 +563,7 @@ def main():
         except Exception:
             pass
     stocks, missing = {}, []
+    rc_changed = []                                # 11/21：畫線讓系統結果改變的股票（寫進 recmp.json 給設定頁的「全市場比對紀錄」）
     for g in groups:
         code = g["代號"]
         raw = [by[code][d] for d in sorted(by.get(code, {}))] if code in by else []
@@ -563,8 +598,17 @@ def main():
         geo = [g for g in PT.detect_geometry(bars, T) if g["status"] in ("confirmed", "near", "forming", "hist")]   # hist＝島型反轉第 11～30 天，只畫在圖上
         draw_upd = []
         if code in adm:                                # 管理者畫過：比對時間範圍
+            n_geo = len(geo)
             geo, draw_upd = filter_by_drawings(geo, bars, adm[code])
+            if len(geo) != n_geo:
+                rc_changed.append([code, g["名稱"], "拿掉 %d 個系統形態（以畫線為準）" % (n_geo - len(geo))])
+        dch = drawn_channels(raw, adm[code]) if code in adm else []
         chans = PT.detect_channels(bars, T)             # 趨勢通道（長、短各一）：獨立欄位，不進形態打架；和楔形／三角形同時成立只留最後碰線日期較近的（相同留通道）
+        if dch:                                        # 11/21 使用者（台達電 2308）：畫了通道就以畫的為準，時間重疊的系統通道拿掉
+            n_ch = len(chans)
+            chans = [c for c in chans if bars[c["lines"][0][0]]["d"] > max(x["d1"] for x in dch)]
+            if len(chans) != n_ch:
+                rc_changed.append([code, g["名稱"], "拿掉 %d 個系統通道（以畫的通道為準）" % (n_ch - len(chans))])
         chan = chans[0] if chans else None
         if chan:
             for w in [g for g in geo if "楔形" in g["kind"] or "三角形" in g["kind"]]:
@@ -577,6 +621,8 @@ def main():
         state, tags, sub = E.apply_patterns(state, tags, sub, geo)
         if chan:                                       # 標記（個股視窗上方的小標籤）：上升趨勢通道／（突破上緣）
             tags = list(tags) + [chan["kind"] + ("" if chan["status"] == "inchan" else "（突破上緣）" if chan["side"] > 0 else "（跌破下緣）")]
+        for dc in dch:
+            tags = list(tags) + [dc["kind"] + ("" if dc["status"] == "inchan" else "（突破上緣）" if dc["side"] > 0 else "（跌破下緣）")]
         if state == "轉強":                         # 均線還沒排列向上（5>10>20 且三條都往上）之前的轉強＝弱轉強
             m5, m10, m20 = ma[5], ma[10], ma[20]
             j = max(T - 3, 0)
@@ -666,6 +712,7 @@ def main():
         if dn_:
             st["dmi"] = dn_                              # DMI 篩選頁的「DMI差值」「ADX」欄
         if draw_upd:
+            rc_changed.append([code, g["名稱"], "系統形態已往後補完（%s）" % "、".join(draw_upd)])
             st["drawUpd"] = draw_upd                     # 系統的形態已經把管理者的線往後補完（「我的畫線」顯示「型態已更新！」）
         d_T = bars[T]["d"]
         st["geo"] = [{"kind": g["kind"], "dir": g["dir"], "status": g["status"], "day": g["day"],
@@ -682,6 +729,8 @@ def main():
                               "lines": [[bars[a]["d"], r2(R(pa, bars[a]["d"])), bars[b]["d"], r2(R(pb, bars[b]["d"])), r2(pa), r2(pb)] for a, pa, b, pb in chan["lines"]],
                               "volup": False, "stop": None, "stopA": None, "rect": None,
                               "L": chan["L"], "width": chan["width"], "move": chan["move"], "r2": chan["r2"], "pos": chan["pos"], "acc": chan["acc"], "side": chan["side"], "which": chan["which"]})
+        if dch:
+            st["dch"] = [{k: dc[k] for k in ("kind", "dir", "status", "pos", "side")} for dc in dch]   # 管理者畫的通道：篩選鈕要算進去
         gfull = st["geo"]
         if not us:                                       # 台股：data.js 只留篩選要用的欄位，畫圖座標放進個股檔 s/<代號>.json（點開才下載）
             st["geo"] = [{k: g[k] for k in ("kind", "dir", "status", "day", "pos", "acc", "side", "which") if k in g} for g in gfull]
@@ -818,6 +867,11 @@ def main():
             out["fut"] = fut
     if us:
         out["market"] = "US"
+    if full:
+        import datetime as _dt
+        json.dump({"at": _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"), "market": "US" if us else "TW",
+                   "checked": len(stocks), "drawn": len(adm), "changed": rc_changed[:200]},
+                  open(os.path.join(OUT, "recmp.json"), "w", encoding="utf-8"), ensure_ascii=False)
     with open(os.path.join(OUT, "data.js"), "w", encoding="utf-8") as f:
         f.write("window.DATA=" + json.dumps(out, ensure_ascii=False, separators=(",", ":")) + ";")
     print("asof", asof, "stocks", len(stocks), "missing", len(missing), missing[:20])

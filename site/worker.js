@@ -273,13 +273,24 @@ async function usRoute(req, env, u) {
 <div class="m" style="margin-top:4px">上修／持平／下修依型號分開記錄是 11/20 才開始，之前的日子顯示「—」。</div>`;
       }
     } catch (e) {}
+    let cmpBlk = "";                                  // 11/21 使用者：全市場比對紀錄（可收合）：按下時間、台／美、最近一次的結果
+    try {
+      const E2 = (x) => String(x ?? "").replace(/[<>&]/g, ""), tm = (t) => new Date(t).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false });
+      const lg = (await env.US.get("recmp/log", "json")) || [];
+      const res = { TW: await (await fetch(u.origin + "/recmp.json", { cf: { cacheTtl: 60 } })).json().catch(() => null), US: JSON.parse((await env.US.get("site/recmp.json", "text")) || "null") };
+      const rr = ["TW", "US"].map((m) => { const r = res[m]; if (!r) return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td colspan="4">還沒有紀錄</td></tr>`;
+        return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td class="n">${E2(r.at)}</td><td class="n">${r.checked}</td><td class="n">${r.drawn}</td><td>${r.changed.length ? r.changed.map((c) => `${E2(c[0])} ${E2(c[1])}：${E2(c[2])}`).join("<br>") : "沒有被畫線改變的股票"}</td></tr>`; }).join("");
+      cmpBlk = `<button type="button" class="ghost" onclick="const d=document.getElementById('cmptbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>全市場比對紀錄（按一下展開／收合）</button><div id="cmptbl" hidden>
+<div class="m" style="margin-top:6px"><b>最近一次重算的結果</b>（含排程自動跑的）</div><div class="xs"><table class="st"><tr><th>市場</th><th>算完時間</th><th>比對檔數</th><th>有畫線的檔數</th><th>被畫線改變的股票</th></tr>${rr}</table></div>
+<div class="m" style="margin-top:8px"><b>你按「全市場型態比對」的時間</b>（最近 30 次）</div><div class="m">${lg.length ? lg.map((x) => `${tm(x.at)}　${x.m === "US" ? "美股" : "台股"}`).join("<br>") : "還沒有按過"}</div></div>`;
+    } catch (e) {}
     const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="k">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
     return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table class="st">${rows}</table>
-${rptBlk}<button type="button" class="ghost" onclick="const d=document.getElementById('daytbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>每日新聞判斷統計（按一下展開／收合）</button><div id="daytbl" hidden>${dayTbl}</div>
+${rptBlk}${cmpBlk}<button type="button" class="ghost" onclick="const d=document.getElementById('daytbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>每日新聞判斷統計（按一下展開／收合）</button><div id="daytbl" hidden>${dayTbl}</div>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
 <input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
-<div class="m"><a href="/admin/">← 回管理者專區</a>　<a href="/admin/logout">登出</a></div>`, true);
+<div class="m"><a href="/admin/" id="bk">← 回上一頁</a>　<a href="/admin/logout">登出</a></div><script>try{var r=document.referrer?new URL(document.referrer):null,k="setBack";if(r&&r.origin===location.origin&&r.pathname!=="/admin/settings"&&r.pathname!=="/admin/login")sessionStorage.setItem(k,r.pathname+r.search+r.hash);var b=sessionStorage.getItem(k);if(b){var a=document.getElementById("bk");a.href=b;a.textContent=b.indexOf("/admin/")===0?"← 回管理者專區（美股）":"← 回台股"}}catch(_){}</script>`, true);
   }
   const sm = p.match(/^\/admin\/s\/([A-Za-z0-9.\-^]+)\.json$/);          // 個股 K 線：從分包裡取出那一檔
   if (sm) {
@@ -407,6 +418,7 @@ async function recompareRoute(req, env, u) {
     body: JSON.stringify({ ref: "main" }) });
   if (r.status !== 204) return J({ error: `啟動失敗（GitHub 回應 ${r.status}）` }, 502);
   await env.US.put(key, JSON.stringify({ at: Date.now() }));
+  try { const lg = (await env.US.get("recmp/log", "json")) || []; lg.unshift({ at: Date.now(), m }); await env.US.put("recmp/log", JSON.stringify(lg.slice(0, 30))); } catch (e) {}   // 11/21：設定頁「全市場比對紀錄」
   return J({ ok: true, mins: m === "US" ? 15 : 12 });
 }
 
@@ -498,7 +510,7 @@ async function drawList(env, m = "TW", span = false) {
   const out = {}; let cursor; const pre = `draw/${m}/`;
   do {
     const r = await env.US.list({ prefix: pre, cursor }); cursor = r.list_complete ? null : r.cursor;
-    for (const k of r.keys) { const v = await env.US.get(k.name, "json"); if (Array.isArray(v) && v.length) out[k.name.slice(pre.length)] = v.map(d => span ? { name: d.name, kind: d.kind, d0: (d.pts || []).map(p => p[0]).sort()[0] || "", d1: (d.pts || []).map(p => p[0]).sort().pop() || "" } : d.name); }
+    for (const k of r.keys) { const v = await env.US.get(k.name, "json"); if (Array.isArray(v) && v.length) out[k.name.slice(pre.length)] = v.map(d => span ? { name: d.name, kind: d.kind, d0: (d.pts || []).map(p => p[0]).sort()[0] || "", d1: (d.pts || []).map(p => p[0]).sort().pop() || "", ...(d.kind === "chan" ? { pts: d.pts } : {}) } : d.name); }
   } while (cursor);
   return out;
 }
