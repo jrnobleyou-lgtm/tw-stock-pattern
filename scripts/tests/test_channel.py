@@ -29,6 +29,18 @@ class Channel(unittest.TestCase):
         self.assertTrue(30 <= short[0]["L"] <= 40)        # 使用者畫的是最近約 35 天
         self.assertEqual(short[0]["kind"], "上升趨勢通道")
 
+    def test_2886_wide_channel_like_user_drawing(self):
+        """11/21 使用者畫的 2886：07-29 起、寬約 13%、斜率小的寬通道；系統要抓到這條當「長」，收盤在通道內，不能只給跌破下緣的短通道"""
+        B = load("2886")
+        r = PT.detect_channels(B, len(B) - 1)
+        self.assertTrue(r)
+        lg = [c for c in r if c["which"] == "長"][0]
+        self.assertEqual(lg["kind"], "上升趨勢通道")
+        self.assertEqual(lg["status"], "inchan")
+        self.assertTrue("2026-07-25" <= B[lg["lines"][0][0]]["d"] <= "2026-08-02")
+        self.assertTrue(12 <= lg["width"] <= 16)
+        self.assertFalse([c for c in r if c["status"] != "inchan"])      # 不再有「跌破下緣」的短通道
+
     def test_flat_series_has_no_channel(self):
         B = [{"d": str(i), "o": 100, "h": 101 + (i % 3), "l": 99 - (i % 2), "c": 100 + (i % 4 - 1.5), "v": 1} for i in range(200)]
         self.assertIsNone(PT.detect_channel(B, len(B) - 1))
