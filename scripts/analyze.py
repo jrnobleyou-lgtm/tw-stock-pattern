@@ -316,7 +316,14 @@ def fetch_fut_foreign():
     if not got:
         try:
             b = urllib.request.urlopen(urllib.request.Request("https://openapi.taifex.com.tw/v1/MarketDataOfMajorInstitutionalTradersDetailsOfFuturesContractsBytheDate", headers=hdr), timeout=30).read()
-            got = pick(rows(b.decode("utf-8-sig")))
+            txt = b.decode("utf-8-sig")
+            if txt.lstrip()[:1] == "[":                      # 11/21：開放資料其實是 JSON（英文欄位），原本當 CSV 讀所以雲端抓不到
+                for x in json.loads(txt):
+                    if x.get("ContractCode") == "臺股期貨" and x.get("Item") == "外資及陸資":
+                        d = x["Date"]
+                        got[f"{d[:4]}-{d[4:6]}-{d[6:]}"] = int(str(x["OpenInterest(Net)"]).replace(",", ""))
+            else:
+                got = pick(rows(txt))
         except Exception as e:
             print("讀不到外資台指期未平倉（略過）", repr(e)[:80])
             return None

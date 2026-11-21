@@ -42,7 +42,9 @@ def main():
     today = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 8 * 3600))
     try:                                              # 今天已經抓過就不重抓，只把檔案複製到各處（一天跑很多輪也只打一次 CFTC）
         old = json.load(open(OUTS[0], encoding="utf-8"))
-        if old.get("fetched") == today:
+        exp = time.gmtime(time.time() + 8 * 3600 - 4 * 86400)                       # 11/21：週五美東 15:30 公布＝台灣週六凌晨，應有的最新資料日＝今天往前 4 天內最近的週二；舊檔還沒到就繼續重抓
+        exp_d = time.strftime("%Y-%m-%d", time.gmtime(time.time() + 8 * 3600 - 4 * 86400 - ((exp.tm_wday - 1) % 7) * 86400))
+        if old.get("fetched") == today and old.get("asof", "") >= exp_d:
             write(old)
             print("專業資金期貨部位：今天已抓過，沿用")
             return
