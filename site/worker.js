@@ -185,7 +185,7 @@ async function usRoute(req, env, u) {
     h.append("set-cookie", "adm=1; Path=/; Max-Age=2592000; Secure; SameSite=Lax");      // 讓台股頁知道可以跨到管理者專區搜尋（不含任何權限）
     return new Response(null, { status: 303, headers: h });
   }
-  if (p === "/admin/logout") { const h = new Headers({ location: "/admin/login" }); h.append("set-cookie", "us_auth=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "us_auth=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "adm=; Path=/; Max-Age=0; Secure; SameSite=Lax"); return new Response(null, { status: 303, headers: h }); }
+  if (p === "/admin/logout") { const h = new Headers({ location: "/" });      /* 11/21 使用者：登出後自動跳到首頁，不要停在原頁 */ h.append("set-cookie", "us_auth=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "us_auth=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax"); h.append("set-cookie", "adm=; Path=/; Max-Age=0; Secure; SameSite=Lax"); return new Response(null, { status: 303, headers: h }); }
   if (!(await usAuthed(req, env))) return p === "/admin/login" ? loginForm("", u.searchParams.get("next") || "/admin/") : new Response(null, { status: 303, headers: { location: "/admin/login?next=" + encodeURIComponent(p + u.search) } });
   if (p === "/admin/login") return new Response(null, { status: 303, headers: { location: "/admin/" } });
   if (p === "/admin/settings") {
