@@ -20,6 +20,7 @@ jobs:
         run: |
           python3 scripts/us_sync.py pull
           python3 scripts/us_sync.py pull-live
+          ls -l data/us/draw.json || echo "沒有美股畫線檔"
       - name: 只重算有畫線的股票（不抓新價）
         run: |
           US_NO_FETCH=1 python3 scripts/us_fetch.py
@@ -27,4 +28,4 @@ jobs:
       - name: 補進線上資料並上傳
         run: |
           python3 scripts/merge_partial.py live us
-          python3 scripts/us_sync.py push-partial
+          if [ -f live/.merged ]; then python3 scripts/us_sync.py push-partial; else echo "沒有要上傳的"; fi

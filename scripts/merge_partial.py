@@ -21,7 +21,10 @@ for code, st in new.items():
     if os.path.isdir(os.path.join(live, "s")) and os.path.exists(sp):
         shutil.copy(sp, os.path.join(live, "s", code + ".json"))
     n += 1
+if n == 0 and not new:
+    print("沒有任何畫線股，不用更新"); sys.exit(0)
 assert n > 0 and len(D["stocks"]) > 100, "補進的檔數或股票總數不對，不上傳"      # 防呆：壞資料不要覆蓋線上
 open(dp, "w", encoding="utf-8").write("window.DATA=" + json.dumps(D, ensure_ascii=False, separators=(",", ":")) + ";")
 shutil.copy(os.path.join(SRC, "recmp.json"), os.path.join(live, "recmp.json"))
 print("已補進", n, "檔")
+open(os.path.join(live, ".merged"), "w").write("1")
