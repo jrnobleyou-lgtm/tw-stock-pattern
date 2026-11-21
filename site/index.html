@@ -1414,11 +1414,22 @@ class Chart{
     this.custom=loadRanges(s.code); this.ptrs=new Map();
     this.setTF("D");
   }
+  ma2y(){   /* 2 年線（台股 480／美股 504 日）：個股檔只有最近 520 根，更早的收盤與還原係數在 h/<代號>.json（要看 2 年線才載入）；週K／月K不補 */
+    const cl=this.bars.map(b=>b.c), H=this.hist;
+    if(this.tf!=="D"||!H||!H.c) return sma(cl,MA2Y);
+    const pre=H.c.map((c,i)=>c*(this.adjOn?(H.f[i]||1):1)), m=sma(pre.concat(cl),MA2Y);
+    return m.slice(pre.length);
+  }
+  loadHist(){   /* 按下 2 年線才載入更早的歷史（只載一次）；失敗就只用現有的 */
+    if(this.hist!==undefined||this.s.etf||D.market==="US") return;
+    this.hist=null;
+    fetch("h/"+this.s.code+".json").then(r=>r.ok?r.json():null).then(j=>{if(j&&j.c){this.hist=j;this.ma[MA2Y]=this.ma2y();this.cache={};this.build()}}).catch(()=>{});
+  }
   setTF(tf){
     this.tf=tf;
     this.bars=aggregate(this.adjOn?adjustBars(this.raw):this.raw,tf);
     const cl=this.bars.map(b=>b.c);
-    this.ma={}; for(const n of MA_ALL) this.ma[n]=sma(cl,n);
+    this.ma={}; for(const n of MA_ALL) this.ma[n]=sma(cl,n); this.ma[MA2Y]=this.ma2y();
     this.cache={};
     this.n=Math.min(TF_N[tf],this.bars.length); this.end=this.bars.length;
     this.sel=this.bars.length?this.bars.length-1:null; this.range=null; this.active=null;     // 打開時預設點選最新那根 K 棒
@@ -1428,7 +1439,7 @@ class Chart{
     const last=this.raw[this.raw.length-1], atEnd=this.end===this.bars.length, onLast=this.sel===this.bars.length-1;
     if(last&&last.d===bar.d) this.raw[this.raw.length-1]=bar; else if(!last||bar.d>last.d) this.raw.push(bar); else return;
     this.bars=aggregate(this.adjOn?adjustBars(this.raw):this.raw,this.tf);
-    const cl=this.bars.map(b=>b.c); for(const n of MA_ALL) this.ma[n]=sma(cl,n);
+    const cl=this.bars.map(b=>b.c); for(const n of MA_ALL) this.ma[n]=sma(cl,n); this.ma[MA2Y]=this.ma2y();
     this.cache={}; if(atEnd) this.end=this.bars.length;
     if(onLast) this.sel=this.bars.length-1;          // 原本點在最新那根：即時新增一根時跟著移到新的最新一根
     this.draw();
@@ -1474,8 +1485,8 @@ class Chart{
     const N=this.bars.length;
     if(a.startsWith("tf-")) return this.setTF(a.slice(3));
     if(a==="adj"){this.adjOn=!this.adjOn;return this.setTF(this.tf)}
-    if(a==="maall"){const on=!MA_ALL.every(n=>this.maOn[n]);MA_ALL.forEach(n=>this.maOn[n]=on?1:0);return this.build()}
-    if(a.startsWith("ma-")){this.maOn[a.slice(3)]^=1;return this.build()}
+    if(a==="maall"){const on=!MA_ALL.every(n=>this.maOn[n]);MA_ALL.forEach(n=>this.maOn[n]=on?1:0);if(on)this.loadHist();return this.build()}
+    if(a.startsWith("ma-")){this.maOn[a.slice(3)]^=1;if(+a.slice(3)===MA2Y&&this.maOn[MA2Y])this.loadHist();return this.build()}
     if(a==="maopen"){this.maOpen=!this.maOpen;return this.build()}
     if(["boll","dmi","kd","macd"].includes(a)){this.ind[a]^=1;return this.build()}
     if(a==="geo"){this.geo=!this.geo;return this.build()}
