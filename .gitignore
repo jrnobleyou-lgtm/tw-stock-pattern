@@ -44,3 +44,5 @@ data/watchlist_tw.txt
 site/etf.json
 data/.etf_cache/
 site/h/
+site/sentiment.json
+site/us/sentiment.json
