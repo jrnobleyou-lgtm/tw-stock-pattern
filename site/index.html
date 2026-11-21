@@ -223,12 +223,11 @@ footer.wrap{background:rgba(0,0,0,.55);border-radius:8px;padding:9px 12px;margin
 @media(hover:hover){.ttb:hover{filter:brightness(1.2)}}
 /* 11/18 本週強勢／今日強勢標籤：火焰感，分別上色（window.FLV 1 暖橘漸層／2 暗底發光邊／3 由下往上的火苗漸層；預設 2 之前由使用者選） */
 .nfzb{display:none;gap:4px;margin-left:6px}.nfzb .btn:disabled{opacity:.35;cursor:default}@media(max-width:900px){.mhead .nfzb{order:4;flex:0 0 100%;justify-content:flex-end;margin:0}.mhead .nfzb .btn{padding:3px 12px;font-size:13px}}
-.filters .btn.chf small,.filters .btn.chf.on small{color:#fff}   /* 11/21 使用者選定（版本 B）：上升通道鈕＝通道標記的金褐毛玻璃，下降通道鈕＝亮綠 */
-.filters .btn.chfu{background:linear-gradient(180deg,rgba(130,122,100,.35) 0%,rgba(92,82,56,.35) 50%,rgba(128,102,30,.35) 100%);color:#f3ead0;border:1px solid rgba(200,185,130,.7);font-weight:700;box-shadow:0 0 6px rgba(150,115,15,.35)}
-.filters .btn.chfu.on{background:linear-gradient(180deg,rgba(130,122,100,.95) 0%,rgba(92,82,56,.95) 50%,rgba(128,102,30,.95) 100%);color:#fff;border-color:rgba(200,185,130,.95);box-shadow:inset 0 1px 0 rgba(240,230,190,.65),inset 0 -1px 0 rgba(210,180,90,.7),0 0 12px rgba(150,115,15,.6)}
-.filters .btn.chfd{background:rgba(45,235,115,.12);color:#7ff0ae;border:1px solid #2DEB73;font-weight:700;box-shadow:0 0 6px rgba(45,235,115,.4)}
-.filters .btn.chfd.on{background:linear-gradient(180deg,rgba(60,170,110,.95) 0%,rgba(25,120,70,.95) 100%);color:#fff;box-shadow:inset 0 1px 0 rgba(200,255,225,.6),0 0 12px rgba(45,235,115,.6)}
-.chips.dre{align-items:center;gap:4px 10px;font-size:12px}.dre-g{display:inline-flex;align-items:center;gap:3px}.btn.drx{padding:2px 7px;font-size:12px;touch-action:none;user-select:none}
+.filters .btn.chf small,.filters .btn.chf.on small{color:#fff}   /* 11/21 使用者定案：上升通道鈕＝通道標記的金褐毛玻璃、下降通道鈕＝亮綠，**永遠亮色**（沒選中也一樣）；選中時外面多一圈白框 */
+.filters .btn.chfu,.filters .btn.chfu.on{background:linear-gradient(180deg,rgba(130,122,100,.95) 0%,rgba(92,82,56,.95) 50%,rgba(128,102,30,.95) 100%);color:#fff;border:1px solid rgba(200,185,130,.95);font-weight:700;box-shadow:inset 0 1px 0 rgba(240,230,190,.65),inset 0 -1px 0 rgba(210,180,90,.7),0 0 12px rgba(150,115,15,.6)}
+.filters .btn.chfd,.filters .btn.chfd.on{background:linear-gradient(180deg,rgba(60,170,110,.95) 0%,rgba(25,120,70,.95) 100%);color:#fff;border:1px solid #2DEB73;font-weight:700;box-shadow:inset 0 1px 0 rgba(200,255,225,.6),0 0 12px rgba(45,235,115,.6)}
+.filters .btn.chfu.on{outline:2px solid rgba(255,255,255,.9);outline-offset:1px}
+.filters .btn.chfd.on{outline:2px solid rgba(255,255,255,.9);outline-offset:1px}
 .filters .btn.flb{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);font-weight:700}.filters .btn.flb::before{content:"🔥";margin-right:3px}.filters .btn.flbd::before{content:"🔥🔥";letter-spacing:-2px}
 .filters .btn.flbw{background:rgba(245,158,11,.14);color:#fdba74;border-color:#f59e0b;box-shadow:0 0 6px rgba(245,158,11,.55)}.filters .btn.flbw.on{background:rgba(245,158,11,.55);color:#fff;box-shadow:0 0 10px rgba(245,158,11,.9)}
 .filters .btn.flbd{background:rgba(239,68,68,.18);color:#fecaca;border-color:#ef4444;box-shadow:0 0 9px rgba(239,68,68,.75)}.filters .btn.flbd.on{background:rgba(239,68,68,.6);color:#fff;box-shadow:0 0 12px rgba(239,68,68,1)}
