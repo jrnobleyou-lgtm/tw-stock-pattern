@@ -104,6 +104,7 @@ tr.row:hover{background:rgba(255,255,255,.08)}
 .tag{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid rgba(229,231,235,.5);color:var(--mute);margin:1px 0 1px 4px}
 .tag.hot{border-color:var(--s-strong);color:var(--s-strong);font-weight:700}
 .tag.bad{border-color:#fb7185;color:#fb7185}
+.tag.chn.chd{background:linear-gradient(180deg,rgba(60,170,110,.95) 0%,rgba(25,120,70,.95) 100%);border:1px solid #2DEB73;box-shadow:inset 0 1px 0 rgba(200,255,225,.6),0 0 12px rgba(45,235,115,.6)}
 .tag.chn{background:linear-gradient(180deg,rgba(130,122,100,.95) 0%,rgba(92,82,56,.95) 50%,rgba(128,102,30,.95) 100%);color:#fff;border:1px solid rgba(200,185,130,.95);font-weight:700;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 1px 0 rgba(240,230,190,.65),inset 0 -1px 0 rgba(210,180,90,.7),0 0 12px rgba(150,115,15,.6)}
 .udb{display:inline-flex;gap:6px;margin-left:auto}.udb .btn{padding:4px 10px;display:inline-flex;align-items:center}.udb .btn:disabled{opacity:.35;cursor:default}
 .tag.pat{border-color:#7dd3fc;color:#7dd3fc}
@@ -441,6 +442,7 @@ $("#asof").textContent = D.live ? liveTxt() : (AM.TWSE&&AM.TPEX&&AM.TWSE!==AM.TP
 /* ───────── 共用 ───────── */
 function badge(s,sub){return `<span class="badge b-${CLS[s]}">${s}</span>` + (sub?`<span class="tag ${sub==="破底走弱"?"bad":""}">${sub}</span>`:"")}
 function tagCls(x){
+  if(/下降趨勢通道/.test(x)) return "chn chd";   /* 11/21 使用者：下降通道標記要跟型態篩選鈕一樣是綠色 */
   if(/趨勢通道/.test(x)) return "chn";   /* 11/21 使用者：通道標記用橘底、白字、毛玻璃 */
   if(/^本週強勢/.test(x)) return "fl flw";
   if(/^今日強勢/.test(x)) return "fl fld";   /* 11/18 使用者：本週／今日強勢要分開底色、火焰感（window.FLV 切版本） */
@@ -1846,7 +1848,7 @@ class Chart{
             o+=`<line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="#000" stroke-width="5.4" stroke-opacity=".5"/><line x1="${x(i0)}" y1="${y(p0)}" x2="${x(i1)}" y2="${y(p1)}" stroke="${CC}" stroke-width="2.4" stroke-opacity=".9" stroke-dasharray="${gm.status==="break"?"6 4":""}"/>`;
             });
           {const tx=dn(gm.kind)+(gm.which?"（"+gm.which+"）":"")+(gm.status==="break"?"（"+(gm.side>0?"突破上緣":"跌破下緣")+"）":"")+(gm.pos!=null&&gm.status==="inchan"?"　位置 "+Math.round(gm.pos*100)+"%":""),tw=tx.length*13+18;
-            o+=`<g><defs><linearGradient id="chnG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#827a64"/><stop offset=".5" stop-color="#5c5238"/><stop offset="1" stop-color="#80661e"/></linearGradient></defs><rect x="${pl+8}" y="${pt+6}" width="${tw}" height="24" rx="8" fill="url(#chnG)" stroke="rgba(200,185,130,.95)"/><text x="${pl+8+tw/2}" y="${pt+23}" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">${tx}</text></g>`}
+            o+=`<g><defs><linearGradient id="chnG" x1="0" y1="0" x2="0" y2="1">${/下降/.test(gm.kind)?'<stop offset="0" stop-color="#3caa6e"/><stop offset="1" stop-color="#197846"/>':'<stop offset="0" stop-color="#827a64"/><stop offset=".5" stop-color="#5c5238"/><stop offset="1" stop-color="#80661e"/>'}</linearGradient></defs><rect x="${pl+8}" y="${pt+6}" width="${tw}" height="24" rx="8" fill="url(#chnG)" stroke="${/下降/.test(gm.kind)?"#2DEB73":"rgba(200,185,130,.95)"}"/><text x="${pl+8+tw/2}" y="${pt+23}" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">${tx}</text></g>`}
           continue}
         const col=gm.dir==="bull"?"#ef4444":gm.dir==="bear"?"#22c55e":"#7dd3fc";
         const isV=gm.kind.startsWith("V形");                                  // V 形用鈷藍色粗圓角虛線（使用者 11/14 選定）
