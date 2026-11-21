@@ -61,7 +61,7 @@ def main():
     old = None
     try:
         old = json.load(open(OUTS[0], encoding="utf-8"))
-        if time.time() - old.get("t", 0) < 2 * 3600:
+        if time.time() - old.get("t", 0) < (2 * 3600 if old.get("cnn") else 15 * 60):          # CNN 還沒抓到過就每 15 分鐘再試
             write(old)
             print("市場情緒：2 小時內抓過，沿用")
             return
