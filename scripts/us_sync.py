@@ -80,6 +80,9 @@ elif sys.argv[1:] == ["push"]:
     fp_ = os.path.join(ROOT, "site", "us", "funds.json")      # 11/20 專業資金期貨部位（cftc_funds.py 產生；沒有就略過）
     if os.path.exists(fp_):
         add("site/funds.json", open(fp_, "rb").read())
+    sp_ = os.path.join(ROOT, "site", "us", "sentiment.json")  # 11/21 市場情緒（sentiment.py 產生；沒有就略過）
+    if os.path.exists(sp_):
+        add("site/sentiment.json", open(sp_, "rb").read())
     fnd = os.path.join(ROOT, "site", "us", "fn")      # 11/18 美股季財報（us_fin.py 產生，32 包；內容沒變就不寫）
     for pth in sorted(glob.glob(os.path.join(fnd, "*.json"))) if os.path.isdir(fnd) else []:
         add("site/fn/" + os.path.basename(pth), open(pth, "rb").read())
