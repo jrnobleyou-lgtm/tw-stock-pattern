@@ -43,3 +43,4 @@ site/cache/
 data/watchlist_tw.txt
 site/etf.json
 data/.etf_cache/
+site/h/
