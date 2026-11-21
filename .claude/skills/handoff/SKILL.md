@@ -5,7 +5,7 @@ argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS (`$TMPDIR`, else `/tmp`; `%TEMP%` on Windows) - not the current workspace.
+Write a handoff document summarising the current conversation so a fresh agent can continue the work. In this project, write the handoff into `docs/HANDOFF.md` (index, todos, core rules) and the matching `docs/topics/*.md` (details) - not a temp directory. Keep each topic file under 50 lines / 5KB and every line under 300 characters; see CLAUDE.md.
 
 Include a "suggested skills" section in the document, naming which skills the next agent should call the Skill tool for.
 
