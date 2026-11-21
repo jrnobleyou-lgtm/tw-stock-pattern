@@ -46,7 +46,9 @@ new_rows = []
 j = get("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL")
 if j:
     d = roc(j[0]["Date"])
-    if d > last_date["TWSE"]:
+    if sum(num(r.get("TradeVolume")) or 0 for r in j) == 0:     # 11/21：休市日（例：10/23）API 仍回傳整批「價格不變、成交量 0」，不能寫進歷史
+        print("上市資料日", d, "全部成交量為 0（休市），略過")
+    elif d > last_date["TWSE"]:
         for r in j:
             c = r["Code"]
             o, h, l, cl = (num(r[k]) for k in ("OpeningPrice", "HighestPrice", "LowestPrice", "ClosingPrice"))
@@ -73,7 +75,7 @@ pending_new = []
 j = get("https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes")
 if j:
     d = roc(j[0]["Date"])
-    append = d > last_date["TPEX"]
+    append = d > last_date["TPEX"] and sum(num(r.get("TradingShares")) or 0 for r in j) > 0     # 休市日成交量全 0 不寫入
     for r in j:
         c = r["SecuritiesCompanyCode"]
         o, h, l, cl = (num(r[k]) for k in ("Open", "High", "Low", "Close"))
