@@ -6,6 +6,7 @@ import patterns as PT
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHART_BARS = 520
+ANALYSIS_BARS = 520
 STATES = ["轉強", "弱轉強", "型態好", "盤整", "走弱"]
 
 
@@ -467,6 +468,15 @@ def main():
     full = mode in ("all", "us")
     OUT = os.path.join(ROOT, "site", "us") if us else os.path.join(ROOT, "site")
     by, mk = load_prices(os.path.join(ROOT, "data", "prices_us.csv" if us else "prices_all.csv" if full else "prices_tw.csv"))
+    old_bars = {}                                 # 11/21 長歷史（2 年線用）：型態分析只看最近 ANALYSIS_BARS 根（速度與結果跟以前一樣），更早的另存 site/h/<代號>.json 給前端算 2 年線
+    if mode == "all":
+        ad = sorted({d for s in by.values() for d in s})
+        if len(ad) > ANALYSIS_BARS:
+            cut = ad[-ANALYSIS_BARS]
+            for code_, s_ in by.items():
+                ds_ = sorted(d for d in s_ if d < cut)
+                if ds_:
+                    old_bars[code_] = [s_.pop(d) for d in ds_]
     all_dates = sorted({d for s in by.values() for d in s})
     asof = all_dates[-1]
     asof_m = {}                                   # 上市、上櫃各自的最新資料日（兩邊更新時間不同）
@@ -689,6 +699,10 @@ def main():
                         "signal": ev["signal"], "day": ev["day"], "expired": bool(ev.get("expired"))}
         n0 = max(0, len(bars) - CHART_BARS)
         rows = [[di[b["d"]], b["o"], b["h"], b["l"], b["c"], round(b["v"] / 1000), round(b["f"], 5)] for b in raw[n0:]]
+        if full and code in old_bars:                          # 更早的歷史：只放收盤與還原係數（由舊到新，接在 s/ 檔第一根之前），前端要看 2 年線才載入
+            os.makedirs(os.path.join(OUT, "h"), exist_ok=True)
+            with open(os.path.join(OUT, "h", code + ".json"), "w") as f:
+                json.dump({"c": [round(b["c"], 2) for b in old_bars[code]], "f": [round(b["f"], 5) for b in old_bars[code]]}, f, separators=(",", ":"))
         if full:
             with open(os.path.join(OUT, "s", code + ".json"), "w") as f:
                 json.dump({"bars": rows, **({"geo": gfull} if not us else {})}, f, separators=(",", ":"))

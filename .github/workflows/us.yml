@@ -28,6 +28,9 @@ jobs:
       - name: 抓專業資金期貨部位（CFTC 週報，失敗不影響其他）
         continue-on-error: true
         run: python3 scripts/cftc_funds.py
+      - name: 市場情緒（VIX、CNN 恐懼貪婪，失敗不影響其他）
+        continue-on-error: true
+        run: python3 scripts/sentiment.py
       - name: 分析並產生頁面
         run: |
           python3 scripts/analyze.py us

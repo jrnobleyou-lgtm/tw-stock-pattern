@@ -8,7 +8,19 @@ ap = os.path.join(ROOT, "data", "adjust.csv")
 if os.path.exists(ap):
     for r in csv.DictReader(open(ap, encoding="utf-8")):
         events[r["code"]].append((r["exdate"], float(r["k"])))
+HIST_FROM = os.environ.get("HIST_FROM", "2023-11-01")          # 11/21 歷史長度：先 3 年（2 年線用），驗證好再改 2021-06-01（5 年）
+op = os.path.join(ROOT, "data", "adjust_old.csv")                # 2021～2024-11-10 的除權息還原事件（含配股，官方表）
+if os.path.exists(op):
+    for r in csv.DictReader(open(op, encoding="utf-8")):
+        events[r["code"]].append((r["exdate"], float(r["k"])))
 rows = []
+import gzip
+for f in sorted(glob.glob(os.path.join(ROOT, "data", "hist_old", "*.csv.gz"))):          # FinMind 補的舊歷史（scripts/merge_old.py）
+    if os.path.basename(f)[:4] < HIST_FROM[:4]:
+        continue
+    for r in csv.DictReader(gzip.open(f, "rt", encoding="utf-8", newline="")):
+        if r["date"] >= HIST_FROM:
+            rows.append(r)
 for f in sorted(glob.glob(os.path.join(ROOT, "data", "hist", "*.csv"))):
     for r in csv.DictReader(open(f, encoding="utf-8")):
         rows.append(r)
