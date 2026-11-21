@@ -3,7 +3,8 @@
 import json, os, shutil, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 live = sys.argv[1]
-new = json.load(open(os.path.join(ROOT, "site", "partial.json"), encoding="utf-8"))
+SRC = os.path.join(ROOT, "site", sys.argv[2]) if len(sys.argv) > 2 else os.path.join(ROOT, "site")      # 美股傳 "us"
+new = json.load(open(os.path.join(SRC, "partial.json"), encoding="utf-8"))
 dp = os.path.join(live, "data.js")
 t = open(dp, encoding="utf-8").read()
 assert t.startswith("window.DATA=")
@@ -16,10 +17,11 @@ for code, st in new.items():
     for k in ("drawUpd", "dch"):
         old.pop(k, None)
     old.update({k: v for k, v in st.items() if not k.startswith("_")})      # _w／_s 是分析途中的暫存欄，全市場版最後會刪掉
-    sp = os.path.join(ROOT, "site", "s", code + ".json")
-    if os.path.exists(sp):
+    sp = os.path.join(SRC, "s", code + ".json")
+    if os.path.isdir(os.path.join(live, "s")) and os.path.exists(sp):
         shutil.copy(sp, os.path.join(live, "s", code + ".json"))
     n += 1
+assert n > 0 and len(D["stocks"]) > 100, "補進的檔數或股票總數不對，不上傳"      # 防呆：壞資料不要覆蓋線上
 open(dp, "w", encoding="utf-8").write("window.DATA=" + json.dumps(D, ensure_ascii=False, separators=(",", ":")) + ";")
-shutil.copy(os.path.join(ROOT, "site", "recmp.json"), os.path.join(live, "recmp.json"))
+shutil.copy(os.path.join(SRC, "recmp.json"), os.path.join(live, "recmp.json"))
 print("已補進", n, "檔")

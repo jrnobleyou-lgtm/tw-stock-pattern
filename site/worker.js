@@ -282,7 +282,7 @@ async function usRoute(req, env, u) {
         return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td class="n">${E2(r.at)}</td><td class="n">${r.checked}${r.scope ? `（${r.scope}）` : ""}</td><td class="n">${r.drawn}</td><td>${r.changed.length ? r.changed.map((c) => `${E2(c[0])} ${E2(c[1])}：${E2(c[2])}`).join("<br>") : "沒有被畫線改變的股票"}</td></tr>`; }).join("");
       cmpBlk = `<button type="button" class="ghost" onclick="const d=document.getElementById('cmptbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>全市場比對紀錄（按一下展開／收合）</button><div id="cmptbl" hidden>
 <div class="m" style="margin-top:6px"><b>最近一次重算的結果</b>（含排程自動跑的）</div><div class="xs"><table class="st"><tr><th>市場</th><th>算完時間</th><th>比對檔數</th><th>有畫線的檔數</th><th>被畫線改變的股票</th></tr>${rr}</table></div>
-<div class="m" style="margin-top:8px"><b>你按「全市場型態比對」的時間</b>（最近 30 次）</div><div class="m">${lg.length ? lg.map((x) => `${tm(x.at)}　${x.m === "US" ? "美股（全部）" : x.sc === "draw" ? "台股（只畫線股）" : "台股（全部）"}`).join("<br>") : "還沒有按過"}</div></div>`;
+<div class="m" style="margin-top:8px"><b>你按「全市場型態比對」的時間</b>（最近 30 次）</div><div class="m">${lg.length ? lg.map((x) => `${tm(x.at)}　${(x.m === "US" ? "美股" : "台股") + (x.sc === "draw" ? "（只畫線股" : "（全部") + (x.auto ? "，畫線變動自動送出）" : "）")}`).join("<br>") : "還沒有按過"}</div></div>`;
     } catch (e) {}
     const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="k">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
@@ -405,6 +405,18 @@ async function yahooTX() {
 
 // ── 11/21 使用者：「全市場型態比對」按鈕（只有登入的管理者）。畫了線不用等下一次排程：按一下叫 GitHub 立刻重算一輪，重算時會把畫線拿去和系統形態比對。
 //    台股＝update.yml、美股＝us.yml；防連按：台股 10 分鐘、美股 30 分鐘內只能送一次（美股每輪約寫 300 次 KV，免費額度每天 1000 次）。
+async function dispatchRecmp(env, m, scope, auto) {      // 叫 GitHub 開工；回傳 {ok} 或 {error,status,cooling}
+  const key = `recmp/${m}${scope === "draw" ? "d" : ""}`, wait = (m === "US" ? (scope === "draw" ? 3 : 30) : scope === "draw" ? 3 : 10) * 60000, last = await env.US.get(key, "json");
+  if (last && Date.now() - last.at < wait) return { error: `剛剛已經送出過了，請約 ${Math.ceil((wait - (Date.now() - last.at)) / 60000)} 分鐘後再按`, status: 429, cooling: true };
+  const wf = m === "US" ? (scope === "draw" ? "us_recompare.yml" : "us.yml") : scope === "draw" ? "recompare.yml" : "update.yml";
+  const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${wf}/dispatches`, { method: "POST",
+    headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-recompare", "content-type": "application/json" },
+    body: JSON.stringify({ ref: "main" }) });
+  if (r.status !== 204) return { error: `啟動失敗（GitHub 回應 ${r.status}）`, status: 502 };
+  await env.US.put(key, JSON.stringify({ at: Date.now() }));
+  try { const lg = (await env.US.get("recmp/log", "json")) || []; lg.unshift({ at: Date.now(), m, sc: scope, auto: !!auto }); await env.US.put("recmp/log", JSON.stringify(lg.slice(0, 30))); } catch (e) {}   // 11/21：設定頁「全市場比對紀錄」
+  return { ok: true, mins: m === "US" ? (scope === "draw" ? 4 : 15) : scope === "draw" ? 4 : 6 };
+}
 async function recompareRoute(req, env, u) {
   const J = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { "content-type": "application/json", "cache-control": "no-store" } });
   if (req.method !== "POST") return J({ error: "bad" }, 405);
@@ -412,15 +424,22 @@ async function recompareRoute(req, env, u) {
   const m = u.searchParams.get("m");
   if (!/^(TW|US)$/.test(m)) return J({ error: "bad" }, 400);
   if (!env.GH_TOKEN) return J({ error: "尚未設定 GitHub 金鑰，無法啟動" }, 500);
-  const scope = m === "TW" && u.searchParams.get("scope") === "draw" ? "draw" : "all", key = `recmp/${m}${scope === "draw" ? "d" : ""}`, wait = (m === "US" ? 30 : scope === "draw" ? 3 : 10) * 60000, last = await env.US.get(key, "json");
-  if (last && Date.now() - last.at < wait) return J({ error: `剛剛已經送出過了，請約 ${Math.ceil((wait - (Date.now() - last.at)) / 60000)} 分鐘後再按`, cooling: true }, 429);
-  const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${m === "US" ? "us.yml" : scope === "draw" ? "recompare.yml" : "update.yml"}/dispatches`, { method: "POST",
-    headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-recompare", "content-type": "application/json" },
-    body: JSON.stringify({ ref: "main" }) });
-  if (r.status !== 204) return J({ error: `啟動失敗（GitHub 回應 ${r.status}）` }, 502);
-  await env.US.put(key, JSON.stringify({ at: Date.now() }));
-  try { const lg = (await env.US.get("recmp/log", "json")) || []; lg.unshift({ at: Date.now(), m, sc: scope }); await env.US.put("recmp/log", JSON.stringify(lg.slice(0, 30))); } catch (e) {}   // 11/21：設定頁「全市場比對紀錄」
-  return J({ ok: true, mins: m === "US" ? 15 : scope === "draw" ? 4 : 6 });
+  const r = await dispatchRecmp(env, m, u.searchParams.get("scope") === "draw" ? "draw" : "all", false);
+  return r.ok ? J(r) : J(r, r.status || 500);
+}
+// 11/21 使用者：畫線有增減／修改後，自動重算那幾檔（不用自己按）。連續修改時合併：距離上次送出不到 3 分鐘就先記下「待重算」，由排程（每 10 分）補送。
+async function autoRecmp(env, m) {
+  if (!env.GH_TOKEN) return;
+  await env.US.put(`recmp/dirty/${m}`, String(Date.now()));
+  const r = await dispatchRecmp(env, m, "draw", true);
+  if (r.ok) await env.US.delete(`recmp/dirty/${m}`);
+}
+async function recmpDirtySweep(env) {
+  if (!env.GH_TOKEN) return;
+  for (const m of ["TW", "US"]) {
+    const t = await env.US.get(`recmp/dirty/${m}`);
+    if (t && Date.now() - Number(t) > 60000) { const r = await dispatchRecmp(env, m, "draw", true); if (r.ok) await env.US.delete(`recmp/dirty/${m}`); }
+  }
 }
 
 // ── 管理者自己畫的型態線：KV 的 draw/<市場>/<代號>；所有人都能讀（管理者專區的美股本身就要登入），只有管理者能寫
@@ -439,6 +458,7 @@ async function drawRoute(req, env, u) {
     name: String(d.name || "").slice(0, 30), note: String(d.note || "").slice(0, 200),
     pts: (d.pts || []).slice(0, 30).map(p => [String(p[0]).slice(0, 10), Number(p[1])]).filter(p => /^\d{4}-\d\d-\d\d$/.test(p[0]) && isFinite(p[1])) }));
   await env.US.put(key, JSON.stringify(clean));
+  try { await autoRecmp(env, m); } catch (e) {}                // 11/21：畫線有變就自動重算那幾檔
   return new Response(JSON.stringify({ ok: true, n: clean.length }), { headers: { "content-type": "application/json" } });
 }
 
@@ -489,6 +509,7 @@ async function deployWatchdog(env) {
 
 async function runSchedule(env, when) {
   try { await deployWatchdog(env); } catch (e) { console.log("watchdog", e); }
+  try { await recmpDirtySweep(env); } catch (e) { console.log("recmp", e); }
   const t = new Date(Math.round(when / 600000) * 600000), jobs = jobsAt(t);
   if (!jobs.length || !env.GH_TOKEN) return;
   const res = [];

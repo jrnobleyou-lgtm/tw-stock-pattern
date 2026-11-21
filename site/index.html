@@ -2427,8 +2427,7 @@ if(/(?:^|;\s*)adm=1/.test(document.cookie)){   /* 11/21 使用者：全市場型
     opts.forEach(([k,t])=>{const b=document.createElement("button");b.className="btn";b.style.cssText="padding:11px 14px;font-size:15px;font-weight:700";b.textContent=t;b.onclick=()=>done(k);bx.children[2].appendChild(b)});
     bd.onclick=e=>{if(e.target===bd)done(null)};bd.appendChild(bx);document.body.appendChild(bd)});
   cb.onclick=async()=>{const us=D.market==="US";let sc;
-    if(us){sc=await rcAsk("重新比對全部美股的型態嗎？","約 15 分鐘後完成。\n美股重算會用掉一部分今天的 KV 寫入額度，請別連按。\n（點視窗旁邊空白處＝取消）",[["all","重算全部美股"]])}
-    else{sc=await rcAsk("重新比對台股型態","完成後請重新整理頁面。\n只重算畫線股也會包含剛移除畫線的股票（讓系統通道補回來）。\n（點視窗旁邊空白處＝取消）",[["draw","只重算畫線股（約 4 分鐘）"],["all","重算全部台股（約 6 分鐘）"]])}
+    sc=await rcAsk(us?"重新比對美股型態":"重新比對台股型態","完成後請重新整理頁面。\n只重算畫線股也會包含剛移除畫線的股票（讓系統通道補回來）。\n你新增、修改、刪除畫線時，系統也會自動重算那幾檔，不一定要自己按。\n（點視窗旁邊空白處＝取消）",us?[["draw","只重算畫線股（約 4 分鐘）"],["all","重算全部美股（約 15 分鐘，會用掉較多今天的寫入額度）"]]:[["draw","只重算畫線股（約 4 分鐘）"],["all","重算全部台股（約 6 分鐘）"]]);
     if(!sc)return;
     cb.disabled=true;const t0=cb.textContent;cb.textContent="送出中…";
     try{const r=await fetch("/api/recompare?m="+(us?"US":"TW")+(sc==="draw"?"&scope=draw":""),{method:"POST"}),j=await r.json().catch(()=>({}));

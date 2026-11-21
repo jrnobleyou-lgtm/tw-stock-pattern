@@ -63,9 +63,12 @@ if os.path.exists(HIST):
         hist.setdefault(r["code"], {})[r["date"]] = [r["date"], float(r["open"]), float(r["high"]), float(r["low"]), float(r["close"]), int(float(r["volume"])), float(r["f"])]
 
 latest = None
-try:
+if os.environ.get("US_NO_FETCH") == "1":          # 11/21 只重算畫線股時不用抓新價，直接用已下載的歷史資料組 prices_us.csv
+    codes = []
+else:
+  try:
     rows, _ = parse(chart("AAPL", "5d")); latest = rows[-1][0] if rows else None
-except RateLimited:
+  except RateLimited:
     sys.exit("Yahoo 限流（429），稍後再跑")
 print("Yahoo 最新交易日", latest)
 import threading

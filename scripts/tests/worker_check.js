@@ -4,7 +4,7 @@ const src = fs.readFileSync(path.join(__dirname, "..", "..", "site", "worker.js"
 const ctx = { crypto: globalThis.crypto, TextEncoder, URL, Response, Request, fetch: () => { throw new Error("不可連網"); }, console };
 ctx.globalThis = ctx;
 vm.createContext(ctx);
-vm.runInContext(src + "\nglobalThis.__F={misChannel,txPick,sliceArr,joinBars,jobsAt,usAuthed,hmac};", ctx);
+vm.runInContext(src + "\nglobalThis.__F={misChannel,txPick,sliceArr,joinBars,jobsAt,usAuthed,hmac,autoRecmp,recmpDirtySweep};", ctx);
 const F = ctx.__F;
 let n = 0; const t = (name, f) => Promise.resolve().then(f).then(() => { n++; }, e => { console.error("失敗：" + name + "\n", e.message); process.exitCode = 1; });
 
@@ -59,6 +59,22 @@ let n = 0; const t = (name, f) => Promise.resolve().then(f).then(() => { n++; },
     const old = String(Date.now() - 1000);
     assert.strictEqual(await F.usAuthed(req(`us_auth=${old}.${await F.hmac(hash, old)}`), env({ hash })), false); // 過期
     assert.strictEqual(await F.usAuthed(req(""), env({ hash })), false);
+  });
+  await t("畫線變動自動重算：送出、連續修改合併、排程補送", async () => {
+    const kv = new Map(), calls = [];
+    const env = { GH_TOKEN: "x", US: { get: async (k, ty) => { const v = kv.get(k); return v == null ? null : (ty === "json" ? JSON.parse(v) : v) }, put: async (k, v) => { kv.set(k, v) }, delete: async k => { kv.delete(k) } } };
+    ctx.fetch = async (url) => { calls.push(String(url)); return { status: 204 } };
+    await F.autoRecmp(env, "TW");                       // 第一次：立刻送出 recompare.yml
+    assert.strictEqual(calls.length, 1); assert.ok(calls[0].includes("recompare.yml")); assert.ok(!kv.has("recmp/dirty/TW"));
+    await F.autoRecmp(env, "TW");                       // 3 分鐘內再改：不重送，記下待重算
+    assert.strictEqual(calls.length, 1); assert.ok(kv.has("recmp/dirty/TW"));
+    await F.recmpDirtySweep(env);                       // 排程：還沒過 1 分鐘＋冷卻中，不送
+    assert.strictEqual(calls.length, 1);
+    kv.set("recmp/dirty/TW", String(Date.now() - 200000)); kv.set("recmp/TWd", JSON.stringify({ at: Date.now() - 400000 }));
+    await F.recmpDirtySweep(env);                       // 過了冷卻：補送一次並清掉標記
+    assert.strictEqual(calls.length, 2); assert.ok(!kv.has("recmp/dirty/TW"));
+    await F.autoRecmp(env, "US"); assert.ok(calls[2].includes("us_recompare.yml"));
+    ctx.fetch = () => { throw new Error("不可連網") };
   });
   console.log(process.exitCode ? "有失敗" : `Worker 固定檢查 ${n} 組通過`);
 })();

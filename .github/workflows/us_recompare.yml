@@ -1,0 +1,30 @@
+name: us_recompare
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: us
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 下載美股歷史資料、族群、畫線與目前線上的 data.js
+        run: |
+          python3 scripts/us_sync.py pull
+          python3 scripts/us_sync.py pull-live
+      - name: 只重算有畫線的股票（不抓新價）
+        run: |
+          US_NO_FETCH=1 python3 scripts/us_fetch.py
+          ONLY_DRAWN=1 LIVE_DIR=live python3 scripts/analyze.py us
+      - name: 補進線上資料並上傳
+        run: |
+          python3 scripts/merge_partial.py live us
+          python3 scripts/us_sync.py push-partial

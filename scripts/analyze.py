@@ -563,7 +563,7 @@ def main():
         except Exception:
             pass
     stocks, missing = {}, []
-    only = set(adm) if os.environ.get("ONLY_DRAWN") == "1" and not us else None
+    only = set(adm) if os.environ.get("ONLY_DRAWN") == "1" else None
     if only is not None and os.environ.get("LIVE_DIR"):       # 11/21 使用者：移除畫線後也要重算（線上資料還帶著畫線結果的股票：畫的通道 dch、✏️標記、型態已更新）
         try:
             _t = open(os.path.join(os.environ["LIVE_DIR"], "data.js"), encoding="utf-8").read()
@@ -791,7 +791,7 @@ def main():
     if only is not None:
         import datetime as _dt
         json.dump(stocks, open(os.path.join(OUT, "partial.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-        json.dump({"at": _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"), "market": "TW", "scope": "畫線股",
+        json.dump({"at": _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"), "market": "US" if us else "TW", "scope": "畫線股",
                    "checked": len(stocks), "drawn": len(adm), "changed": rc_changed[:200]},
                   open(os.path.join(OUT, "recmp.json"), "w", encoding="utf-8"), ensure_ascii=False)
         print("只重算畫線股", len(stocks), "檔")

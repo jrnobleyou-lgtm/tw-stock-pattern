@@ -51,7 +51,19 @@ def shard(code, n):
         h = (h * 31 + ord(ch)) % 1000003
     return h % n
 
-if sys.argv[1:] == ["pull"]:
+if sys.argv[1:] == ["pull-live"]:                     # 11/21 只重算畫線股：下載目前線上的 data.js 到 live/
+    os.makedirs(os.path.join(ROOT, "live"), exist_ok=True)
+    b = get("site/data.js")
+    if not b: sys.exit("線上沒有美股 data.js")
+    open(os.path.join(ROOT, "live", "data.js"), "wb").write(b)
+    print("已下載線上 data.js", len(b))
+elif sys.argv[1:] == ["push-partial"]:                 # 只上傳補好的 data.js 與比對結果（3 筆 KV 寫入）
+    old = json.loads(get("state/manifest.json") or b"{}")
+    for k, pth in (("site/data.js", os.path.join(ROOT, "live", "data.js")), ("site/recmp.json", os.path.join(ROOT, "live", "recmp.json"))):
+        b = open(pth, "rb").read(); put(k, b); old[k] = hashlib.md5(b).hexdigest()
+    put("state/manifest.json", json.dumps(old).encode())
+    print("已上傳補好的 data.js 與比對結果")
+elif sys.argv[1:] == ["pull"]:
     os.makedirs(os.path.join(ROOT, "data", "us"), exist_ok=True)
     for name in ("groups_us.csv", "groups_us_all.csv"):
         g = get("state/" + name)
