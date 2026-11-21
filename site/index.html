@@ -61,6 +61,7 @@ nav a.on{background:rgba(255,255,255,.1);border-color:var(--mute)}
   header .hr::after{content:"";flex:1 1 0;order:2}
   header #ttl{order:-2}header .sf{order:-1}header #work{order:0}   /* 11/17 使用者：上班模式移到第一列最右邊（搜尋框右邊） */
   header #idx{order:3;flex:0 0 auto}header #idx,header .fz{margin-top:-8px}
+  @media(min-width:1200px){header #ttl{margin-bottom:-24px}}
   header .fz{order:4;flex:1 1 0;justify-content:flex-end;margin-left:0}
   header nav{order:5}header>p{order:6}
 }
@@ -2189,30 +2190,44 @@ const SENT_HELP="這一區看的是「市場現在有多恐慌或多貪心」，
 function sparkSvg(vals,o){o=o||{};const n=vals.length;if(n<2)return"";let lo=o.lo!=null?o.lo:Math.min(...vals),hi=o.hi!=null?o.hi:Math.max(...vals);if(hi===lo)hi=lo+1;const W=600,H=110,x=i=>i/(n-1)*W,y=v=>6+(1-(v-lo)/(hi-lo))*(H-12);
   const lines=(o.lines||[]).filter(l=>l.v>=lo&&l.v<=hi).map(l=>`<line x1="0" x2="${W}" y1="${y(l.v).toFixed(1)}" y2="${y(l.v).toFixed(1)}" stroke="#8b86b8" stroke-dasharray="4 4" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join("");
   const d=vals.map((v,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)).join("");
-  return `<div class="fch"><svg viewBox="0 0 ${W} ${H}" class="fsv" preserveAspectRatio="none">${lines}<path d="${d}" fill="none" stroke="${o.color||"#7FDBFF"}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg></div>`}
+  let sp="",ro="";if(o.dates&&o.dates.length===n){sp=` data-sp="${SPK.push({vals,dates:o.dates,dec:o.dec==null?2:o.dec,color:o.color||"#7FDBFF",lo,hi,H})-1}"`;ro=`<div class="fro" data-hint="1">滑鼠移到圖上（手機按住圖左右滑動）看每日數值</div>`}
+  return ro+`<div class="fch"${sp}><svg viewBox="0 0 ${W} ${H}" class="fsv" preserveAspectRatio="none">${lines}<path d="${d}" fill="none" stroke="${o.color||"#7FDBFF"}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>${sp?'<div class="fcl" hidden></div><div class="fcd" hidden></div>':""}</div>`}
+const SPK=[];
+function sentHover(box){
+  const S=SPK[+box.dataset.sp]; if(!S)return;
+  const card=box.closest(".fcard"), ro=card.querySelector(".fro"), line=box.querySelector(".fcl"), dot=box.querySelector(".fcd"), hint=ro.innerHTML, n=S.vals.length;
+  const show=e=>{const r=box.getBoundingClientRect(); let i=Math.round((e.clientX-r.left)/r.width*(n-1)); i=Math.max(0,Math.min(n-1,i)); const v=S.vals[i], px=i/(n-1)*100, py=(6+(1-(v-S.lo)/(S.hi-S.lo))*(S.H-12))/S.H*100;
+    line.style.left=px+"%"; line.hidden=false; dot.style.left=px+"%"; dot.style.top=py+"%"; dot.hidden=false; ro.removeAttribute("data-hint");
+    ro.innerHTML=`<span><b>${S.dates[i]}</b></span> <span>數值 <b style="color:${S.color}">${v.toFixed(S.dec)}</b></span>`};
+  const hide=()=>{line.hidden=dot.hidden=true;ro.innerHTML=hint;ro.setAttribute("data-hint","1")};
+  box.addEventListener("pointerdown",e=>{try{box.setPointerCapture(e.pointerId)}catch(_){}show(e)});
+  box.addEventListener("pointermove",e=>{if(e.pointerType==="mouse"||e.buttons||e.pressure>0)show(e)});
+  box.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")hide()});
+}
 function sentCard(title,big,bigColor,sub,spark,axis,note,help){
   return `<div class="fcard"><h3>${title}${help?` <button class="btn fi sinfo" type="button" data-h="${fesc(help)}" aria-label="說明">ⓘ</button>`:""}</h3><div class="fkv"><div><b style="color:${bigColor}">${big}</b>${sub}</div></div>${spark}<div class="fax">${axis}</div><p class="fnote">${note}</p></div>`}
 function sentHTML(S){
+  SPK.length=0;
   if(!S||!S.vix)return `<p class="note">市場情緒資料暫時讀不到，請稍後再試。</p>`;
   const V=S.vix, n=V.length, cur=V[n-1][1], pv=V[n-2]?V[n-2][1]:cur, y1=V.slice(-252).map(r=>r[1]), mx=Math.max(...y1), mn=Math.min(...y1), pc=Math.round(y1.filter(v=>v<=cur).length/y1.length*100);
   const lv=cur>=30?["恐慌",'#f87171']:cur>=20?["緊張",'#fbbf24']:cur>=15?["正常",'#e5e7eb']:["平靜",'#7FDBFF'];
   const chg=cur-pv, fx=(v,d)=>(v>0?"+":"")+v.toFixed(d==null?2:d);
-  let h=sentCard("VIX 恐慌指數",cur.toFixed(2),lv[1],`<small>${lv[0]}・較前日 ${fx(chg)}</small>`,sparkSvg(y1,{lines:[{v:20},{v:30}],color:lv[1]}),`<span>近 1 年走勢（虛線＝20、30）</span><span>最高 ${mx.toFixed(1)}　最低 ${mn.toFixed(1)}　目前高過 ${pc}% 的日子</span>`,
+  let h=sentCard("VIX 恐慌指數",cur.toFixed(2),lv[1],`<small>${lv[0]}・較前日 ${fx(chg)}</small>`,sparkSvg(y1,{lines:[{v:20},{v:30}],color:lv[1],dates:V.slice(-252).map(r=>r[0])}),`<span>近 1 年走勢（虛線＝20、30）</span><span>最高 ${mx.toFixed(1)}　最低 ${mn.toFixed(1)}　目前高過 ${pc}% 的日子</span>`,
     `VIX 是市場預期未來 30 天股市震盪的幅度，俗稱「恐慌指數」。一般標準：低於 15＝平靜、15～20＝正常、20～30＝緊張、高於 30＝恐慌。現在 ${cur.toFixed(1)}，屬於「${lv[0]}」；高過近一年 ${pc}% 的日子。急升常出現在大跌時，漸漸回落代表恐慌在退。`);
   const m3=new Map((S.vix3m||[]).map(r=>[r[0],r[1]])), RT=V.filter(r=>m3.get(r[0])).map(r=>[r[0],r[1]/m3.get(r[0])]);
   if(RT.length>20){const c=RT[RT.length-1][1], p=RT[RT.length-2]?RT[RT.length-2][1]:c, r1=RT.slice(-252).map(r=>r[1]), inv=c>1;
-    h+=sentCard("VIX ÷ VIX3M（期限結構）",c.toFixed(2),inv?'#f87171':'#7FDBFF',`<small>${inv?"倒掛（現在比未來更慌）":"正常（未來比現在更不確定）"}・較前日 ${fx(c-p)}</small>`,sparkSvg(r1,{lines:[{v:1}],color:inv?'#f87171':'#7FDBFF'}),`<span>近 1 年走勢（虛線＝1）</span><span>最高 ${Math.max(...r1).toFixed(2)}　最低 ${Math.min(...r1).toFixed(2)}</span>`,
+    h+=sentCard("VIX ÷ VIX3M（期限結構）",c.toFixed(2),inv?'#f87171':'#7FDBFF',`<small>${inv?"倒掛（現在比未來更慌）":"正常（未來比現在更不確定）"}・較前日 ${fx(c-p)}</small>`,sparkSvg(r1,{lines:[{v:1}],color:inv?'#f87171':'#7FDBFF',dates:RT.slice(-252).map(r=>r[0])}),`<span>近 1 年走勢（虛線＝1）</span><span>最高 ${Math.max(...r1).toFixed(2)}　最低 ${Math.min(...r1).toFixed(2)}</span>`,
       `把「30 天」的恐慌（VIX）除以「3 個月」的恐慌（VIX3M）。平常小於 1（遠期比較不確定）；大於 1 叫「倒掛」，代表市場正處在急性恐慌，短期怕得比長期還兇。倒掛常出現在急跌的低點附近，但也可能繼續倒掛好幾天。`)}
   const C=S.cnn, RN={"extreme fear":"極度恐懼","fear":"恐懼","neutral":"中性","greed":"貪婪","extreme greed":"極度貪婪"}, rc=sc=>sc<25?"極度恐懼":sc<45?"恐懼":sc<55?"中性":sc<75?"貪婪":"極度貪婪", cc=sc=>sc<25?'#f87171':sc<45?'#fbbf24':sc<55?'#e5e7eb':sc<75?'#7FDBFF':'#4ade80';
   if(C&&C.score!=null){const sc=C.score, pr=C.prev||{}, hist=(C.hist||[]).map(r=>r[1]);
     const SUBN={market_momentum_sp500:"股價動能（標普 500 相對 125 日均線）",stock_price_strength:"股價強度（創 52 週新高 vs 新低的家數）",stock_price_breadth:"市場廣度（上漲 vs 下跌的成交量）",put_call_options:"買賣權比（賣權多＝恐懼）",market_volatility_vix:"波動率（VIX 相對 50 日均線）",junk_bond_demand:"垃圾債需求（利差，越小越貪婪）",safe_haven_demand:"避險需求（股票 vs 債券報酬差）"};
     const subs=Object.keys(SUBN).filter(k=>C.sub&&C.sub[k]).map(k=>`<div class="fsub"><span>${SUBN[k]}</span><b style="color:${cc(C.sub[k].score)}">${C.sub[k].score.toFixed(0)}　${RN[C.sub[k].rating]||rc(C.sub[k].score)}</b></div>`).join("");
     const cmp=[["昨日",pr.previous_close],["一週前",pr.previous_1_week],["一個月前",pr.previous_1_month],["一年前",pr.previous_1_year]].filter(a=>a[1]!=null).map(a=>`${a[0]} ${a[1].toFixed(0)}`).join("　");
-    h+=sentCard("CNN 恐懼貪婪指數",sc.toFixed(0)+"　"+(RN[C.rating]||rc(sc)),cc(sc),`<small>${cmp}</small>`,hist.length>5?sparkSvg(hist,{lo:0,hi:100,lines:[{v:25},{v:45},{v:55},{v:75}],color:cc(sc)}):"",`<span>近 1 年走勢（虛線＝25、45、55、75）</span><span>0＝極度恐懼　100＝極度貪婪</span>`,
+    h+=sentCard("CNN 恐懼貪婪指數",sc.toFixed(0)+"　"+(RN[C.rating]||rc(sc)),cc(sc),`<small>${cmp}</small>`,hist.length>5?sparkSvg(hist,{lo:0,hi:100,lines:[{v:25},{v:45},{v:55},{v:75}],color:cc(sc),dec:1,dates:(C.hist||[]).map(r=>r[0])}):"",`<span>近 1 年走勢（虛線＝25、45、55、75）</span><span>0＝極度恐懼　100＝極度貪婪</span>`,
       `CNN 把 7 個指標各算 0～100 分再平均：0～25 極度恐懼、25～45 恐懼、45～55 中性、55～75 貪婪、75～100 極度貪婪。這 7 項分別是：<div class="fsubs">${subs||"（子指標暫時讀不到）"}</div>注意：這是 CNN 網站的非官方資料介面，可能突然改版或暫停；它本身也包含 VIX，所以和上面的 VIX 不是完全獨立的訊號。`)}
   else h+=`<div class="fcard"><h3>CNN 恐懼貪婪指數</h3><p class="fnote">這項資料暫時抓不到（CNN 的非官方介面，可能被擋或改版），不影響上面的 VIX 等指標；下次更新會再試。</p></div>`;
   if(S.skew&&S.skew.length>20){const K=S.skew, c=K[K.length-1][1], p=K[K.length-2]?K[K.length-2][1]:c, k1=K.slice(-252).map(r=>r[1]), lk=c>=150?["很高",'#f87171']:c>=140?["偏高",'#fbbf24']:c>=125?["普通",'#e5e7eb']:["偏低",'#7FDBFF'];
-    h+=sentCard("SKEW 黑天鵝指數",c.toFixed(1),lk[1],`<small>${lk[0]}・較前日 ${fx(c-p,1)}</small>`,sparkSvg(k1,{lines:[{v:140},{v:150}],color:lk[1]}),`<span>近 1 年走勢（虛線＝140、150）</span><span>最高 ${Math.max(...k1).toFixed(1)}　最低 ${Math.min(...k1).toFixed(1)}</span>`,
+    h+=sentCard("SKEW 黑天鵝指數",c.toFixed(1),lk[1],`<small>${lk[0]}・較前日 ${fx(c-p,1)}</small>`,sparkSvg(k1,{lines:[{v:140},{v:150}],color:lk[1],dec:1,dates:K.slice(-252).map(r=>r[0])}),`<span>近 1 年走勢（虛線＝140、150）</span><span>最高 ${Math.max(...k1).toFixed(1)}　最低 ${Math.min(...k1).toFixed(1)}</span>`,
       `SKEW 衡量市場上有多少人在買「標普 500 大跌」的保險（選擇權）。約 125 以下偏低、125～140 普通、140～150 偏高、150 以上很高，越高代表越多人擔心突然暴跌。它和 VIX 不同：VIX 看「抖多大」，SKEW 看「有沒有人在防暴跌」，兩者可以背離。`)}
   return `<div class="fpg" style="margin-top:22px"><h2>市場情緒 <button class="btn fi" id="shelp" type="button" aria-label="說明">ⓘ</button></h2><div class="src">資料日：${S.asof.slice(5).replace("-","/")}（美股收盤；每天更新）。VIX 等來自 Yahoo，恐懼貪婪來自 CNN。</div><div class="fhelp" id="shelpbox" hidden>${fesc(SENT_HELP).replace(/\n/g,"<br>")}</div><div class="fgrid sgrid">${h}</div><div class="src">僅供參考，非投資建議。</div></div>`}
 async function fundsPage(){
@@ -2229,6 +2244,7 @@ async function fundsPage(){
   {const b=$("#shelp");if(b)b.onclick=()=>{const x=$("#shelpbox");x.hidden=!x.hidden};document.querySelectorAll(".sinfo").forEach(b=>b.onclick=()=>{const c=b.closest(".fcard");let x=c.querySelector(".fhelp");if(x){x.remove();return}x=document.createElement("div");x.className="fhelp";x.innerHTML=b.dataset.h.replace(/\n/g,"<br>");c.querySelector(".fkv").after(x)})}
   $("#fhelp").onclick=()=>{const b=$("#fhelpbox");b.hidden=!b.hidden};
   document.querySelectorAll(".fcard[data-k]").forEach(c=>fundsHover(c,F.series[c.dataset.k]));
+  document.querySelectorAll(".fch[data-sp]").forEach(sentHover);
   document.querySelectorAll(".fri").forEach(b=>b.onclick=()=>{const c=b.closest(".fcard");let x=c.querySelector(".fhelp");if(x){x.remove();return}x=document.createElement("div");x.className="fhelp";x.innerHTML=fesc(FUNDS_RATIO_HELP).replace(/\n/g,"<br>");c.querySelector(".fkv").after(x)});
 }
 /* ───────── 路由 ───────── */
