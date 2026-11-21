@@ -47,7 +47,7 @@
 
 ## 長歷史（2 年線，台股 480／美股 504）：台股 3 年版 11/21 已上線
 - 台股歷史已補到 2023-11（3 年）：`data/hist_old`、`exdiv_old`、`adjust_old.csv` 已進 main；`build_prices` 預設 `HIST_FROM=2023-11-01`。驗證過：接縫（2330 11/8 收 1090→11/11 收 1085）、±11% 跳動、全市場前後比對只 2 檔狀態＋2 檔形態不同、ui_check 412 畫面 0 錯誤。
-- **5 年版（使用者還沒要）**：`data/fm` 已有全部 1987 檔（2021-06 起），但**在雲端環境 /tmp 外的 data/fm，換容器就沒了**；要做時 `merge_old.py`→`HIST_FROM=2021-06-01`→analyze→驗證（先看 `site/h` 大小與建置時間）。補抓指令見 `scripts/fetch_finmind.py`（環境會自己重開機殺背景程式，用 `run_in_background` 並設長 timeout）。
+- **5 年版（使用者還沒要，新對話問他）**：2021-06 起的合併資料**已在 main**（`data/hist_old` 2021～2024 四檔＋`adjust_old.csv`，`data/fm` 原始檔不用再留）。要做只剩：`build_prices` 的 `HIST_FROM` 改 `2021-06-01`→analyze→驗證（接縫、±11% 跳動、全市場前後比對、ui_check）→**先量 `site/h` 大小與建置時間再決定上線**。
 - 美股 5 年不急（使用者定）：`us_fetch.py` `KEEP_DAYS=800` 改 1900 並首抓 5y。
 
 ## 待辦（使用者 11/21 已驗收：趨勢通道、畫線、市場情緒、小工具、試算表同步等）
