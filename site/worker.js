@@ -391,6 +391,25 @@ async function yahooTX() {
   return isDay ? { day: q, night: null, spot, spotNight: null } : { day: null, night: q, spot: null, spotNight: spot ? { ref: spot.c } : null };
 }
 
+// ── 11/21 使用者：「全市場型態比對」按鈕（只有登入的管理者）。畫了線不用等下一次排程：按一下叫 GitHub 立刻重算一輪，重算時會把畫線拿去和系統形態比對。
+//    台股＝update.yml、美股＝us.yml；防連按：台股 10 分鐘、美股 30 分鐘內只能送一次（美股每輪約寫 300 次 KV，免費額度每天 1000 次）。
+async function recompareRoute(req, env, u) {
+  const J = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  if (req.method !== "POST") return J({ error: "bad" }, 405);
+  if (!env.US || !(await usAuthed(req, env))) return J({ error: "請先登入管理者專區" }, 403);
+  const m = u.searchParams.get("m");
+  if (!/^(TW|US)$/.test(m)) return J({ error: "bad" }, 400);
+  if (!env.GH_TOKEN) return J({ error: "尚未設定 GitHub 金鑰，無法啟動" }, 500);
+  const key = `recmp/${m}`, wait = (m === "US" ? 30 : 10) * 60000, last = await env.US.get(key, "json");
+  if (last && Date.now() - last.at < wait) return J({ error: `剛剛已經送出過了，請約 ${Math.ceil((wait - (Date.now() - last.at)) / 60000)} 分鐘後再按`, cooling: true }, 429);
+  const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${m === "US" ? "us.yml" : "update.yml"}/dispatches`, { method: "POST",
+    headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-recompare", "content-type": "application/json" },
+    body: JSON.stringify({ ref: "main" }) });
+  if (r.status !== 204) return J({ error: `啟動失敗（GitHub 回應 ${r.status}）` }, 502);
+  await env.US.put(key, JSON.stringify({ at: Date.now() }));
+  return J({ ok: true, mins: m === "US" ? 15 : 12 });
+}
+
 // ── 管理者自己畫的型態線：KV 的 draw/<市場>/<代號>；所有人都能讀（管理者專區的美股本身就要登入），只有管理者能寫
 async function drawRoute(req, env, u) {
   const m = u.searchParams.get("m"), c = u.searchParams.get("c") || "";
@@ -499,6 +518,7 @@ export default {
       return resp;
     }
     if (u.pathname === "/api/draw") return drawRoute(req, env, u);
+    if (u.pathname === "/api/recompare") return recompareRoute(req, env, u);
     if (u.pathname === "/api/targets") return targetsRoute(req, env, u);
     if (u.pathname === "/api/alerts") {                      // 11/19：只給登入的管理者（網頁底部紅色提醒）；不快取
       if (!env.US || !(await usAuthed(req, env))) return new Response("[]", { status: 401, headers: { "content-type": "application/json", "cache-control": "no-store" } });
