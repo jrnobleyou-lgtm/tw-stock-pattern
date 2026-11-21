@@ -325,7 +325,7 @@ async function githubOidcOk(tok) {
     const [h, p, sig] = tok.split("."); const head = JSON.parse(new TextDecoder().decode(b64u(h))), c = JSON.parse(new TextDecoder().decode(b64u(p)));
     if (c.iss !== "https://token.actions.githubusercontent.com" || c.aud !== "tw-stock-us" || c.exp * 1000 < Date.now()) return false;
     if (c.repository !== "jrnobleyou-lgtm/tw-stock-pattern" || c.ref !== "refs/heads/main") return false;
-    const full = c.workflow === "us" || /\/us\.yml@/.test(String(c.workflow_ref || ""));     // 11/19 Opus 審查：只有美股更新（us.yml）能讀寫全部；其他工作（新聞）只能碰關注清單與目標價
+    const full = c.workflow === "us" || c.workflow === "us_recompare" || /\/us(_recompare)?\.yml@/.test(String(c.workflow_ref || ""));     // 11/19 Opus 審查：只有美股更新（us.yml）能讀寫全部；其他工作（新聞）只能碰關注清單與目標價
     if (!jwks || Date.now() - jwksAt > 3600e3) { jwks = (await (await fetch("https://token.actions.githubusercontent.com/.well-known/jwks")).json()).keys; jwksAt = Date.now(); }
     const jwk = jwks.find(k => k.kid === head.kid); if (!jwk) return false;
     const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
