@@ -24,7 +24,7 @@ jobs:
       - name: 只重算有畫線的股票
         run: |
           python3 scripts/build_prices.py
-          ONLY_DRAWN=1 python3 scripts/analyze.py all
+          ONLY_DRAWN=1 LIVE_DIR=live python3 scripts/analyze.py all
       - name: 補進線上資料並發布
         run: |
           python3 scripts/merge_partial.py live

@@ -31,3 +31,9 @@ Worker API、KV 額度、資料來源限制。上層索引見 docs/HANDOFF.md。
 - 盤中判斷要求暫時價日期＝台灣今天；各程式「今天」一律台灣日期。
 - 不碰 mops.twse.com.tw／mopsov（觀測站擋程式、條款只允許開放資料）。證交所 mis `all_etf` 本環境被擋。
 - 網站不公開寫資料來源（頁尾「資料來自公開市場資訊」）；新聞媒體名稱保留。GitHub 歷史不動。
+
+## 畫線比對（11/21）
+- `analyze.py`：`drawn_channels()` 把管理者畫的通道（kind=chan、4 點）用最新價算在通道內／出界，存 `stocks[code].dch`（篩選鈕 chin／chup／chdn 都算）；時間重疊的系統通道拿掉。`/api/draw-list?span=1` 對 chan 附 `pts`。
+- 「只重算畫線股」：`recompare.yml`（`ONLY_DRAWN=1 LIVE_DIR=live`）算畫線股＋線上資料還帶畫線結果的股票（移除畫線也會補回系統通道），`merge_partial.py` 補進 deploy 的 data.js／s/；族群統計不動。結果檔 `recmp.json`（不進版控）給設定頁顯示，按鈕時間記 KV `recmp/log`。
+- 移除畫線後系統不會自動補，要按鈕重算。美股只有「全部」。
+

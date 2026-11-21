@@ -563,7 +563,15 @@ def main():
         except Exception:
             pass
     stocks, missing = {}, []
-    only = set(adm) if os.environ.get("ONLY_DRAWN") == "1" and not us else None     # 11/21：只重算有畫線的股票（recompare.yml），結果存 site/partial.json
+    only = set(adm) if os.environ.get("ONLY_DRAWN") == "1" and not us else None
+    if only is not None and os.environ.get("LIVE_DIR"):       # 11/21 使用者：移除畫線後也要重算（線上資料還帶著畫線結果的股票：畫的通道 dch、✏️標記、型態已更新）
+        try:
+            _t = open(os.path.join(os.environ["LIVE_DIR"], "data.js"), encoding="utf-8").read()
+            for _c, _s in json.loads(_t[len("window.DATA="):].rstrip().rstrip(";"))["stocks"].items():
+                if _s.get("dch") or _s.get("drawUpd") or any(str(x).startswith("✏️") for x in _s.get("tags", [])):
+                    only.add(_c)
+        except Exception as e:
+            print("讀不到線上資料（只算現有畫線的股票）", repr(e)[:80])     # 11/21：只重算有畫線的股票（recompare.yml），結果存 site/partial.json
     rc_changed = []                                # 11/21：畫線讓系統結果改變的股票（寫進 recmp.json 給設定頁的「全市場比對紀錄」）
     for g in groups:
         code = g["代號"]

@@ -420,7 +420,7 @@ async function recompareRoute(req, env, u) {
   if (r.status !== 204) return J({ error: `啟動失敗（GitHub 回應 ${r.status}）` }, 502);
   await env.US.put(key, JSON.stringify({ at: Date.now() }));
   try { const lg = (await env.US.get("recmp/log", "json")) || []; lg.unshift({ at: Date.now(), m, sc: scope }); await env.US.put("recmp/log", JSON.stringify(lg.slice(0, 30))); } catch (e) {}   // 11/21：設定頁「全市場比對紀錄」
-  return J({ ok: true, mins: m === "US" ? 15 : scope === "draw" ? 4 : 12 });
+  return J({ ok: true, mins: m === "US" ? 15 : scope === "draw" ? 4 : 6 });
 }
 
 // ── 管理者自己畫的型態線：KV 的 draw/<市場>/<代號>；所有人都能讀（管理者專區的美股本身就要登入），只有管理者能寫
