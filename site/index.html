@@ -2418,9 +2418,11 @@ if(D.market==="US"||/(?:^|;\s*)adm=1/.test(document.cookie)) $("#n-set").style.d
 if(/(?:^|;\s*)adm=1/.test(document.cookie)){   /* 11/21 使用者：全市場型態比對按鈕（管理者）：叫 GitHub 立刻重算一輪，把畫線和系統形態比對 */
   const cb=$("#cmpb"),mq6=matchMedia("(max-width:640px)"),pl6=()=>{const h=document.querySelector("header");if(mq6.matches)h.appendChild(cb);else document.querySelector("header .fz").insertBefore(cb,$("#n-set"))};
   cb.style.display="";pl6();mq6.addEventListener&&mq6.addEventListener("change",pl6);
-  cb.onclick=async()=>{const us=D.market==="US";if(!confirm(us?"要重新比對全部美股的型態嗎？\n約 15 分鐘後完成。\n（美股重算會用掉一部分今天的 KV 寫入額度，請別連按）":"要重新比對全部台股的型態嗎？\n約 12 分鐘後完成，完成後請重新整理頁面。"))return;
+  cb.onclick=async()=>{const us=D.market==="US";let sc="all";if(us){if(!confirm("要重新比對全部美股的型態嗎？\n約 15 分鐘後完成。\n（美股重算會用掉一部分今天的 KV 寫入額度，請別連按）"))return}
+    else if(confirm("只重算你畫過線的台股嗎？\n約 4 分鐘後完成，完成後請重新整理頁面。\n\n按「確定」＝只重算畫線的股票\n按「取消」＝接著問要不要重算全部台股"))sc="draw";
+    else if(!confirm("要重新比對全部台股的型態嗎？\n約 12 分鐘後完成，完成後請重新整理頁面。"))return;
     cb.disabled=true;const t0=cb.textContent;cb.textContent="送出中…";
-    try{const r=await fetch("/api/recompare?m="+(us?"US":"TW"),{method:"POST"}),j=await r.json().catch(()=>({}));
+    try{const r=await fetch("/api/recompare?m="+(us?"US":"TW")+(sc==="draw"?"&scope=draw":""),{method:"POST"}),j=await r.json().catch(()=>({}));
       alert(r.ok?`已送出 ✅\n約 ${j.mins} 分鐘後比對完成，請重新整理頁面。`:(j.error||"送出失敗，請稍後再試"))}
     catch(e){alert("送出失敗，請檢查網路")}
     cb.disabled=false;cb.textContent=t0}}   /* 11/17 使用者：設定鈕在最右邊，台股登入後也要有 */   // 登入後顯示「美股」，登入前才顯示「管理者專區」

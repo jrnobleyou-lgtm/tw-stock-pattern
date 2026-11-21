@@ -1,0 +1,35 @@
+name: recompare
+on:
+  workflow_dispatch:
+env:
+  SITE_URL: https://news-findstockpattern-swing-breakout.news-stockpatten.workers.dev
+permissions:
+  contents: write
+concurrency:
+  group: update
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: deploy
+          path: live
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 只重算有畫線的股票
+        run: |
+          python3 scripts/build_prices.py
+          ONLY_DRAWN=1 python3 scripts/analyze.py all
+      - name: 補進線上資料並發布
+        run: |
+          python3 scripts/merge_partial.py live
+          cd live
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || (git commit -q -m "recompare $(date -u +%FT%TZ)" && git push origin deploy)

@@ -563,9 +563,12 @@ def main():
         except Exception:
             pass
     stocks, missing = {}, []
+    only = set(adm) if os.environ.get("ONLY_DRAWN") == "1" and not us else None     # 11/21：只重算有畫線的股票（recompare.yml），結果存 site/partial.json
     rc_changed = []                                # 11/21：畫線讓系統結果改變的股票（寫進 recmp.json 給設定頁的「全市場比對紀錄」）
     for g in groups:
         code = g["代號"]
+        if only is not None and code not in only:
+            continue
         raw = [by[code][d] for d in sorted(by.get(code, {}))] if code in by else []
         if raw and len(raw) < 40 and di.get(raw[-1]["d"], -1) >= len(all_dates) - 5 and di.get(raw[0]["d"], 0) >= len(all_dates) - 60:
             # 11/16 使用者選 B：剛上市櫃（不到 40 根）也顯示——價格、漲跌、成交值、K 線，型態標「新股」，不算進五種型態統計；滿 40 根自動改正常分析
@@ -777,6 +780,14 @@ def main():
             st["bars"] = rows
         stocks[code] = st
 
+    if only is not None:
+        import datetime as _dt
+        json.dump(stocks, open(os.path.join(OUT, "partial.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+        json.dump({"at": _dt.datetime.now(_dt.timezone(_dt.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M"), "market": "TW", "scope": "畫線股",
+                   "checked": len(stocks), "drawn": len(adm), "changed": rc_changed[:200]},
+                  open(os.path.join(OUT, "recmp.json"), "w", encoding="utf-8"), ensure_ascii=False)
+        print("只重算畫線股", len(stocks), "檔")
+        return
     val = None                                           # 11/18 使用者：本益比／股價淨值比／殖利率（官方收盤後資料，固定收盤值，不隨盤中跳動）
     if full and not us:
         try:

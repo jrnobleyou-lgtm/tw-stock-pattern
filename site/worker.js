@@ -279,18 +279,19 @@ async function usRoute(req, env, u) {
       const lg = (await env.US.get("recmp/log", "json")) || [];
       const res = { TW: await (await fetch(u.origin + "/recmp.json", { cf: { cacheTtl: 60 } })).json().catch(() => null), US: JSON.parse((await env.US.get("site/recmp.json", "text")) || "null") };
       const rr = ["TW", "US"].map((m) => { const r = res[m]; if (!r) return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td colspan="4">還沒有紀錄</td></tr>`;
-        return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td class="n">${E2(r.at)}</td><td class="n">${r.checked}</td><td class="n">${r.drawn}</td><td>${r.changed.length ? r.changed.map((c) => `${E2(c[0])} ${E2(c[1])}：${E2(c[2])}`).join("<br>") : "沒有被畫線改變的股票"}</td></tr>`; }).join("");
+        return `<tr><td>${m === "TW" ? "台股" : "美股"}</td><td class="n">${E2(r.at)}</td><td class="n">${r.checked}${r.scope ? `（${r.scope}）` : ""}</td><td class="n">${r.drawn}</td><td>${r.changed.length ? r.changed.map((c) => `${E2(c[0])} ${E2(c[1])}：${E2(c[2])}`).join("<br>") : "沒有被畫線改變的股票"}</td></tr>`; }).join("");
       cmpBlk = `<button type="button" class="ghost" onclick="const d=document.getElementById('cmptbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>全市場比對紀錄（按一下展開／收合）</button><div id="cmptbl" hidden>
 <div class="m" style="margin-top:6px"><b>最近一次重算的結果</b>（含排程自動跑的）</div><div class="xs"><table class="st"><tr><th>市場</th><th>算完時間</th><th>比對檔數</th><th>有畫線的檔數</th><th>被畫線改變的股票</th></tr>${rr}</table></div>
-<div class="m" style="margin-top:8px"><b>你按「全市場型態比對」的時間</b>（最近 30 次）</div><div class="m">${lg.length ? lg.map((x) => `${tm(x.at)}　${x.m === "US" ? "美股" : "台股"}`).join("<br>") : "還沒有按過"}</div></div>`;
+<div class="m" style="margin-top:8px"><b>你按「全市場型態比對」的時間</b>（最近 30 次）</div><div class="m">${lg.length ? lg.map((x) => `${tm(x.at)}　${x.m === "US" ? "美股（全部）" : x.sc === "draw" ? "台股（只畫線股）" : "台股（全部）"}`).join("<br>") : "還沒有按過"}</div></div>`;
     } catch (e) {}
     const rows = [["排程最後觸發", cl ? `${new Date(cl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${cl.res.join("、")}` : (env.GH_TOKEN ? "尚未觸發" : "尚未設定 GitHub 金鑰")], ["新聞排程觸發", nf ? `<span style="color:#f87171;font-weight:bold">失敗（${new Date(nf.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}，GitHub 回 ${nf.status}）：可能是 GitHub 金鑰到期，請重建後更新 Worker secret GH_TOKEN</span>` : "正常"], ["部署看門狗", !env.CF_BUILD_TOKEN ? "尚未設定 CF_BUILD_TOKEN" : dl ? `最後補部署 ${new Date(dl.at).toLocaleString("zh-TW", { timeZone: "Asia/Taipei", hour12: false })}　${dl.ok ? "成功" : "失敗"}` : "已啟用（還沒需要補部署）"], ["看門狗權限檢查", dc || "還沒跑過（每 10 分鐘一次）"], ["新聞來源（最後一輪）", nwRow], ["資料日期（美東）", meta.asof], ["最後更新", meta.updated], ["股票數", meta.stocks], ["抓不到資料", meta.missingN ? `${meta.missingN} 檔（${(meta.missing || []).slice(0, 15).join("、")}${meta.missingN > 15 ? "…" : ""}）` : "無"]]
       .map(([a, b]) => `<tr><td class="k">${a}</td><td>${b ?? "—"}</td></tr>`).join("");
-    return page("管理者專區｜資料庫狀態與管理", `<h1>資料庫狀態與管理</h1><table class="st">${rows}</table>
+    return page("管理者專區｜資料庫狀態與管理", `<style>.bk{position:sticky;top:10px;z-index:20;align-self:flex-start;display:inline-block;margin:0 0 12px;padding:12px 22px;border-radius:999px;color:#fff;font-weight:800;font-size:19px;text-decoration:none;background:linear-gradient(180deg,rgba(150,120,255,.55),rgba(80,50,180,.45));border:1px solid rgba(255,255,255,.4);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 6px 20px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4)}
+@media(min-width:1300px){.bk{position:fixed;left:max(16px,calc(50vw - 480px - 175px));top:16px;margin:0}}</style><a href="/admin/" id="bk" class="bk">← 回上一頁</a><h1>資料庫狀態與管理</h1><table class="st">${rows}</table>
 ${rptBlk}${cmpBlk}<button type="button" class="ghost" onclick="const d=document.getElementById('daytbl');d.hidden=!d.hidden;this.firstChild.textContent=d.hidden?'▸ ':'▾ '"><span>▸ </span>每日新聞判斷統計（按一下展開／收合）</button><div id="daytbl" hidden>${dayTbl}</div>
 <h1 style="font-size:16px;margin-top:6px">更改密碼</h1><form method="post" style="display:flex;flex-direction:column;gap:8px">
 <input type="password" name="cur" placeholder="目前密碼" autocomplete="current-password" required><input type="password" name="n1" placeholder="新密碼（至少 6 個字）" autocomplete="new-password" required><input type="password" name="n2" placeholder="再輸入一次新密碼" autocomplete="new-password" required><button>更改密碼</button></form>${msg}
-<div class="m"><a href="/admin/" id="bk">← 回上一頁</a>　<a href="/admin/logout">登出</a></div><script>try{var r=document.referrer?new URL(document.referrer):null,k="setBack";if(r&&r.origin===location.origin&&r.pathname!=="/admin/settings"&&r.pathname!=="/admin/login")sessionStorage.setItem(k,r.pathname+r.search+r.hash);var b=sessionStorage.getItem(k);if(b){var a=document.getElementById("bk");a.href=b;a.textContent=b.indexOf("/admin/")===0?"← 回管理者專區（美股）":"← 回台股"}}catch(_){}</script>`, true);
+<div class="m"><a href="/admin/logout">登出</a></div><script>try{var r=document.referrer?new URL(document.referrer):null,k="setBack";if(r&&r.origin===location.origin&&r.pathname!=="/admin/settings"&&r.pathname!=="/admin/login")sessionStorage.setItem(k,r.pathname+r.search+r.hash);var b=sessionStorage.getItem(k);if(b){var a=document.getElementById("bk");a.href=b;a.textContent=b.indexOf("/admin/")===0?"← 回美股":"← 回台股"}}catch(_){}</script>`, true);
   }
   const sm = p.match(/^\/admin\/s\/([A-Za-z0-9.\-^]+)\.json$/);          // 個股 K 線：從分包裡取出那一檔
   if (sm) {
@@ -411,15 +412,15 @@ async function recompareRoute(req, env, u) {
   const m = u.searchParams.get("m");
   if (!/^(TW|US)$/.test(m)) return J({ error: "bad" }, 400);
   if (!env.GH_TOKEN) return J({ error: "尚未設定 GitHub 金鑰，無法啟動" }, 500);
-  const key = `recmp/${m}`, wait = (m === "US" ? 30 : 10) * 60000, last = await env.US.get(key, "json");
+  const scope = m === "TW" && u.searchParams.get("scope") === "draw" ? "draw" : "all", key = `recmp/${m}${scope === "draw" ? "d" : ""}`, wait = (m === "US" ? 30 : scope === "draw" ? 3 : 10) * 60000, last = await env.US.get(key, "json");
   if (last && Date.now() - last.at < wait) return J({ error: `剛剛已經送出過了，請約 ${Math.ceil((wait - (Date.now() - last.at)) / 60000)} 分鐘後再按`, cooling: true }, 429);
-  const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${m === "US" ? "us.yml" : "update.yml"}/dispatches`, { method: "POST",
+  const r = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${m === "US" ? "us.yml" : scope === "draw" ? "recompare.yml" : "update.yml"}/dispatches`, { method: "POST",
     headers: { authorization: "Bearer " + env.GH_TOKEN, accept: "application/vnd.github+json", "user-agent": "tw-stock-pattern-recompare", "content-type": "application/json" },
     body: JSON.stringify({ ref: "main" }) });
   if (r.status !== 204) return J({ error: `啟動失敗（GitHub 回應 ${r.status}）` }, 502);
   await env.US.put(key, JSON.stringify({ at: Date.now() }));
-  try { const lg = (await env.US.get("recmp/log", "json")) || []; lg.unshift({ at: Date.now(), m }); await env.US.put("recmp/log", JSON.stringify(lg.slice(0, 30))); } catch (e) {}   // 11/21：設定頁「全市場比對紀錄」
-  return J({ ok: true, mins: m === "US" ? 15 : 12 });
+  try { const lg = (await env.US.get("recmp/log", "json")) || []; lg.unshift({ at: Date.now(), m, sc: scope }); await env.US.put("recmp/log", JSON.stringify(lg.slice(0, 30))); } catch (e) {}   // 11/21：設定頁「全市場比對紀錄」
+  return J({ ok: true, mins: m === "US" ? 15 : scope === "draw" ? 4 : 12 });
 }
 
 // ── 管理者自己畫的型態線：KV 的 draw/<市場>/<代號>；所有人都能讀（管理者專區的美股本身就要登入），只有管理者能寫
