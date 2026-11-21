@@ -24,7 +24,7 @@ Worker API、KV 額度、資料來源限制。上層索引見 docs/HANDOFF.md。
 - 美股頁面存在 KV：前端改動要等下次 us.yml push 才換新。`site/.assetsignore` 排除 `us`、`us/*`。
 
 ## 資料來源與限制
-- 台股日 K：證交所／櫃買 OpenAPI。除權息：上市當天由 `scripts/exadj.py` 算（收盤－漲跌價差＝參考價，差 >0.04%；價差 0 時要 TWT48U_ALL 有列），`daily_update.py` 呼叫，寫 `adjust.csv`；週日 Yahoo 補漏。只有除權息／分割，沒有減資（使用者說不用補）。
+- 台股日 K：證交所／櫃買 OpenAPI。除權息：上市當天由 `scripts/exadj.py` 算（收盤－漲跌價差＝參考價，差 >0.04%；價差 0 時要 TWT48U_ALL 有列），`daily_update.py` 呼叫，寫 `adjust.csv`；週日 Yahoo 補漏。只有除權息／分割，沒有減資（使用者定：不補）。
 - 三大法人 `fetch_inst()`（BFI82U，僅上市）、外資台指期淨未平倉 `fetch_fut_foreign()`（期交所 futContractsDateDown CSV）；盤中（平日 15:00 前）不重抓，沿用 `site/cache/inst.json`、`fut.json`；抓不到不可放舊數字。
 - 權值股股數 `fetch_shares()`（t187ap03_L，排除 91 開頭）、`index_weights()`。
 - `analyze.py cached()`：新聞／重訊／畫線／PE／股數抓不到時讀線上 `/cache/<名稱>.json`（`site/cache/` 不進版控）。

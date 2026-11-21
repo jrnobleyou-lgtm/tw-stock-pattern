@@ -5,16 +5,16 @@ description: 每週六 15:15 同步台美股族群與台股關注清單（關注
 
 # 每週六族群＋關注清單同步
 
-全程用繁體中文（連做事途中的說明也是），白話、時間一律台灣時間，回報用 ✅／❓。專案在工作目錄 `tw-stock-pattern`（沒有就 `git clone https://github.com/jrnobleyou-lgtm/tw-stock-pattern`）。先讀 `CLAUDE.md` 和 `docs/HANDOFF-*.md`。
+全程用繁體中文（連做事途中的說明也是），白話、時間一律台灣時間，回報用 ✅／❓。專案在工作目錄 `tw-stock-pattern`（沒有就 `git clone https://github.com/jrnobleyou-lgtm/tw-stock-pattern`）。先讀 `CLAUDE.md` 和 `docs/HANDOFF.md`。
 
 試算表 ID：台股 `1wvK-q5yX7jhtqMkZc-Qg4mQphJghomKsUA21am7NKwc`、美股 `1Hhj5ZJ4sui-bI2lT7WzGbW4upBFqUPh_6Y2UZfdO7YM`。
 
 ## 1. 讀試算表
-用 Google Sheets 的 `get_values`：台股讀「族群分類!A1:D3000」，美股讀「工作表1!A1:D3000」（美股若讀不到再試「族群分類」）。values 原封不動存成 JSON（二維陣列）到暫存資料夾：`tw.json`、`us.json`。讀不到或少於 50 列就停止並回報，不要動網站。
+用 Google Sheets 的 `get_values`：台股讀「族群分類!A1:D3000」，美股讀「工作表1!A1:D3000」（美股若讀不到再試「族群分類」）。values 的處理方式見最下面「省事做法」（整張表不必逐列存 JSON）（二維陣列）到暫存資料夾：`tw.json`、`us.json`。讀不到或少於 50 列就停止並回報，不要動網站。
 也讀兩個試算表的「異動紀錄!A1:D1000」，只看最後一列「網站同步」之後新增的紀錄，回報時一起提。異動紀錄不要清空、不要刪改舊列。
 
 ## 2. 套用族群
-在專案目錄 `git pull --rebase origin main`，然後：
+在**乾淨的 origin/main 工作樹**操作（`git fetch origin main`；`git worktree add /tmp/mainwt origin/main`；不要在工作分支 `pull --rebase`，會衝突），然後：
 - `python3 scripts/apply_groups.py tw tw.json`；有變動就 commit（訊息「每週族群同步」）並 push 到 main。
 - `python3 scripts/apply_groups.py us us.json --upload`（直接寫 Cloudflare KV，**美股清單絕不能進 GitHub**）。美股有變動就執行 `gh api -X POST repos/jrnobleyou-lgtm/tw-stock-pattern/actions/workflows/us.yml/dispatches -f ref=main`。
 

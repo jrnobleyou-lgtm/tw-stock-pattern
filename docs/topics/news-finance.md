@@ -23,8 +23,7 @@
 - PE／PB／殖利率 `scripts/valuation.py`：上市 `BWIBBU_d`、上櫃 `tpex_mainboard_peratio_analysis`（日期要和上市同天）；每檔 `pe/pb/dy/pq/pl`、`data.js` 的 `valDate`；盤中不跳，固定收盤值。
 - 各家讀的分類（11/19 補漏）：MoneyDJ＝頭條 MB010000＋台股 MB06＋產業情報 MB07＋科技脈動 MB070100（每個 RSS 只有最新 20 篇）；工商＝stock＋tech＋industry；科技新報＝finance＋全部；Yahoo＝tw-market＋research；經濟日報＝股市／產業／要聞（兩岸、基金、房地產不補）。**起因**：使用者看到萬泰科 6190 的 MoneyDJ 新聞，消息頁沒有（只讀了頭條分類）。
 - 手動補文章：`data/news_extra.txt` 每行一個網址，每輪都會加入候選（已判斷過的自動略過）。查漏新聞的方法：抓該站其他分類 RSS，算 `md5(連結)[:16]` 是否在 news-data 的 `seen.json`。
-- 11/19 23:10 排程複查：萬泰科那篇是否出現、各家篇數是否變多（`meta.json` 的 `src`）。
 - 目標價規則放寬（11/20，使用者回報 2454 沒資料）：一句提到多檔時，「股票名稱＋目標價＋價格」緊貼的才算那檔（`targets._multi`），名稱並排或「分別」不收；news.py 一次性補撈過去 30 天標題含「目標價」的文章內文（`meta.tp_bf2`，每輪 40 篇，補完自動標記）。待查：補完後 2454 有沒有資料。
-- 11/20 使用者決定：暫停 gemini-3.8-flash（太慢 139 秒）與 gemini-3.5-flash（連兩天全忙碌），只留 flash-lite（`BLOCKED_MODELS`，要恢復就拿掉）；鉅亨網每分類重試 3 次；daily.json 新增 `dirby`（各型號上修／持平／下修篇數）。新聞日報排程 `trig_01Uhcg…`（獨立背景對話，不在對話列表；使用者看不到回報只收到手機通知）prompt 還沒改成讀 dirby。
+- 11/20 使用者決定：暫停 gemini-3.8-flash（太慢 139 秒）與 gemini-3.5-flash（連兩天全忙碌），只留 flash-lite（`BLOCKED_MODELS`，要恢復就拿掉）；鉅亨網每分類重試 3 次；daily.json 新增 `dirby`（各型號上修／持平／下修篇數）。新聞日報排程 `trig_01Uhcg…`（獨立背景對話，不在對話列表；使用者看不到回報只收到手機通知）日報排程見主檔第 2 節（是否讀 dirby 待查，使用者看不懂，不必問他）。
 - 新聞判斷日報小區塊（11/20）：管理者設定頁最上方「新聞判斷日報（前一天）」，由 Worker 讀 daily.json／meta.json 直接算（`rptBlk`，site/worker.js）；手機通知仍是每天 07:47 排程。
 - 11/21：Worker `jobsAt()` 加台灣 01:00、03:30 兩輪夜間新聞（RSS 只留最新 20 篇，避免漏）；`news.py` 的 Quota 區分 429（暫停 1 小時）與 503（只暫停 10 分鐘）。
